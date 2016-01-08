@@ -1,0 +1,18 @@
+{
+    "prepare_queue": {
+        "installed": [],
+        "uninstalled": []
+    },
+    "config_munge": {
+        "files": {}
+    },
+    "installed_plugins": {
+        "cordova-plugin-whitelist": {
+            "PACKAGE_NAME": "org.tijmenvangulik.SimpleCordova"
+        },
+        "cordova-plugin-ble": {
+            "PACKAGE_NAME": "org.tijmenvangulik.SimpleCordova"
+        }
+    },
+    "dependent_plugins": {}
+}

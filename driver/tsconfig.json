@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "module": "system",
+    "target": "es5",
+    "sourceMap": true,
+    "out": "driver/lib/ergometer.js",
+    "declaration": true,
+    "stripInternal": true
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "filesGlob": [
+    "typescript/typings/**/*.d.ts"
+  ],
+  "files": [
+    "typescript/ergometer/utils.ts",
+    "typescript/ergometer/pubsub.ts",
+    "typescript/ergometer/typedefinitions.ts",
+    "typescript/ergometer/performancemonitor.ts"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "module": "system",
+    "target": "es5",
+    "sourceMap": true,
+    "out": "demos/simplecordova/www/app.js"
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "filesGlob": [
+    "www/typescript/typings/**/*.d.ts"
+  ],
+  "files": [
+    "www/typescript/app.ts"
+  ]
+}
