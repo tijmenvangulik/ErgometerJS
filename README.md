@@ -80,7 +80,7 @@ optional: update ble plugin to get the latest
     cordova plugin rm cordova-plugin-ble
     cordova plugin add cordova-plugin-ble
 
-to build and run in the emulator 
+To build and run in the emulator 
 
     cordova run ios
 

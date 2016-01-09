@@ -3,7 +3,7 @@
     "module": "system",
     "target": "es5",
     "sourceMap": true,
-    "out": "driver/lib/ergometer.js",
+    "out": "api/lib/ergometer.js",
     "declaration": true,
     "stripInternal": true
   },
