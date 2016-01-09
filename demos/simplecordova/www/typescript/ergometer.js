@@ -30,26 +30,6 @@ var utils;
     }
     utils.valueToNullValue = valueToNullValue;
 })(utils || (utils = {}));
-/**
- *
- * Created by tijmen on 01-06-15.
- *
- * License:
- *
- * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 var pubSub;
 (function (pubSub) {
     var PubSub = (function () {
@@ -244,14 +224,13 @@ var ergometer;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
- * Concept 2 ergometer Performance Monitor for Cordova
- *
+ * Concept 2 ergomter Performance Monitor for Cordova (phonegab)
  * This will will work with the PM5
  *
  * Created by tijmen on 01-06-15.
  * License:
  *
- * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ * Copyright 2016 [tijmen van gulik (tijmen@vangulik.org)]
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1562,7 +1541,6 @@ var ergometer;
         /**
          *
          * @param device
-         * @internal
          */
         PerformanceMonitor.prototype.deviceConnected = function (device) {
             var _this = this;

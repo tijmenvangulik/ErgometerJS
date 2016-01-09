@@ -1,6 +1,6 @@
 {
   "name": "MobileErgometer",
-  "description":"Cordova egometer driver for concept 2 performance monitor with BLE. (The PM5)",
+  "description":"Cordova ergometer driver for concept 2 performance monitor with BLE. (The PM5)",
   "version": "0.0.1",
   "engines" : { "node" : ">=4.2.4" },
   "devDependencies": {
@@ -8,7 +8,11 @@
   },
   "license": "Apache-2.0",
   "keywords": ["PhoneGap","cordova","egometer","driver","concept 2", "BLE","PM5"],
-  "scripts" : {"build":"build.js"},
+  "scripts" : {
+    "build:driver":"node_modules/.bin/tsc -p driver",
+    "build:simplecordova":"node_modules/.bin/tsc -p demos/simplecordova ",
+    "build":"npm run build:driver && npm run build:simplecordova"
+  },
   "repository" :
   { "type" : "git"
   , "url" : "https://github.com/tijmenvangulik/MobileErgometer"

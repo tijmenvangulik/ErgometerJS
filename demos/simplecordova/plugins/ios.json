@@ -7,10 +7,10 @@
         "files": {}
     },
     "installed_plugins": {
-        "cordova-plugin-whitelist": {
+        "cordova-plugin-ble": {
             "PACKAGE_NAME": "org.tijmenvangulik.SimpleCordova"
         },
-        "cordova-plugin-ble": {
+        "cordova-plugin-whitelist": {
             "PACKAGE_NAME": "org.tijmenvangulik.SimpleCordova"
         }
     },

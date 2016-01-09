@@ -176,10 +176,6 @@ class App {
 
     }
 
-    public setDevice(name : string) {
-
-    }
-
     public startScan() {
         this.performanceMonitor.startScan((device : ergometer.DeviceInfo) : boolean => {
             this.fillDevices();

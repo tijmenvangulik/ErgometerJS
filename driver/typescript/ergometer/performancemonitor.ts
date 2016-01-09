@@ -1,5 +1,6 @@
 /**
- * Concept 2 ergomter Performance Monitor for Cordova (phonegab)
+ * Concept 2 ergometer Performance Monitor for Cordova
+ *
  * This will will work with the PM5
  *
  * Created by tijmen on 01-06-15.

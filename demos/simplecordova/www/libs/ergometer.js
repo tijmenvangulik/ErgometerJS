@@ -971,11 +971,11 @@ var ergometer;
          */
         PerformanceMonitor.prototype.initialize = function () {
             /*document.addEventListener(
-                'deviceready',
-                 ()=> {
-                     evothings.scriptsLoaded(()=>{
-                         this.onDeviceReady();})},
-                false);   */
+             'deviceready',
+             ()=> {
+             evothings.scriptsLoaded(()=>{
+             this.onDeviceReady();})},
+             false);   */
             var _this = this;
             var enableDisableFunc = function () { _this.enableDisableNotification(); };
             this._rowingGeneralStatusEvent = new pubSub.Event();
@@ -1005,14 +1005,14 @@ var ergometer;
          * When low level initialization complete, this function is called.
          */
         /*
-        protected onDeviceReady() {
-            // Report status.
-           this.changeConnectionState( MonitorConnectionState.deviceReady);
-            if (this._active)
-              this.startConnection();
+         protected onDeviceReady() {
+         // Report status.
+         this.changeConnectionState( MonitorConnectionState.deviceReady);
+         if (this._active)
+         this.startConnection();
 
-        }
-        */
+         }
+         */
         /**
          * Print debug info to console and application UI.
          * @param info
@@ -1103,8 +1103,8 @@ var ergometer;
             evothings.easyble.startScan(function (device) {
                 // Do not show un-named devices.
                 /*var deviceName = device.advertisementData ?
-                    device.advertisementData.kCBAdvDataLocalName : null;
-                    */
+                 device.advertisementData.kCBAdvDataLocalName : null;
+                 */
                 if (!device.name) {
                     return;
                 }
