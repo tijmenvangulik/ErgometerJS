@@ -23,6 +23,7 @@ Tijmen@vangulik
 
 * Make a better conversions of some of the values which the ergometer returns. 
 * Make it possible to call csafe commands
+* Test the android version on a real phone (First need a phone for this!)
 * Make an event to receive power curves (need csafe for this)
 * Write a demo of an app which can really be used. (now it)
  
