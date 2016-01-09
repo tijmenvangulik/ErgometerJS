@@ -9,9 +9,9 @@
   "license": "Apache-2.0",
   "keywords": ["PhoneGap","cordova","egometer","driver","concept 2", "BLE","PM5"],
   "scripts" : {
-    "build:driver":"node_modules/.bin/tsc -p driver",
+    "build:api":"node_modules/.bin/tsc -p api",
     "build:simplecordova":"node_modules/.bin/tsc -p demos/simplecordova ",
-    "build":"npm run build:driver && npm run build:simplecordova"
+    "build":"npm run build:api && npm run build:simplecordova"
   },
   "repository" :
   { "type" : "git"

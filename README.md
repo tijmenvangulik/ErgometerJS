@@ -1,6 +1,6 @@
 # Introduction
 
-The Mobile Ergometer project is a cordova/ phonegap driver for the concept2 ergometer with a
+The Mobile Ergometer Api is a cordova/ phonegap API for the concept2 ergometer with a
 PM5 performance monitor.
 
 I hope this project will become a shared effort to make it easier to write next generation ergometer software.

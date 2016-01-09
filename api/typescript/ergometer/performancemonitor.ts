@@ -1,5 +1,5 @@
 /**
- * Concept 2 ergometer Performance Monitor for Cordova
+ * Concept 2 ergometer Performance Monitor api for Cordova
  *
  * This will will work with the PM5
  *

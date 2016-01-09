@@ -1,7 +1,7 @@
-/// <reference path="../../api/typescript/typings/evothings/ble.d.ts" />
-/// <reference path="../../api/typescript/typings/evothings/easyble.d.ts" />
-/// <reference path="../../api/typescript/typings/evothings/evothings.d.ts" />
-/// <reference path="../../api/typescript/typings/evothings/util.d.ts" />
+/// <reference path="../typescript/typings/evothings/ble.d.ts" />
+/// <reference path="../typescript/typings/evothings/easyble.d.ts" />
+/// <reference path="../typescript/typings/evothings/evothings.d.ts" />
+/// <reference path="../typescript/typings/evothings/util.d.ts" />
 /**
  *
  * Created by tijmen on 01-06-15.
@@ -273,7 +273,7 @@ declare module ergometer {
     }
 }
 /**
- * Concept 2 ergometer Performance Monitor api for Cordova
+ * Concept 2 ergometer Performance Monitor for Cordova
  *
  * This will will work with the PM5
  *

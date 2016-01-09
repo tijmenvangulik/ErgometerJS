@@ -244,7 +244,7 @@ var ergometer;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
- * Concept 2 ergometer Performance Monitor api for Cordova
+ * Concept 2 ergometer Performance Monitor for Cordova
  *
  * This will will work with the PM5
  *
