@@ -91,3 +91,41 @@ Blue tooth will not work in an emulator so it is better to test directly on your
 
 Check the console for the ergometer data. (you can read the log by starting a browser and debug the cordova app.
 GabDebug is a handy tool for is. For debugging you should enable debug mode in the build properties the platform project)
+
+
+#Usage                                                                                                             
+                                                                                                                 
+Create this class to acCess the performance data
+                                                                     
+    var performanceMonitor= new ergometer.PerformanceMonitor();                                                       
+                                                                                                                 
+After this connect to the events to get data
+                                                                        
+    performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);                                 
+
+On some android phones you can connect to a limited number of events. Use the multiplex property to overcome        
+this problem. When the multi plex mode is switched on the data send to the device can be a a bit different, see     
+the documentation in the properties You must set the multiplex property before connecting                          
+
+    performanceMonitor.multiplex=true;                                                                                
+                                                                                                                 
+to start the connection first start scanning for a device,                                                          
+you should call when the cordova deviceready event is called (or later)  
+                                           
+    performanceMonitor.startScan((device : ergometer.DeviceInfo) : boolean => {                                       
+      //return true when you want to connect to the device                                                           
+       return device.name=='My device name';                                                                         
+    });  
+                                                                                                                 
+to connect at at a later time 
+                                                                                     
+    performanceMonitor.connectToDevice('my device name'); 
+                                                           
+the devices which where found during the scan are collected in
+                                                     
+    performanceMonitor.devices   
+                                                                                        
+when you connect to a device the scan is stopped, when you want to stop the scan earlier you need to call 
+         
+    performanceMonitor.stopScan 
+                                                                                         
