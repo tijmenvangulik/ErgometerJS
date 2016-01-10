@@ -72,7 +72,7 @@ class App {
     protected initialize() {
         this._performanceMonitor= new ergometer.PerformanceMonitor();
         //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
-        this.performanceMonitor.logLevel=LogLevel.trace; //by default it is error, for more debug info  change the level
+        this.performanceMonitor.logLevel=LogLevel.error; //by default it is error, for more debug info  change the level
         this.performanceMonitor.logEvent.sub(this,this.onLog);
         this.performanceMonitor.connectionStateChangedEvent.sub(this,this.onConnectionStateChanged);
         //connect to the rowing
@@ -93,7 +93,7 @@ class App {
         }
     }
     public onLog(info : string,logLevel : ergometer.LogLevel)
-    {   this.showInfo(info);
+    {   this.showData(info);
     }
     protected onRowingGeneralStatus(data : ergometer.RowingGeneralStatus) {
         this.showData('RowingGeneralStatus:'+JSON.stringify(data));
