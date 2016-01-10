@@ -128,4 +128,9 @@ the devices which where found during the scan are collected in
 when you connect to a device the scan is stopped, when you want to stop the scan earlier you need to call 
          
     performanceMonitor.stopScan 
+    
+More information can be found in the typescript definitions:
+    
+    https://github.com/tijmenvangulik/MobileErgometer/blob/master/api/lib/ergometer.d.ts
+
                                                                                          
