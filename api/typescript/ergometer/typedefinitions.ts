@@ -81,7 +81,7 @@ module ergometer {
     //    Rowing State
     export const enum RowingState
     {   inactive,
-    active
+        active
     }
     //Stroke State
     export const enum StrokeState {

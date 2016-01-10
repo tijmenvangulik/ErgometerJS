@@ -26,6 +26,7 @@ Tijmen@vangulik
 * Test the android version on a real phone (First need a phone for this!)
 * Make an event to receive power curves (need csafe for this)
 * Write a demo of an app which can really be used. (now it)
+* Change the evothings ble library to a driver which works on more phones. (hopfully I can keep de easyble layer) 
  
 # Installation
 
