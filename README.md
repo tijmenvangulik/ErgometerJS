@@ -14,7 +14,7 @@ Tijmen@vangulik
 * Uses low power blue tooth (BLE) connection.
 * Written in typescript which is compiled to javascript. You can use the driver without typescript.
 * Platform independent (cordova/ phonegap /ionic)
-* For now the internal ble driver only works with ios and android.  
+* For now the internal ble driver works with ios, android and windows 8.1.  
 * API definitions can be found in a separate typescript definition file (ergometer.d.ts).  
 
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
@@ -26,7 +26,6 @@ Tijmen@vangulik
 * Test the android version on a real phone (First need a phone for this!)
 * Make an event to receive power curves (need csafe for this)
 * Write a demo of an app which can really be used. (now it)
-* Change the evothings ble library to a driver which works on more phones. (hopfully I can keep de easyble layer) 
  
 # Installation
 
@@ -72,11 +71,12 @@ first install Cordova
 
 in the command line go to dir demos\simplecodova
 
-add one ore more platforms which you want to test (only ios and android are possible)
+add one ore more platforms which you want to test (only ios, android and windows (8.1) are possible)
 
     cordova platform add ios
     cordova platform add android
-
+    cordova platform add windows
+    
 optional: update ble plugin to get the latest
 
     cordova plugin rm cordova-plugin-ble
