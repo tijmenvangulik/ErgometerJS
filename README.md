@@ -93,6 +93,12 @@ Blue tooth will not work in an emulator so it is better to test directly on your
 Check the console for the ergometer data. (you can read the log by starting a browser and debug the cordova app.
 GabDebug is a handy tool for is. For debugging you should enable debug mode in the build properties the platform project)
 
+#Evothings
+
+The blue tooth drivers are from evo things. Evothings has also an nice feature that you can run an debug phone applications
+on your phone without having to install an application. Go to evothings website if you want to know more about this.
+
+    http://evothings.com
 
 #Usage                                                                                                             
                                                                                                                  
