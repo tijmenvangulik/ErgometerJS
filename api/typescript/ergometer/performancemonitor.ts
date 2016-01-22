@@ -29,6 +29,7 @@
 
 module ergometer {
 
+    import IRawCommand = ergometer.csafe.IRawCommand;
     export interface RowingGeneralStatusEvent extends pubSub.ISubscription {
         (data : RowingGeneralStatus) : void;
     }
@@ -63,7 +64,10 @@ module ergometer {
         (data : HeartRateBeltInformation) : void;
     }
 
-    export enum MonitorConnectionState {inactive,deviceReady,scanning,connecting,connected,servicesFound}
+    export interface PowerCurveEvent extends pubSub.ISubscription {
+        (data : number[]) : void;
+    }
+    export enum MonitorConnectionState {inactive,deviceReady,scanning,connecting,connected,servicesFound,readyForCommunication}
 
     export enum LogLevel {error,info,debug,trace};
 
@@ -74,6 +78,9 @@ module ergometer {
         (oldState : MonitorConnectionState,newState : MonitorConnectionState) : void;
     }
 
+    export interface ErrorHandler {
+        (e) : void;
+    }
     export interface DeviceInfo {
         //values filled when the device is found
 
@@ -90,6 +97,11 @@ module ergometer {
         _internalDevice : evothings.easyble.EasyBLEDevice; //for internal usage when you use this I can not guarantee compatibility
     }
 
+    export interface ParsedCSafeCommand {
+        command: number;
+        detailCommand : number;
+        data : Uint8Array;
+    }
     /**
      *
      * Usage:
@@ -120,6 +132,7 @@ module ergometer {
      */
     export class PerformanceMonitor {
 
+
         private _device:evothings.easyble.EasyBLEDevice;
         private _connectionState : MonitorConnectionState = MonitorConnectionState.inactive;
 
@@ -140,7 +153,7 @@ module ergometer {
         private _additionalWorkoutSummaryDataEvent: pubSub.Event<AdditionalWorkoutSummaryDataEvent>;
         private _additionalWorkoutSummaryData2Event: pubSub.Event<AdditionalWorkoutSummaryData2Event>;
         private _heartRateBeltInformationEvent: pubSub.Event<HeartRateBeltInformationEvent>;
-        
+        private _powerCurveEvent: pubSub.Event<PowerCurveEvent>;
         
         private _deviceInfo : DeviceInfo;
 
@@ -155,13 +168,16 @@ module ergometer {
         private _additionalWorkoutSummaryData : AdditionalWorkoutSummaryData;
         private _additionalWorkoutSummaryData2 : AdditionalWorkoutSummaryData2;
         private _heartRateBeltInformation : HeartRateBeltInformation;
+        private _powerCurve : number[];
         private _devices : DeviceInfo[] =[];
         private _multiplex : boolean = false;
         private _multiplexSubscribeCount: number =0;
         private _sampleRate : SampleRate = SampleRate.rate500ms;
         private _autoReConnect : boolean = true;
         private _logLevel : LogLevel = LogLevel.error;
-
+        private _csafeBuffer : csafe.IBuffer = null;
+        private _waitResponseCommands : csafe.IRawCommand[] = [];
+        private _generalStatusEventAttachedByPowerCurve =false;
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
          * @returns {LogLevel}
@@ -169,6 +185,7 @@ module ergometer {
         get logLevel():LogLevel {
             return this._logLevel;
         }
+
 
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
@@ -420,6 +437,10 @@ module ergometer {
             return this._heartRateBeltInformationEvent;
         }
 
+        get powerCurveEvent():pubSub.Event<ergometer.PowerCurveEvent> {
+            return this._powerCurveEvent;
+        }
+
         /**
          * event which is called when the connection state is changed. For example this way you
          * can check if the device is disconnected.
@@ -436,6 +457,10 @@ module ergometer {
         public get logEvent(): pubSub.Event<LogEvent> {
             return this._logEvent;
         }
+        get powerCurve():number[] {
+            return this._powerCurve;
+        }
+
 
         /**
          * Get device information of the connected device.
@@ -472,6 +497,7 @@ module ergometer {
             }
 
         }
+
 
         /**
          * disconnect the current connected device
@@ -726,8 +752,44 @@ module ergometer {
                     else this._device.disableNotification(ble.HEART_RATE_BELT_INFO_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
+                if (this.powerCurveEvent.count>0) {
+                    //when the status changes collect the power info
+                    if (!this._generalStatusEventAttachedByPowerCurve) {
+                        this._generalStatusEventAttachedByPowerCurve=true;
+                        this.rowingGeneralStatusEvent.sub(this,this.onPowerCurveRowingGeneralStatus);
+                    }
 
+                }
+                else {
+                    if (this._generalStatusEventAttachedByPowerCurve) {
+                        this._generalStatusEventAttachedByPowerCurve=false;
+                        this.rowingGeneralStatusEvent.unsub(this.onPowerCurveRowingGeneralStatus);
+                    }
+
+                }
             }
+        }
+
+        protected onPowerCurveRowingGeneralStatus(data : ergometer.RowingGeneralStatus) {
+            this.traceInfo('RowingGeneralStatus:'+JSON.stringify(data));
+
+            //test to receive the power curve
+            if (this.rowingGeneralStatus && this.rowingGeneralStatus.strokeState!=data.strokeState) {
+
+                if (data.strokeState ==StrokeState.recoveryState) {
+                    //send a power curve request
+                    this.csafeBuffer
+                        .clear()
+                        .getPowerCurve({
+                            received: (curve : number[]) =>{
+                                this.powerCurveEvent.pub(curve);
+                                this.powerCurve=curve;
+                            }
+                        })
+                        .send();
+                }
+            }
+
         }
 
         /**
@@ -775,7 +837,11 @@ module ergometer {
             this._heartRateBeltInformationEvent = new pubSub.Event<HeartRateBeltInformationEvent>();
             this.heartRateBeltInformationEvent.registerChangedEvent(enableDisableFunc);
 
+            this._powerCurveEvent = new pubSub.Event<PowerCurveEvent>();
+            this._powerCurveEvent.registerChangedEvent(enableDisableFunc);
+
         }
+
 
         /**
          * When low level initialization complete, this function is called.
@@ -794,7 +860,7 @@ module ergometer {
          * Print debug info to console and application UI.
          * @param info
          */
-        protected traceInfo(info : string) {
+        public traceInfo(info : string) {
             if (this.logLevel>=LogLevel.trace)
                 this.logEvent.pub(info,LogLevel.trace);
         }
@@ -803,7 +869,7 @@ module ergometer {
          *
          * @param info
          */
-        protected debugInfo(info : string) {
+        public debugInfo(info : string) {
             if (this.logLevel>=LogLevel.debug)
                 this.logEvent.pub(info,LogLevel.debug);
         }
@@ -812,7 +878,7 @@ module ergometer {
          *
          * @param info
          */
-        protected showInfo(info : string) {
+        public showInfo(info : string) {
             if (this.logLevel>=LogLevel.info)
                 this.logEvent.pub(info,LogLevel.info);
         }
@@ -821,7 +887,7 @@ module ergometer {
          *
          * @param error
          */
-        protected handleError(error:string) {
+        public handleError(error:string) {
             if (this.logLevel>=LogLevel.error)
                 this.logEvent.pub(error,LogLevel.error);
         }
@@ -874,6 +940,7 @@ module ergometer {
          * @param deviceFound
          */
         public startScan(deviceFound : (device : DeviceInfo)=>boolean ) {
+
             this._devices=[];
             // Save it for next time we use the this.
             //localStorage.setItem('deviceName', this._deviceName);
@@ -1103,8 +1170,8 @@ module ergometer {
             if (parsed.workoutDurationType==WorkoutDurationType.timeDuration)
                 parsed.workoutDuration=parsed.workoutDuration*10;//in mili seconds
             if (JSON.stringify(this.rowingGeneralStatus) !== JSON.stringify(parsed)) {
-                this._rowingGeneralStatus=parsed;
                 this.rowingGeneralStatusEvent.pub(parsed);
+                this._rowingGeneralStatus=parsed;
 
             }
 
@@ -1131,8 +1198,8 @@ module ergometer {
                 parsed.averagePower=data.getUint16(ble.PM_Mux_Extra_Status1_BLE_Payload.AVG_POWER_LO);
 
             if ( JSON.stringify(this.rowingAdditionalStatus1) !== JSON.stringify(parsed)) {
-                this._rowingAdditionalStatus1=parsed;
                 this.rowingAdditionalStatus1Event.pub(parsed);
+                this._rowingAdditionalStatus1=parsed;
             }
         }
 
@@ -1170,8 +1237,8 @@ module ergometer {
                 }
 
                 if (JSON.stringify(this.rowingAdditionalStatus2) !== JSON.stringify(parsed)) {
-                    this._rowingAdditionalStatus2 = parsed;
                     this.rowingAdditionalStatus2Event.pub(parsed);
+                    this._rowingAdditionalStatus2 = parsed;
                 }
             }
         }
@@ -1214,8 +1281,8 @@ module ergometer {
             }
 
             if (JSON.stringify(this.rowingStrokeData) !== JSON.stringify(parsed)) {
-                this._rowingStrokeData = parsed;
                 this.rowingStrokeDataEvent.pub(parsed);
+                this._rowingStrokeData = parsed;
             }
 
         }
@@ -1238,8 +1305,8 @@ module ergometer {
             if (data.byteLength==ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.BLE_PAYLOAD_SIZE)
                 parsed.workPerStroke =  data.getUint16(ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO);
             if (JSON.stringify(this.rowingAdditionalStrokeData) !== JSON.stringify(parsed)) {
-                this._rowingAdditionalStrokeData = parsed;
                 this.rowingAdditionalStrokeDataEvent.pub(parsed);
+                this._rowingAdditionalStrokeData = parsed;
             }
         }
 
@@ -1261,8 +1328,8 @@ module ergometer {
         }
 
             if (JSON.stringify(this.rowingSplitIntervalData) !== JSON.stringify(parsed)) {
-                this._rowingSplitIntervalData = parsed;
                 this.rowingSplitIntervalDataEvent.pub(parsed);
+                this._rowingSplitIntervalData = parsed;
             }
         }
 
@@ -1287,8 +1354,8 @@ module ergometer {
             }
 
             if (JSON.stringify(this.rowingAdditionalSplitIntervalData) !== JSON.stringify(parsed)) {
-                this._rowingAdditionalSplitIntervalData = parsed;
                 this.rowingAdditionalSplitIntervalDataEvent.pub(parsed);
+                this._rowingAdditionalSplitIntervalData = parsed;
             }
         }
 
@@ -1318,8 +1385,8 @@ module ergometer {
                 parsed.averagePace = data.getUint16(ble.PM_Workout_Summary_Data_BLE_Payload.AVG_PACE_LO);
             }
             if (JSON.stringify(this.workoutSummaryData) !== JSON.stringify(parsed)) {
-                this._workoutSummaryData = parsed;
                 this.workoutSummaryDataEvent.pub(parsed);
+                this._workoutSummaryData = parsed;
             }
         }
 
@@ -1362,8 +1429,8 @@ module ergometer {
             }
 
             if (JSON.stringify(this.additionalWorkoutSummaryData) !== JSON.stringify(parsed)) {
-                this._additionalWorkoutSummaryData = parsed;
                 this.additionalWorkoutSummaryDataEvent.pub(parsed);
+                this._additionalWorkoutSummaryData = parsed;
             }
         }
 
@@ -1383,8 +1450,8 @@ module ergometer {
                 }
 
             if (JSON.stringify(this.additionalWorkoutSummaryData2) !== JSON.stringify(parsed)) {
-                this._additionalWorkoutSummaryData2 = parsed;
                 this.additionalWorkoutSummaryData2Event.pub(parsed);
+                this._additionalWorkoutSummaryData2 = parsed;
             }
         }
 
@@ -1402,8 +1469,8 @@ module ergometer {
             }
 
             if (JSON.stringify(this.heartRateBeltInformation) !== JSON.stringify(parsed)) {
-                this._heartRateBeltInformation = parsed;
                 this.heartRateBeltInformationEvent.pub(parsed);
+                this._heartRateBeltInformation = parsed;
             }
         }
 
@@ -1429,6 +1496,9 @@ module ergometer {
                     this.changeConnectionState(MonitorConnectionState.servicesFound);
                     this.enableDisableNotification();
 
+                    //allways connect to csafe
+                    this.handleCSafeNotifications();
+                    this.changeConnectionState(MonitorConnectionState.readyForCommunication);
 
                 },
                 (error)=> {
@@ -1507,7 +1577,307 @@ module ergometer {
             var ar = new DataView(data);
             //call the function within the scope of the object
             func.apply(this,[ar]);
-        };
+        }
+
+        protected removeOldSendCommands() {
+            for (var i=this._waitResponseCommands.length-1;i>=0;i--) {
+                var command : IRawCommand = this._waitResponseCommands[i];
+                var currentTime= new Date().getTime();
+                //more than 20 seconds in the buffer
+                if (currentTime-command._timestamp>20000 ) {
+                    if (command.onError) {
+                        command.onError("Nothing returned in 20 seconds");
+                        this.handleError(`Nothing returned in 20 seconds from command ${command.command} ${command.detailCommand}`);
+                    }
+                    this._waitResponseCommands.splice(i,1);
+                }
+            }
+        }
+
+        /* ***************************************************************************************
+         *                               csafe
+         *****************************************************************************************  */
+
+
+        public sendCSafeBuffer(success? : ()=>void,error? : ErrorHandler) {
+            this.removeOldSendCommands();
+            //prepare the array to be send
+            var rawCommandBuffer = this.csafeBuffer.rawCommands;
+            var commandArray : number[] = [];
+            rawCommandBuffer.forEach((command : IRawCommand)=>{
+
+                commandArray.push(command.command);
+                if (command.command>= csafe.defs.CTRL_CMD_SHORT_MIN)  {
+                    //it is an short command
+                    if (command.detailCommand|| command.data) {
+                        throw "short commands can not contain data or a detail command"
+                    }
+                }
+                else {
+                    if (command.detailCommand) {
+                        var dataLength=1;
+                        if (command.data  && command.data.length>0)
+                            dataLength=dataLength+command.data.length+1;
+                        commandArray.push(dataLength); //length for the short command
+                        //the detail command
+                        commandArray.push(command.detailCommand);
+                    }
+                    //the data
+                    if (command.data && command.data.length>0) {
+                        commandArray.push(command.data.length);
+                        commandArray=commandArray.concat(command.data);
+                    }
+                }
+
+
+
+            });
+            this.csafeBuffer.clear();
+            //send all the csafe commands in one go
+            this.sendCsafeCommands(commandArray,()=>{
+                    rawCommandBuffer.forEach((command : IRawCommand)=> {
+                        command._timestamp = new Date().getTime();
+                        if (command.waitForResponse)
+                            this._waitResponseCommands.push(command);
+                        if (success) success();
+                    })
+                },(e)=>{
+                   rawCommandBuffer.forEach((command : IRawCommand)=>{
+
+                       if (command.onError) command.onError(e);
+                       if (error) error(e);
+                   })
+                })
+        }
+
+        protected sendCsafeCommands(byteArray : number[], send : ()=>void, error : ErrorHandler) {
+
+            //is there anything to send?
+            if (byteArray && byteArray.length>0 ) {
+                //calc the checksum of the data to be send
+                var checksum =0;
+                for (let i=0;i<byteArray.length;i++) checksum=checksum ^ byteArray[i];
+                //prepare all the data to be send in one array
+                //begin with a start byte ad end with a checksum and an end byte
+                var bytesToSend : number[] =
+                    ([csafe.defs.FRAME_START_BYTE].concat(byteArray)).concat([checksum,csafe.defs.FRAME_END_BYTE]);
+
+                //send in packages of max 20 bytes (ble.PACKET_SIZE)
+                var sendBytesIndex=0;
+                //continue while not all bytes are send
+                while (sendBytesIndex<bytesToSend.length) {
+                    try {
+                        //prepare a buffer with the data which can be send in one packet
+                        var bufferLength = Math.min(ble.PACKET_SIZE,bytesToSend.length-sendBytesIndex)
+                        var buffer = new ArrayBuffer(bufferLength); //start and end and
+                        var dataView = new DataView(buffer);
+
+                        var bufferIndex = 0;
+                        while (bufferIndex<bufferLength) {
+                            dataView.setUint8(bufferIndex, bytesToSend[sendBytesIndex]);
+                            sendBytesIndex++;
+                            bufferIndex++;
+                        }
+                        this.traceInfo("send csafe: "+evothings.util.typedArrayToHexString(buffer));
+                        this._device.writeCharacteristic(ble.TRANSMIT_TO_PM_CHARACTERISIC,dataView,
+                            ()=>{
+                                this.traceInfo("csafe command send");
+                                if(send) send();
+                                // this.singleRead(receive )
+                            },
+                            (e)=>{
+                                if (error) error(e);
+                                this.handleError(e);
+                            });
+                    }
+                    catch(e) {
+                        if (error) error(e);
+                        this.handleError(e);
+                    }
+                }
+
+            }
+
+        }
+
+
+        public receivedCSaveCommand(parsed : ParsedCSafeCommand) {
+
+            //check on all the commands which where send and
+            for(let i=0;i<this._waitResponseCommands.length;i++){
+                let command=this._waitResponseCommands[i];
+                if (command.command==parsed.command &&
+                    ( command.detailCommand==parsed.detailCommand ||
+                      (!command.detailCommand && !parsed.detailCommand) )
+                   )  {
+                    if (command.onDataReceived) {
+                        var dataView= new DataView(parsed.data.buffer);
+                        command.onDataReceived(dataView);
+                    }
+                    this._waitResponseCommands.splice(i,1);//remove the item from the send list
+                    break;
+                }
+
+            }
+        }
+
+        public handleCSafeNotifications() {
+            const enum FrameState {initial,skippByte,parseCommand,parseCommandLength,
+            parseDetailCommand,parseDetailCommandLength,parseCommandData}
+            var command =0;
+            var commandDataIndex =0;
+            var commandData : Uint8Array;
+            var frameState = FrameState.initial;
+            var nextDataLength = 0;
+            var detailCommand =0;
+
+            var calcCheck=0;
+            this.traceInfo("enable notifications csafe");
+            this._device.enableNotification(ble.RECEIVE_FROM_PM_CHARACTERISIC,
+                (data:ArrayBuffer) => {
+                    var dataView = new DataView(data);
+                    //skipp empty 0 ble blocks
+                    if (dataView.byteLength!=1 || dataView.getUint8(0)!=0  ) {
+                        if ( frameState == FrameState.initial)  {
+                            commandData = null;
+                            commandDataIndex=0;
+                            frameState = FrameState.initial;
+                            nextDataLength = 0;
+                            detailCommand =0;
+                            calcCheck=0;
+                        }
+                        this.traceInfo("continious receive csafe: "+evothings.util.typedArrayToHexString(data));
+                        var i=0;
+                        var stop=false;
+
+                        while (i<dataView.byteLength &&!stop) {
+                            var currentByte= dataView.getUint8(i);
+                            if (frameState!=FrameState.initial) {
+                                calcCheck=calcCheck ^ currentByte; //xor for a simple crc check
+                            }
+
+                            switch(frameState) {
+                                case FrameState.initial : {
+                                    //expect a start frame
+                                    if (currentByte!=csafe.defs.FRAME_START_BYTE) {
+                                        stop=true ;
+                                    }
+                                    else frameState=FrameState.skippByte;
+
+
+                                    break;
+                                }
+                                case FrameState.skippByte :
+                                {   //skipp this one
+                                    frameState= FrameState.parseCommand;
+
+                                    break;
+                                }
+
+                                case FrameState.parseCommand : {
+
+
+                                    command=currentByte;
+                                    frameState= FrameState.parseCommandLength;
+
+                                    break;
+                                }
+                                case FrameState.parseCommandLength : {
+                                    if (i==dataView.byteLength-1 && currentByte==csafe.defs.FRAME_END_BYTE ) {
+                                        var checksum=command;
+                                        //remove the last 2 bytes from the checksum which was added too much
+                                        calcCheck=calcCheck ^ currentByte;
+                                        calcCheck=calcCheck ^ command;
+                                        //check the calculated with the message checksum
+                                        if (checksum!=calcCheck) this.handleError(`Wrong checksum ${checksum}`);
+                                        command=0; //do not check checksum
+                                        frameState=FrameState.initial; //start again from te beginning
+                                    }
+                                    else if (i<dataView.byteLength) {
+                                        nextDataLength= currentByte;
+                                        if (command>= csafe.defs.CTRL_CMD_SHORT_MIN) {
+                                            frameState= FrameState.parseCommandData;
+                                        }
+                                        else frameState= FrameState.parseDetailCommand;
+
+                                    }
+                                    break;
+                                }
+                                case FrameState.parseDetailCommand : {
+                                    detailCommand=  currentByte;
+                                    frameState= FrameState.parseDetailCommandLength;
+
+                                    break;
+                                }
+                                case FrameState.parseDetailCommandLength : {
+                                    nextDataLength=currentByte;
+                                    frameState= FrameState.parseCommandData;
+                                    break;
+                                }
+                                case FrameState.parseCommandData : {
+                                    if (!commandData) {
+                                        commandDataIndex=0;
+                                        commandData = new Uint8Array(nextDataLength);
+                                    }
+                                    commandData[commandDataIndex]=currentByte;
+                                    nextDataLength--;
+                                    commandDataIndex++;
+                                    if (nextDataLength==0) {
+                                        frameState= FrameState.parseCommand;
+                                        try {
+                                            this.receivedCSaveCommand({
+                                                command:command,
+                                                detailCommand:detailCommand,
+                                                data:commandData});
+                                        }
+                                        catch (e) {
+                                            this.handleError(e); //never let the receive crash the main loop
+                                        }
+
+                                        commandData=null;
+                                        detailCommand=0;
+                                    }
+                                    break;
+                                }
+
+                            }
+                            i++;
+                        }
+                        //when something went wrong, the bue tooht block is endend but the frame not
+                        if (dataView.byteLength!=ble.PACKET_SIZE && frameState!=FrameState.initial) {
+                            frameState=FrameState.initial;
+                            this.handleError("wrong csafe frame ending.");
+                        }
+
+                    }
+
+
+                },
+                this.handleError);
+        }
+
+        get csafeBuffer():ergometer.csafe.IBuffer {
+            //init the buffer when needed
+            if (!this._csafeBuffer) {
+                this._csafeBuffer = <any> {
+                    commands: [],
+                    clear: ():csafe.IBuffer=> {
+                        this.csafeBuffer.rawCommands = [];
+                        return this.csafeBuffer;
+                    },
+                    send: (sucess? : ()=>void,error? : ErrorHandler) => {
+                        this.sendCSafeBuffer(sucess,error);
+                    },
+                    addRawCommand: (info:csafe.IRawCommand):csafe.IBuffer=> {
+                        this.csafeBuffer.rawCommands.push(info);
+                        return this.csafeBuffer;
+                    }
+
+                };
+                csafe.commandManager.apply(this.csafeBuffer, this);
+            }
+            return this._csafeBuffer;
+        }
 
     }
 

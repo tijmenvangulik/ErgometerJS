@@ -27,6 +27,8 @@
 /// <reference path="typings/ergometer.d.ts"/>
 
 import LogLevel = ergometer.LogLevel;
+import StrokeState = ergometer.StrokeState;
+import SampleRate = ergometer.SampleRate;
 /**
  * Object that holds application data and functions.
  */
@@ -72,12 +74,12 @@ class App {
     protected initialize() {
         this._performanceMonitor= new ergometer.PerformanceMonitor();
         //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
-        this.performanceMonitor.logLevel=LogLevel.error; //by default it is error, for more debug info  change the level
+        this.performanceMonitor.logLevel=LogLevel.trace; //by default it is error, for more debug info  change the level
         this.performanceMonitor.logEvent.sub(this,this.onLog);
         this.performanceMonitor.connectionStateChangedEvent.sub(this,this.onConnectionStateChanged);
         //connect to the rowing
-        this.performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
-        this.performanceMonitor.rowingAdditionalStatus1Event.sub(this,this.onRowingAdditionalStatus1);
+        //this.performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
+        /* this.performanceMonitor.rowingAdditionalStatus1Event.sub(this,this.onRowingAdditionalStatus1);
         this.performanceMonitor.rowingAdditionalStatus2Event.sub(this,this.onRowingAdditionalStatus2);
         this.performanceMonitor.rowingStrokeDataEvent.sub(this,this.onRowingStrokeData);
         this.performanceMonitor.rowingAdditionalStrokeDataEvent.sub(this,this.onRowingAdditionalStrokeData);
@@ -86,8 +88,8 @@ class App {
         this.performanceMonitor.workoutSummaryDataEvent.sub(this,this.onWorkoutSummaryData);
         this.performanceMonitor.additionalWorkoutSummaryDataEvent.sub(this,this.onAdditionalWorkoutSummaryData);
         this.performanceMonitor.heartRateBeltInformationEvent.sub(this,this.onHeartRateBeltInformation);
-        this.performanceMonitor.additionalWorkoutSummaryData2Event.sub(this,this.onAdditionalWorkoutSummaryData2);
-
+        this.performanceMonitor.additionalWorkoutSummaryData2Event.sub(this,this.onAdditionalWorkoutSummaryData2); */
+        this.performanceMonitor.powerCurveEvent.sub(this,this.onPowerCurve);
         window.onload = ()=> {
             document.addEventListener('deviceready', () => {this.onDeviceReady();},false);
         }
@@ -95,8 +97,10 @@ class App {
     public onLog(info : string,logLevel : ergometer.LogLevel)
     {   this.showData(info);
     }
+
     protected onRowingGeneralStatus(data : ergometer.RowingGeneralStatus) {
         this.showData('RowingGeneralStatus:'+JSON.stringify(data));
+
     }
     protected onRowingAdditionalStatus1(data : ergometer.RowingAdditionalStatus1) {
         this.showData('RowingAdditionalStatus1:'+JSON.stringify(data));
@@ -132,9 +136,32 @@ class App {
     }
 
     protected onConnectionStateChanged(oldState : ergometer.MonitorConnectionState, newState : ergometer.MonitorConnectionState) {
-        if (newState==ergometer.MonitorConnectionState.connected) {
+
+        if (newState==ergometer.MonitorConnectionState.readyForCommunication) {
+            //this.performanceMonitor.sampleRate=SampleRate.rate250ms;
             this.showData(JSON.stringify( this._performanceMonitor.deviceInfo));
+
+            //send two commands and show the results in a jquery way
+
+
+            this.performanceMonitor.csafeBuffer
+                .clear()
+                .getStrokeState({
+                    received: (strokeState : ergometer.StrokeState) =>{
+                        this.showData(`stroke state: ${strokeState}`);
+                    }
+                })
+                .getVersion({
+                    received: (version : ergometer.csafe.IVersion)=> {
+                        this.showData(`Version hardware ${version.HardwareVersion} software:${version.FirmwareVersion}`);
+                    }
+                })
+                .setProgram({program:2})
+                .send();
         }
+    }
+    protected onPowerCurve(curve : number[]) {
+        this.showData("Curve in gui: "+JSON.stringify(curve));
     }
     protected onPause() {
     // TODO: This application has been suspended. Save application state here.
@@ -176,6 +203,10 @@ class App {
 
     }
 
+    public setDevice(name : string) {
+
+    }
+
     public startScan() {
         this.performanceMonitor.startScan((device : ergometer.DeviceInfo) : boolean => {
             this.fillDevices();
@@ -194,10 +225,3 @@ class App {
 
 }
 var app = new App();
-
-
-
-
-
-
-

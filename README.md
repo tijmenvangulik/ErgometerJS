@@ -8,6 +8,14 @@ I hope this project will become a shared effort to make it easier to write next 
 Tijmen 
 Tijmen@vangulik
 
+#change log
+0.0.1 First version
+0.0.2 
+ added 
+ - csafe framework 
+ - power curve event and csafe command
+ - some simple csafe commands
+ 
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
@@ -139,5 +147,97 @@ when you connect to a device the scan is stopped, when you want to stop the scan
 More information can be found in the typescript definitions:
     
     https://github.com/tijmenvangulik/MobileErgometer/blob/master/api/lib/ergometer.d.ts
+    
+##CSafe
 
-                                                                                         
+CSafe is used to send and receive commands. I have implemented an jquery like api which is:
+- chainable (not required)
+- Extensible (you add your own commands to the buffer object. A command can consist out of multiple commands)
+- type safe
+- multiple commands can be send in one requests to reduce the load
+
+An example of a
+
+when the connection state is ready for communcation you can start with csafe commands
+
+    protected onConnectionStateChanged(oldState : ergometer.MonitorConnectionState, newState : ergometer.MonitorConnectionState) {  
+            if (newState==ergometer.MonitorConnectionState.readyForCommunication) {
+
+
+The csafeBuffer property is used to prepare one or multiple commands. Before adding commands you have
+to clear the buffer. At then end call send to call the buffer. 
+The next command can only be send after that the first command is send. Use the optional 
+success and error parameters of the send function to start with the next command. You can also send the
+next command when data is received.
+
+
+    this.performanceMonitor.csafeBuffer
+                .clear()
+                .getStrokeState({
+                    received: (strokeState : ergometer.StrokeState) =>{
+                        this.showData(`stroke state: ${strokeState}`);
+                    }
+                })
+                .getVersion({
+                    received: (version : ergometer.csafe.IVersion)=> {
+                        this.showData(`Version hardware ${version.HardwareVersion} software:${version.FirmwareVersion}`);
+                    }
+                })
+                .setProgram({program:2})
+                .send();
+
+
+It is not required to chain the commands. You can also write code the classic way:
+
+    var buffer=this.performanceMonitor.csafeBuffer;
+    buffer.clear();
+    buffer.setProgram({program:2}); 
+    buffer.send();
+    
+
+It is possible to add new commands to the command buffer. 
+for this you have to call commandManager.register to register your new command.
+You have to pass on a function because the actual declaration is defered to a later state.
+
+There is one required command property where you define the main command. Some long commands like
+the configuration command have a second detail command. You can specify this in the detailCommand property.
+You do not have to set the start,stop,crc check,length bytes in the cdafe commands these values are automaticly
+calculated. (except when there is an additional length in the data of a command, like the power curve)
+
+    export interface ICommandStrokeState  {
+        received : (state : StrokeState )=>void;
+        onError? : ErrorHandler;
+    }
+    export interface IBuffer {
+        getStrokeState(params : ICommandStrokeState) : IBuffer;
+    }
+
+    commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitor) =>{
+        buffer.getStrokeState= function (params : ICommandStrokeState) : IBuffer {
+            buffer.addRawCommand({
+                waitForResponse:true,
+                command : csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
+                detailCommand: csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_STROKESTATE,
+                onDataReceived : (data : DataView)=>{
+                    if (params.received) params.received(data.getUint8(0))
+                },
+                onError:params.onError
+            });
+            return buffer;
+        }
+    })
+    
+There are many commands, I have not yet found time to add all the commands. If you added new ones
+please commit them to github. When you not care about writing a user vriendly command wrapper you can
+allways send raw commands. For example
+
+    this.performanceMonitor.csafeBuffer.clear()
+        .addRawCommand({
+                        waitForResponse:true,
+                        command : csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
+                        detailCommand: csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_STROKESTATE,
+                        onDataReceived : (data : DataView)=>{
+                            alert(data.getUint8(0));
+                        }
+                    })
+        .send();            

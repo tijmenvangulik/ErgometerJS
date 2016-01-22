@@ -17,6 +17,11 @@
     "typescript/ergometer/utils.ts",
     "typescript/ergometer/pubsub.ts",
     "typescript/ergometer/typedefinitions.ts",
+    "typescript/ergometer/typedefinitions_ble.ts",
+    "typescript/ergometer/csafe/typedefinitions.ts",
+    "typescript/ergometer/csafe/command_core.ts",
+    "typescript/ergometer/csafe/long_commands.ts",
+    "typescript/ergometer/csafe/short_commands.ts",
     "typescript/ergometer/performancemonitor.ts"
   ]
 }

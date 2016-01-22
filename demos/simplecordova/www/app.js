@@ -82,23 +82,24 @@ var App = (function () {
         this.performanceMonitor.logEvent.sub(this, this.onLog);
         this.performanceMonitor.connectionStateChangedEvent.sub(this, this.onConnectionStateChanged);
         //connect to the rowing
-        this.performanceMonitor.rowingGeneralStatusEvent.sub(this, this.onRowingGeneralStatus);
-        this.performanceMonitor.rowingAdditionalStatus1Event.sub(this, this.onRowingAdditionalStatus1);
-        this.performanceMonitor.rowingAdditionalStatus2Event.sub(this, this.onRowingAdditionalStatus2);
-        this.performanceMonitor.rowingStrokeDataEvent.sub(this, this.onRowingStrokeData);
-        this.performanceMonitor.rowingAdditionalStrokeDataEvent.sub(this, this.onRowingAdditionalStrokeData);
-        this.performanceMonitor.rowingSplitIntervalDataEvent.sub(this, this.onRowingSplitIntervalData);
-        this.performanceMonitor.rowingAdditionalSplitIntervalDataEvent.sub(this, this.onRowingAdditionalSplitIntervalData);
-        this.performanceMonitor.workoutSummaryDataEvent.sub(this, this.onWorkoutSummaryData);
-        this.performanceMonitor.additionalWorkoutSummaryDataEvent.sub(this, this.onAdditionalWorkoutSummaryData);
-        this.performanceMonitor.heartRateBeltInformationEvent.sub(this, this.onHeartRateBeltInformation);
-        this.performanceMonitor.additionalWorkoutSummaryData2Event.sub(this, this.onAdditionalWorkoutSummaryData2);
+        //this.performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
+        /* this.performanceMonitor.rowingAdditionalStatus1Event.sub(this,this.onRowingAdditionalStatus1);
+        this.performanceMonitor.rowingAdditionalStatus2Event.sub(this,this.onRowingAdditionalStatus2);
+        this.performanceMonitor.rowingStrokeDataEvent.sub(this,this.onRowingStrokeData);
+        this.performanceMonitor.rowingAdditionalStrokeDataEvent.sub(this,this.onRowingAdditionalStrokeData);
+        this.performanceMonitor.rowingSplitIntervalDataEvent.sub(this,this.onRowingSplitIntervalData);
+        this.performanceMonitor.rowingAdditionalSplitIntervalDataEvent.sub(this,this.onRowingAdditionalSplitIntervalData);
+        this.performanceMonitor.workoutSummaryDataEvent.sub(this,this.onWorkoutSummaryData);
+        this.performanceMonitor.additionalWorkoutSummaryDataEvent.sub(this,this.onAdditionalWorkoutSummaryData);
+        this.performanceMonitor.heartRateBeltInformationEvent.sub(this,this.onHeartRateBeltInformation);
+        this.performanceMonitor.additionalWorkoutSummaryData2Event.sub(this,this.onAdditionalWorkoutSummaryData2); */
+        this.performanceMonitor.powerCurveEvent.sub(this, this.onPowerCurve);
         window.onload = function () {
             document.addEventListener('deviceready', function () { _this.onDeviceReady(); }, false);
         };
     };
     App.prototype.onLog = function (info, logLevel) {
-        this.showInfo(info);
+        this.showData(info);
     };
     App.prototype.onRowingGeneralStatus = function (data) {
         this.showData('RowingGeneralStatus:' + JSON.stringify(data));
@@ -135,9 +136,29 @@ var App = (function () {
         this.showData('HeartRateBeltInformation:' + JSON.stringify(data));
     };
     App.prototype.onConnectionStateChanged = function (oldState, newState) {
-        if (newState == ergometer.MonitorConnectionState.connected) {
+        var _this = this;
+        if (newState == ergometer.MonitorConnectionState.readyForCommunication) {
+            //this.performanceMonitor.sampleRate=SampleRate.rate250ms;
             this.showData(JSON.stringify(this._performanceMonitor.deviceInfo));
+            //send two commands and show the results in a jquery way
+            this.performanceMonitor.csafeBuffer
+                .clear()
+                .getStrokeState({
+                received: function (strokeState) {
+                    _this.showData("stroke state: " + strokeState);
+                }
+            })
+                .getVersion({
+                received: function (version) {
+                    _this.showData("Version hardware " + version.HardwareVersion + " software:" + version.FirmwareVersion);
+                }
+            })
+                .setProgram({ program: 2 })
+                .send();
         }
+    };
+    App.prototype.onPowerCurve = function (curve) {
+        this.showData("Curve in gui: " + JSON.stringify(curve));
     };
     App.prototype.onPause = function () {
         // TODO: This application has been suspended. Save application state here.
@@ -162,6 +183,8 @@ var App = (function () {
         this.performanceMonitor.devices.forEach(function (device) {
             options.append($("<option />").val(device.name).text(device.name + " (" + device.quality.toString() + "% )"));
         });
+    };
+    App.prototype.setDevice = function (name) {
     };
     App.prototype.startScan = function () {
         var _this = this;

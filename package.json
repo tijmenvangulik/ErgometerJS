@@ -1,7 +1,7 @@
 {
   "name": "MobileErgometer",
   "description":"Cordova ergometer driver for concept 2 performance monitor with BLE. (The PM5)",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines" : { "node" : ">=4.2.4" },
   "devDependencies": {
     "typescript": "1.7.3"
