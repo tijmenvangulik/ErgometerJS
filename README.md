@@ -9,12 +9,12 @@ Tijmen
 Tijmen@vangulik
 
 #change log
-0.0.1 First version
-0.0.2 New features: 
+- 0.0.1 First version
+- 0.0.2 New features: 
 
-* csafe framework 
-* power curve event and csafe command
-* some simple csafe commands
+    * csafe framework 
+    * power curve event and csafe command
+    * some simple csafe commands
  
 # Project features
 
@@ -34,6 +34,7 @@ Tijmen@vangulik
 * Write a demo of an app which can really be used. (now it)
 * reduce the ammount of code needed for registering simple commands. 
 * Add more csafe commands
+* use promises instead of success and error parameters
 
 #Known problems
                   
