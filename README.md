@@ -10,11 +10,11 @@ Tijmen@vangulik
 
 #change log
 0.0.1 First version
-0.0.2 
- added 
- - csafe framework 
- - power curve event and csafe command
- - some simple csafe commands
+0.0.2 New features: 
+
+* csafe framework 
+* power curve event and csafe command
+* some simple csafe commands
  
 # Project features
 
@@ -30,11 +30,19 @@ Tijmen@vangulik
 # Todo
 
 * Make a better conversions of some of the values which the ergometer returns. 
-* Make it possible to call csafe commands
 * Test the android version on a real phone (First need a phone for this!)
-* Make an event to receive power curves (need csafe for this)
 * Write a demo of an app which can really be used. (now it)
- 
+* reduce the ammount of code needed for registering simple commands. 
+* Add more csafe commands
+
+#Known problems
+                  
+There are problems in the PM5 BLE firmware. Some csafe commands give back invalid responses. 
+I hope they fix it soon. See
+
+http://www.c2forum.com/viewtopic.php?f=15&t=93321
+
+
 # Installation
 
 To make it work you need:
@@ -197,7 +205,7 @@ It is not required to chain the commands. You can also write code the classic wa
 
 It is possible to add new commands to the command buffer. 
 for this you have to call commandManager.register to register your new command.
-You have to pass on a function because the actual declaration is defered to a later state.
+You have to pass on a function because the actual declaration is deferred to a later state.
 
 There is one required command property where you define the main command. Some long commands like
 the configuration command have a second detail command. You can specify this in the detailCommand property.
@@ -228,7 +236,7 @@ calculated. (except when there is an additional length in the data of a command,
     })
     
 There are many commands, I have not yet found time to add all the commands. If you added new ones
-please commit them to github. When you not care about writing a user vriendly command wrapper you can
+please commit them to github. When you not care about writing a user friendly command wrapper you can
 allways send raw commands. For example
 
     this.performanceMonitor.csafeBuffer.clear()
@@ -240,4 +248,5 @@ allways send raw commands. For example
                             alert(data.getUint8(0));
                         }
                     })
-        .send();            
+        .send();  
+                  
