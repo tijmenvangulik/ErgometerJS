@@ -18,6 +18,16 @@ Tijmen@vangulik
 - 0.0.3 
 
  * easy ble is replaced by bleat (still uses the evothings ble drivers)
+   Easy ble is replaced by bleat. With some small changes in bleat api my ergometer api is still backwards compatible. 
+   
+You only need to change the javascript included file
+
+    <script src="libs/evothings/easyble/easyble.js"></script>
+
+   to
+
+    <script src="libs/bleat.js"></script>
+
  * bleat (https://github.com/thegecko/bleat) will allow multiple platforms
 
      * Android/iOS/Windows (using Evothings/Cordova/PhoneGap) https://github.com/evothings/cordova-ble/blob/master/ble.js
