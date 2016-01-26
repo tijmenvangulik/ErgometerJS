@@ -15,7 +15,15 @@ Tijmen@vangulik
     * csafe framework 
     * power curve event and csafe command
     * some simple csafe commands
- 
+- 0.0.3 
+
+ * easy ble is replaced by bleat (still uses the evothings ble drivers)
+ * bleat (https://github.com/thegecko/bleat) will allow multiple platforms
+
+     * Android/iOS/Windows (using Evothings/Cordova/PhoneGap) https://github.com/evothings/cordova-ble/blob/master/ble.js
+     * Mac/Linux/Windows (using noble on Node.js) https://github.com/sandeepmistry/noble
+     * ChromeOS https://developer.chrome.com/apps/bluetoothLowEnergy
+     
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
@@ -27,8 +35,17 @@ Tijmen@vangulik
 
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
 
+# Licenses
+
+Components
+- The project : Apache license 2.
+- Evothings : Apache 2 license.
+- Bleat : Mit license
+
 # Todo
 
+* Make UMD module so the the api can also be used in node
+* write a demo on
 * Make a better conversions of some of the values which the ergometer returns. 
 * Test the android version on a real phone (First need a phone for this!)
 * Write a demo of an app which can really be used. (now it)

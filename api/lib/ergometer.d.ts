@@ -1,3 +1,7 @@
+/// <reference path="../typescript/typings/evothings/ble.d.ts" />
+/// <reference path="../typescript/typings/bleat.d.ts" />
+/// <reference path="../typescript/typings/evothings/evothings.d.ts" />
+/// <reference path="../typescript/typings/evothings/util.d.ts" />
 /**
  *
  * Created by tijmen on 01-06-15.
@@ -982,6 +986,11 @@ declare module ergometer {
         private _csafeBuffer;
         private _waitResponseCommands;
         private _generalStatusEventAttachedByPowerCurve;
+        private getCharacteristic(serviceUid, characteristicUid);
+        private writeCharacteristic(serviceUIID, characteristicUUID, data, success, fail);
+        private readCharacteristic(serviceUIID, characteristicUUID, success, fail);
+        private enableNotification(serviceUIID, characteristicUUID, receive, success, fail);
+        private disableNotification(serviceUIID, characteristicUUID, success, fail);
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
          * @returns {LogLevel}
@@ -1262,17 +1271,12 @@ declare module ergometer {
          */
         connectToDevice(deviceName: string): void;
         /**
-         *  Dump all information on named device to the debug info
-         *  this is called when the log level is set to trace
-         * @param device
-         */
-        protected readServices(device: any): void;
-        /**
          *
+         * @param serviceUUID
          * @param UUID
          * @param readValue
          */
-        protected readStringCharacteristic(UUID: string, readValue: (value: string) => void): void;
+        protected readStringCharacteristic(serviceUUID: string, UUID: string, readValue: (value: string) => void): void;
         /**
          *
          * @param done

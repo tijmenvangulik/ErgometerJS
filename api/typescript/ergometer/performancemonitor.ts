@@ -21,7 +21,7 @@
  * limitations under the License.
  */
 /// <reference path="../typings/evothings/ble.d.ts"/>
-/// <reference path="../typings/evothings/easyble.d.ts"/>
+/// <reference path="../typings/bleat.d.ts"/>
 /// <reference path="../typings/evothings/evothings.d.ts"/>
 /// <reference path="../typings/evothings/util.d.ts"/>
 /// <reference path="utils.ts"/>
@@ -69,7 +69,7 @@ module ergometer {
     }
     export enum MonitorConnectionState {inactive,deviceReady,scanning,connecting,connected,servicesFound,readyForCommunication}
 
-    export enum LogLevel {error,info,debug,trace};
+    export enum LogLevel {error,info,debug,trace}
 
     export interface LogEvent extends pubSub.ISubscription {
         (text : string,logLevel : LogLevel) : void;
@@ -94,13 +94,20 @@ module ergometer {
         firmwareRevision? : string;
         manufacturer? : string;
         /** @internal */
-        _internalDevice : evothings.easyble.EasyBLEDevice; //for internal usage when you use this I can not guarantee compatibility
+        _internalDevice : bleat.Device; //for internal usage when you use this I can not guarantee compatibility
     }
 
     export interface ParsedCSafeCommand {
         command: number;
         detailCommand : number;
         data : Uint8Array;
+    }
+    interface FailCallback {
+        (errorString:string) :void;
+    }
+
+    interface EmptyCallback {
+        () :void;
     }
     /**
      *
@@ -133,7 +140,7 @@ module ergometer {
     export class PerformanceMonitor {
 
 
-        private _device:evothings.easyble.EasyBLEDevice;
+        private _device:bleat.Device;
         private _connectionState : MonitorConnectionState = MonitorConnectionState.inactive;
 
         //events
@@ -178,6 +185,29 @@ module ergometer {
         private _csafeBuffer : csafe.IBuffer = null;
         private _waitResponseCommands : csafe.IRawCommand[] = [];
         private _generalStatusEventAttachedByPowerCurve =false;
+
+        //simple wrapper for bleat characteristic functions
+        private getCharacteristic(serviceUid : string,characteristicUid : string) : bleat.Characteristic {
+            var service= this._device.services[serviceUid];
+            if (service) {
+                var found = service.characteristics[characteristicUid];
+                if (found) return found;
+                else throw `characteristics ${characteristicUid} not found in service ${serviceUid}`;
+            }
+            else throw `service ${serviceUid} not found`
+        }
+        private writeCharacteristic(serviceUIID : string,characteristicUUID:string, data:ArrayBufferView, success:EmptyCallback, fail:FailCallback) {
+            this.getCharacteristic(serviceUIID,characteristicUUID).write(data,success,fail);
+        }
+        private readCharacteristic(serviceUIID : string,characteristicUUID:string, success:(data:ArrayBuffer) =>void, fail:FailCallback) {
+            this.getCharacteristic(serviceUIID,characteristicUUID).read(success,fail);
+        }
+        private enableNotification(serviceUIID : string,characteristicUUID:string, receive:(data:ArrayBuffer) =>void,success:EmptyCallback, fail:FailCallback) {
+            this.getCharacteristic(serviceUIID,characteristicUUID).enableNotify(receive,success,fail);
+        }
+        private disableNotification(serviceUIID : string,characteristicUUID:string, success:EmptyCallback, fail:FailCallback) {
+            this.getCharacteristic(serviceUIID,characteristicUUID).disableNotify(success,fail);
+        }
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
          * @returns {LogLevel}
@@ -487,7 +517,7 @@ module ergometer {
                 try {
                     var dataView = new DataView(new ArrayBuffer(1));
                     dataView.setUint8(0,value);
-                    this._device.writeCharacteristic(ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC,dataView,
+                    this.writeCharacteristic(ble.PMROWING_SERVICE,ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC,dataView,
                         ()=>{this._sampleRate = value;},
                         (e)=>{this.handleError(e);});
                 }
@@ -505,7 +535,7 @@ module ergometer {
         protected disconnect() {
             if (this.connectionState>=MonitorConnectionState.deviceReady)  {
                 if (this._device)
-                    this._device.close();
+                    this._device.disconnect();
                 this.connectionState=MonitorConnectionState.deviceReady
             }
         }
@@ -543,8 +573,9 @@ module ergometer {
          */
         protected enableMultiplexNotification() {
             if (this._multiplexSubscribeCount==0)
-                this._device.enableNotification(ble.MULTIPLEXED_INFO_CHARACTERISIC,
+                this.enableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC,
                     (data:ArrayBuffer) => { this.handleDataCallbackMulti(data);},
+                    ()=>{},
                     this.handleError);
             this._multiplexSubscribeCount++;
         }
@@ -555,7 +586,7 @@ module ergometer {
         protected disableMultiPlexNotification() {
             this._multiplexSubscribeCount--;
             if (this._multiplexSubscribeCount==0)
-                this._device.disableNotification(ble.MULTIPLEXED_INFO_CHARACTERISIC, ()=> {
+                this.disableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC, ()=> {
                 }, this.handleError);
         }
 
@@ -569,16 +600,17 @@ module ergometer {
                        this.enableMultiplexNotification();
                     }
                     else {
-                        this._device.enableNotification(ble.ROWING_STATUS_CHARACTERISIC,
+                        this.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingGeneralStatus);
                             },
+                            ()=>{},
                             this.handleError);
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this._device.disableNotification(ble.ROWING_STATUS_CHARACTERISIC, ()=> {
+                    else this.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
 
@@ -587,16 +619,17 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this._device.enableNotification(ble.EXTRA_STATUS1_CHARACTERISIC,
+                        this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStatus1);
                             },
+                            ()=>{},
                             this.handleError);
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this._device.disableNotification(ble.EXTRA_STATUS1_CHARACTERISIC, ()=> {
+                    else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
 
@@ -605,16 +638,17 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this._device.enableNotification(ble.EXTRA_STATUS2_CHARACTERISIC,
+                        this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStatus2);
                             },
+                            ()=>{},
                             this.handleError);
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this._device.disableNotification(ble.EXTRA_STATUS2_CHARACTERISIC, ()=> {
+                    else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
 
@@ -623,16 +657,17 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this._device.enableNotification(ble.STROKE_DATA_CHARACTERISIC,
+                        this.enableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingStrokeData);
                             },
+                            ()=>{},
                             this.handleError);
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this._device.disableNotification(ble.STROKE_DATA_CHARACTERISIC, ()=> {
+                    else this.disableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
 
@@ -641,16 +676,17 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this._device.enableNotification(ble.EXTRA_STROKE_DATA_CHARACTERISIC,
+                        this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStrokeData);
                             },
+                            ()=>{},
                             this.handleError);
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this._device.disableNotification(ble.EXTRA_STROKE_DATA_CHARACTERISIC, ()=> {
+                    else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
 
@@ -659,16 +695,17 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this._device.enableNotification(ble.SPLIT_INTERVAL_DATA_CHARACTERISIC,
+                        this.enableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingSplitIntervalData);
                             },
+                            ()=>{},
                             this.handleError);
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this._device.disableNotification(ble.SPLIT_INTERVAL_DATA_CHARACTERISIC, ()=> {
+                    else this.disableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
 
@@ -677,16 +714,17 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this._device.enableNotification(ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC,
+                        this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalSplitIntervalData);
                             },
+                            ()=>{},
                             this.handleError);
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this._device.disableNotification(ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC, ()=> {
+                    else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
 
@@ -695,16 +733,17 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this._device.enableNotification(ble.ROWING_SUMMARY_CHARACTERISIC,
+                        this.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleWorkoutSummaryData);
                             },
+                            ()=>{},
                             this.handleError);
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this._device.disableNotification(ble.ROWING_SUMMARY_CHARACTERISIC, ()=> {
+                    else this.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
 
@@ -713,16 +752,17 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this._device.enableNotification(ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC,
+                        this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleAdditionalWorkoutSummaryData);
                             },
+                            ()=>{},
                             this.handleError);
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this._device.disableNotification(ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC, ()=> {
+                    else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
                 if (this.additionalWorkoutSummaryData2Event.count > 0) {
@@ -740,16 +780,17 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this._device.enableNotification(ble.HEART_RATE_BELT_INFO_CHARACTERISIC,
+                        this.enableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleHeartRateBeltInformation);
                             },
+                            ()=>{},
                             this.handleError);
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this._device.disableNotification(ble.HEART_RATE_BELT_INFO_CHARACTERISIC, ()=> {
+                    else this.disableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC, ()=> {
                     }, this.handleError);
                 }
                 if (this.powerCurveEvent.count>0) {
@@ -931,7 +972,7 @@ module ergometer {
          */
         protected stopScan() {
             if (this.connectionState==MonitorConnectionState.scanning) {
-                evothings.easyble.stopScan();            }
+                bleat.stopScan();            }
 
         }
 
@@ -949,13 +990,11 @@ module ergometer {
             this.stopScan();
             this.changeConnectionState(MonitorConnectionState.scanning);
 
-            evothings.easyble.closeConnectedDevices();
-
             // Only report devices once.
-            evothings.easyble.reportDeviceOnce(true);
+            //evothings.easyble.reportDeviceOnce(true);
 
 
-            evothings.easyble.startScan(
+            bleat.startScan(
                  (device) => {
                     // Do not show un-named devices.
                     /*var deviceName = device.advertisementData ?
@@ -1006,61 +1045,45 @@ module ergometer {
             if (!deviceInfo) throw `Device ${deviceName} not found`;
             this._deviceInfo =deviceInfo;
             deviceInfo._internalDevice.connect(
-                 (device)=> {
+                 ()=> {
                     this.changeConnectionState(MonitorConnectionState.connected);
-                    this._device = device;
+                    this._device = deviceInfo._internalDevice;
                     this.showInfo('Status: Connected');
-                    this.readServices(this._device);
+
+                     if (this.logLevel>LogLevel.trace)
+                         this.logAllServices(this._device);
+                     this.readPheripheralInfo(()=>{
+                         // Debug logging of all services, characteristics and descriptors
+                         // reported by the BLE board.
+                         this.deviceConnected();
+                     });
                 },
-                (errorCode)=> {
-                    var deviceName = this.deviceInfo.name;
+                () =>{
                     this.changeConnectionState(MonitorConnectionState.deviceReady);
-                    if (errorCode=="EASYBLE_ERROR_DISCONNECTED") {
                         this.showInfo('Disconnected');
                         if (this.autoReConnect) {
                             this.startScan((device : DeviceInfo)=>{
                                 return device.name==deviceName});
                         }
-                    }
-                    else this.handleError(errorCode);
-
-                });
-        }
-
-        /**
-         *  Dump all information on named device to the debug info
-         *  this is called when the log level is set to trace
-         * @param device
-         */
-        protected readServices(device) {
-            // Read all services.
-            device.readServices(
-                null,
-                 () =>{
-                     this.debugInfo("readServices success");
-                     if (this.logLevel>LogLevel.trace)
-                        this.logAllServices(this._device);
-                     this.readPheripheralInfo(()=>{
-                         // Debug logging of all services, characteristics and descriptors
-                         // reported by the BLE board.
-                         this.deviceConnected(this._device);
-                     });
-
                 },
-                 (error) =>{
-                     this.handleError('Error: Failed to read services: ' + error);
-                     this.changeConnectionState(MonitorConnectionState.deviceReady);
+                false,
+                (errorCode)=> {
+                    this.changeConnectionState(MonitorConnectionState.deviceReady);
+                    this.handleError(errorCode);
+
                 });
         }
+
 
         /**
          *
+         * @param serviceUUID
          * @param UUID
          * @param readValue
          */
-        protected readStringCharacteristic(UUID : string,readValue : (value : string) =>void ) {
+        protected readStringCharacteristic(serviceUUID : string,UUID : string,readValue : (value : string) =>void ) {
             try {
-                this._device.readCharacteristic(UUID,(data:ArrayBuffer)=>{
+                this.readCharacteristic(serviceUUID,UUID,(data:ArrayBuffer)=>{
                     readValue( utils.bufferToString(data));
                 },(e)=>{this.handleError(e);readValue("");});
             }
@@ -1078,7 +1101,7 @@ module ergometer {
         protected readSampleRate(done : ()=>void ) {
             //allways call done, don not let get errors into the way
             try {
-                this._device.readCharacteristic(ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC,(data:ArrayBuffer)=>{
+                this.readCharacteristic(ble.PMROWING_SERVICE,ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC,(data:ArrayBuffer)=>{
                     var view = new DataView(data);
                     this._sampleRate= view.getUint8(0);
                     done();
@@ -1099,13 +1122,13 @@ module ergometer {
         protected readPheripheralInfo(done : ()=>void) {
 
             //todo: should implement is a less tricky way. is the readCharacteristic really none blocking?, it not it can be written different
-            this.readStringCharacteristic(ble.SERIALNUMBER_CHARACTERISTIC, (value : string)=> {
+            this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE,ble.SERIALNUMBER_CHARACTERISTIC, (value : string)=> {
                     this._deviceInfo.serial=value;
-                    this.readStringCharacteristic(ble.HWREVISION_CHARACTERISIC, (value : string)=> {
+                    this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE,ble.HWREVISION_CHARACTERISIC, (value : string)=> {
                         this._deviceInfo.hardwareRevision=value;
-                        this.readStringCharacteristic(ble.FWREVISION_CHARACTERISIC, (value : string)=> {
+                        this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE,ble.FWREVISION_CHARACTERISIC, (value : string)=> {
                             this._deviceInfo.firmwareRevision=value;
-                            this.readStringCharacteristic(ble.MANUFNAME_CHARACTERISIC, (value : string)=> {
+                            this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE,ble.MANUFNAME_CHARACTERISIC, (value : string)=> {
                                 this._deviceInfo.manufacturer=value;
                                 this._deviceInfo.connected=true;
                                 this.readSampleRate(()=>{done();})
@@ -1130,22 +1153,22 @@ module ergometer {
 
             // Print all services.
             this.traceInfo('Found services:');
-            for (var serviceUUID in device.__services) {
-                var service = device.__services[serviceUUID];
-                this.traceInfo('  service: ' + service.uuid);
+            var self=this;
+            Object.keys(this._device.services).forEach(function(serviceID) {
+                var service = device.services[serviceID];
+                self.traceInfo("\nservice: " + service.uuid);
 
-                // Print all characteristics for service.
-                for (var characteristicUUID in service.__characteristics) {
-                    var characteristic = service.__characteristics[characteristicUUID];
-                    this.traceInfo('    characteristic: ' + characteristic.uuid);
+                Object.keys(service.characteristics).forEach(function(characteristicID) {
+                    var characteristic = service.characteristics[characteristicID];
+                    self.traceInfo("\t└characteristic: " + characteristic.uuid+" "+characteristicID);
 
-                    // Print all descriptors for characteristic.
-                    for (var descriptorUUID in characteristic.__descriptors) {
-                        var descriptor = characteristic.__descriptors[descriptorUUID];
-                        this.traceInfo('      descriptor: ' + descriptor.uuid);
-                    }
-                }
-            }
+                    Object.keys(characteristic.descriptors).forEach(function(descriptorID) {
+                        var descriptor = characteristic.descriptors[descriptorID];
+                        self.traceInfo("\t\t└descriptor: " + descriptor.uuid);
+                    });
+                });
+            });
+
         }
 
 
@@ -1236,10 +1259,10 @@ module ergometer {
 
                 }
 
-                if (JSON.stringify(this.rowingAdditionalStatus2) !== JSON.stringify(parsed)) {
-                    this.rowingAdditionalStatus2Event.pub(parsed);
-                    this._rowingAdditionalStatus2 = parsed;
-                }
+            }
+            if (JSON.stringify(this.rowingAdditionalStatus2) !== JSON.stringify(parsed)) {
+                this.rowingAdditionalStatus2Event.pub(parsed);
+                this._rowingAdditionalStatus2 = parsed;
             }
         }
 
@@ -1301,7 +1324,7 @@ module ergometer {
                 projectedWorkTime : utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_TIME_LO)*1000, //ms
                 projectedWorkDistance : utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_DIST_LO), //meter
                 workPerStroke : null //filled when multiplexed is true
-            }
+            };
             if (data.byteLength==ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.BLE_PAYLOAD_SIZE)
                 parsed.workPerStroke =  data.getUint16(ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO);
             if (JSON.stringify(this.rowingAdditionalStrokeData) !== JSON.stringify(parsed)) {
@@ -1325,7 +1348,7 @@ module ergometer {
                 intervalRestDistance : data.getUint16(ble.PM_Split_Interval_Data_BLE_Payload.REST_DISTANCE_LO),//meter
                 intervalType : data.getUint8(ble.PM_Split_Interval_Data_BLE_Payload.TYPE),
                 intervalNumber : data.getUint8(ble.PM_Split_Interval_Data_BLE_Payload.INT_NUMBER),
-        }
+            };
 
             if (JSON.stringify(this.rowingSplitIntervalData) !== JSON.stringify(parsed)) {
                 this.rowingSplitIntervalDataEvent.pub(parsed);
@@ -1351,7 +1374,7 @@ module ergometer {
                 intervalPower : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.POWER_LO),
                 splitAverageDragFactor :  data.getUint8(ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_DRAG_FACTOR),
                 intervalNumber :  data.getUint8(ble.PM_Extra_Split_Interval_Data_BLE_Payload.INT_NUMBER)
-            }
+            };
 
             if (JSON.stringify(this.rowingAdditionalSplitIntervalData) !== JSON.stringify(parsed)) {
                 this.rowingAdditionalSplitIntervalDataEvent.pub(parsed);
@@ -1379,7 +1402,7 @@ module ergometer {
                 recoveryHeartRate : data.getUint8(ble.PM_Workout_Summary_Data_BLE_Payload.RECOVERY_HR),
                 workoutType  : data.getUint8(ble.PM_Workout_Summary_Data_BLE_Payload.WORKOUT_TYPE),
                 averagePace : null
-            }
+            };
 
             if (data.byteLength==ble.PM_Workout_Summary_Data_BLE_Payload.BLE_PAYLOAD_SIZE) {
                 parsed.averagePace = data.getUint16(ble.PM_Workout_Summary_Data_BLE_Payload.AVG_PACE_LO);
@@ -1447,7 +1470,7 @@ module ergometer {
                     gameIdentifier : data.getUint8(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_ID),
                     gameScore :  data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_SCORE_LO),
                     ergMachineType : data.getUint8(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.MACHINE_TYPE),
-                }
+                };
 
             if (JSON.stringify(this.additionalWorkoutSummaryData2) !== JSON.stringify(parsed)) {
                 this.additionalWorkoutSummaryData2Event.pub(parsed);
@@ -1466,7 +1489,7 @@ module ergometer {
                 manufacturerId : data.getUint8(ble.PM_Heart_Rate_Belt_Info_BLE_Payload.MANUFACTURER_ID),
                 deviceType: data.getUint8(ble.PM_Heart_Rate_Belt_Info_BLE_Payload.DEVICE_TYPE),
                 beltId : data.getUint32(ble.PM_Heart_Rate_Belt_Info_BLE_Payload.BELT_ID_LO),
-            }
+            };
 
             if (JSON.stringify(this.heartRateBeltInformation) !== JSON.stringify(parsed)) {
                 this.heartRateBeltInformationEvent.pub(parsed);
@@ -1476,35 +1499,24 @@ module ergometer {
 
         /**
          *
-         * @param device
          * @internal
          */
-        protected deviceConnected(device:evothings.easyble.EasyBLEDevice) {
-            // First Read all services so easy ble can map the Characteristic to handles
-            device.readServices(
-                null,
-                ()=> {
-                    this.debugInfo("readServices success");
+        protected deviceConnected() {
+            this.debugInfo("readServices success");
 
-                    // Debug logging of all services, characteristics and descriptors
-                    // reported by the BLE board.
-                    this.logAllServices(this._device);
+            // Debug logging of all services, characteristics and descriptors
+            // reported by the BLE board.
+            this.logAllServices(this._device);
 
-                    this.debugInfo('Status: notifications are activated');
-                    //handle to the notification
+            this.debugInfo('Status: notifications are activated');
+            //handle to the notification
 
-                    this.changeConnectionState(MonitorConnectionState.servicesFound);
-                    this.enableDisableNotification();
+            this.changeConnectionState(MonitorConnectionState.servicesFound);
+            this.enableDisableNotification();
 
-                    //allways connect to csafe
-                    this.handleCSafeNotifications();
-                    this.changeConnectionState(MonitorConnectionState.readyForCommunication);
-
-                },
-                (error)=> {
-                    this.handleError('Error: Failed to read services: ' + error);
-                });
-
+            //allways connect to csafe
+            this.handleCSafeNotifications();
+            this.changeConnectionState(MonitorConnectionState.readyForCommunication);
         }
 
         /**
@@ -1668,7 +1680,7 @@ module ergometer {
                 while (sendBytesIndex<bytesToSend.length) {
                     try {
                         //prepare a buffer with the data which can be send in one packet
-                        var bufferLength = Math.min(ble.PACKET_SIZE,bytesToSend.length-sendBytesIndex)
+                        var bufferLength = Math.min(ble.PACKET_SIZE,bytesToSend.length-sendBytesIndex);
                         var buffer = new ArrayBuffer(bufferLength); //start and end and
                         var dataView = new DataView(buffer);
 
@@ -1678,8 +1690,8 @@ module ergometer {
                             sendBytesIndex++;
                             bufferIndex++;
                         }
-                        this.traceInfo("send csafe: "+evothings.util.typedArrayToHexString(buffer));
-                        this._device.writeCharacteristic(ble.TRANSMIT_TO_PM_CHARACTERISIC,dataView,
+                        this.traceInfo("send csafe: "+utils.typedArrayToHexString(buffer));
+                        this.writeCharacteristic(ble.PMCONTROL_SERVICE,ble.TRANSMIT_TO_PM_CHARACTERISIC,dataView,
                             ()=>{
                                 this.traceInfo("csafe command send");
                                 if(send) send();
@@ -1733,7 +1745,7 @@ module ergometer {
 
             var calcCheck=0;
             this.traceInfo("enable notifications csafe");
-            this._device.enableNotification(ble.RECEIVE_FROM_PM_CHARACTERISIC,
+            this.enableNotification(ble.PMCONTROL_SERVICE,ble.RECEIVE_FROM_PM_CHARACTERISIC,
                 (data:ArrayBuffer) => {
                     var dataView = new DataView(data);
                     //skipp empty 0 ble blocks
@@ -1746,7 +1758,7 @@ module ergometer {
                             detailCommand =0;
                             calcCheck=0;
                         }
-                        this.traceInfo("continious receive csafe: "+evothings.util.typedArrayToHexString(data));
+                        this.traceInfo("continious receive csafe: "+utils.typedArrayToHexString(data));
                         var i=0;
                         var stop=false;
 
@@ -1853,6 +1865,7 @@ module ergometer {
 
 
                 },
+                ()=>{},
                 this.handleError);
         }
 
