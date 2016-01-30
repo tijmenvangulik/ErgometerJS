@@ -2,7 +2,7 @@
  * Created by tijmen on 25-12-15.
  */
  /** @internal */
-module utils {
+module ergometer.utils {
      export function byteArrayToString(byteArray : number[]) {
          var result="";
          byteArray.forEach((i : number)=>{result=result+evothings.util.toHexString(i,1) })

@@ -3,18 +3,20 @@
  */
 
 declare module bleat {
+    export interface ErrorFunc {
+        (e : string): void;
+    }
+
+    export interface EmptyCallback {
+        () : void;
+    }
     export var onError : (msg : string)=>void;
-    export function init(readyFn, errorFn, adapterName);
+    export function init(readyFn: EmptyCallback, errorFn : ErrorFunc, adapterName?: string);
     export interface FoundFunc { (device : Device) : void }
     export function startScan(serviceUUIDs :string | FoundFunc , foundFn? : FoundFunc);
     export function stopScan();
 
-    export interface ErrorFunc {
-        (e : string): void;
-    }
-    export interface EmptyCallback {
-        () : void;
-    }
+
     export interface Services {
         [serviceID: string] : Service;
     }

@@ -1,7 +1,8 @@
 # Introduction
 
-The Mobile Ergometer Api is a cordova/ phonegap API for the concept2 ergometer with a
-PM5 performance monitor.
+Java script ergometer driver for concept 2 performance monitor with BLE. 
+(The PM5) Works on all major platforms using cordova and node/electron",
+
 
 I hope this project will become a shared effort to make it easier to write next generation ergometer software.
 
@@ -19,7 +20,7 @@ Tijmen@vangulik
 
  * easy ble is replaced by bleat (still uses the evothings ble drivers)
    Easy ble is replaced by bleat. With some small changes in bleat api my ergometer api is still backwards compatible. 
-   
+    
 You only need to change the javascript included file
 
     <script src="libs/evothings/easyble/easyble.js"></script>
@@ -33,7 +34,14 @@ You only need to change the javascript included file
      * Android/iOS/Windows (using Evothings/Cordova/PhoneGap) https://github.com/evothings/cordova-ble/blob/master/ble.js
      * Mac/Linux/Windows (using noble on Node.js) https://github.com/sandeepmistry/noble
      * ChromeOS https://developer.chrome.com/apps/bluetoothLowEnergy
-     
+
+- 0.0.4
+ 
+    * Electron demo for desktop apps
+    * separated the demo code from the platform code
+    * Refactored error handling
+    * Renamed project from MobileErgometer to ErgometerJS
+         
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
@@ -48,9 +56,11 @@ You only need to change the javascript included file
 # Licenses
 
 Components
+
 - The project : Apache license 2.
 - Evothings : Apache 2 license.
 - Bleat : Mit license
+- Electron: Mit license
 
 # Todo
 
@@ -278,3 +288,22 @@ allways send raw commands. For example
                     })
         .send();  
                   
+# Electron
+
+go to the directory demos\simple_electron
+
+install electron pre build including noble for the blue tooth 
+
+    npm install
+
+run the demo
+
+    npm start
+    
+Optional: You can rebuild the javascipt from the type script by typing in the main folder.
+
+    npm run build:simple_electron
+    
+Debugging electron
+
+I found that WebStorm-EAP was a nice environment for debugging and developing electron applications.

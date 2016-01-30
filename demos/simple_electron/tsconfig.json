@@ -3,16 +3,16 @@
     "module": "system",
     "target": "es5",
     "sourceMap": true,
-    "out": "demos/simplecordova/www/app.js"
+    "out": "demos/simple_electron/app.js"
   },
   "exclude": [
     "node_modules"
   ],
   "filesGlob": [
-    "www/typescript/typings/**/*.d.ts"
+    "typescript/typings/**/*.d.ts"
   ],
   "files": [
-    "www/typescript/demo.ts",
-    "www/typescript/app.ts"
+    "typescript/demo.ts",
+    "typescript/app.ts"
   ]
 }

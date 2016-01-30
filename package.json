@@ -1,7 +1,7 @@
 {
-  "name": "MobileErgometer",
-  "description":"Cordova ergometer driver for concept 2 performance monitor with BLE. (The PM5)",
-  "version": "0.0.2",
+  "name": "ErgometerJS",
+  "description":"Java script ergometer driver for concept 2 performance monitor with BLE. (The PM5) Works on all major platforms using cordova and node/electron",
+  "version": "0.0.4",
   "engines" : { "node" : ">=4.2.4" },
   "devDependencies": {
     "typescript": "1.7.3"
@@ -11,7 +11,8 @@
   "scripts" : {
     "build:api":"node_modules/.bin/tsc -p api",
     "build:simplecordova":"node_modules/.bin/tsc -p demos/simplecordova ",
-    "build":"npm run build:api && npm run build:simplecordova"
+    "build:simple_electron":"node_modules/.bin/tsc -p demos/simple_electron ",
+    "build":"npm run build:api && npm run build:simplecordova && npm run build:simple_electron"
   },
   "repository" :
   { "type" : "git"

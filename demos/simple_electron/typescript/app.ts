@@ -1,8 +1,8 @@
 
 /**
- * Demo of Concept 2 ergometer Performance Monitor for Cordova
+ * Demo of Concept 2 ergometer Performance Monitor for electron
  *
- * This unit contains cordova specific code
+ * This unit contains electron specific code
  *
  * This will will work with the PM5
  *
@@ -32,27 +32,11 @@ class App {
     public get demo():Demo {
         return this._demo;
     }
-    protected onPause() {
-    // TODO: This application has been suspended. Save application state here.
-    }
-
-    protected onResume() {
-    // TODO: This application has been reactivated. Restore application state here.
-    }
-
-    public onDeviceReady() {
-        document.addEventListener('pause', () => {this.onPause();}, false);
-        document.addEventListener('resume', () => {this.onResume();}, false);
-        this.demo.pageLoaded();
-    }
 
     constructor() {
-        window.onload = ()=> {
-            document.addEventListener('deviceready', () => {
-                this.onDeviceReady();
-            },false);
-        }
-
+        $().ready(()=>{
+            this.demo.pageLoaded();
+        })
 
     }
 }

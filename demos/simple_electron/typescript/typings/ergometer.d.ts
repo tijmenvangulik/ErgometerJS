@@ -1,7 +1,3 @@
-/// <reference path="../typescript/typings/evothings/ble.d.ts" />
-/// <reference path="../typescript/typings/bleat.d.ts" />
-/// <reference path="../typescript/typings/evothings/evothings.d.ts" />
-/// <reference path="../typescript/typings/evothings/util.d.ts" />
 /**
  *
  * Created by tijmen on 01-06-15.
@@ -22,7 +18,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-declare namespace ergometer.pubSub {
+declare namespace pubSub {
     interface ISubscription {
         (...args: any[]): void;
     }
@@ -830,7 +826,6 @@ declare module ergometer.csafe {
  * License:
  *
  * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
- * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -987,11 +982,6 @@ declare module ergometer {
         private _csafeBuffer;
         private _waitResponseCommands;
         private _generalStatusEventAttachedByPowerCurve;
-        private getCharacteristic(serviceUid, characteristicUid);
-        private writeCharacteristic(serviceUIID, characteristicUUID, data, success, fail);
-        private readCharacteristic(serviceUIID, characteristicUUID, success, fail);
-        private enableNotification(serviceUIID, characteristicUUID, receive, success, fail);
-        private disableNotification(serviceUIID, characteristicUUID, success, fail);
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
          * @returns {LogLevel}
@@ -1236,17 +1226,10 @@ declare module ergometer {
          */
         showInfo(info: string): void;
         /**
-         * call the global error hander and call the optional error handler if given
+         *
          * @param error
          */
-        handleError(error: string, errorFn?: ErrorHandler): void;
-        /**
-         * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
-         * @param errorDescription
-         * @param errorFn
-         * @returns {function(any): undefined}
-         */
-        getErrorHandlerFunc(errorDescription: string, errorFn?: ErrorHandler): ErrorHandler;
+        handleError(error: string): void;
         /**
          *
          * @param device
@@ -1267,12 +1250,11 @@ declare module ergometer {
          *
          */
         protected stopScan(): void;
-        protected ensureInitialized(success: () => void, error?: ErrorHandler): void;
         /**
          * Scan for device use the deviceFound to connect .
          * @param deviceFound
          */
-        startScan(deviceFound: (device: DeviceInfo) => boolean, errorFn?: ErrorHandler): void;
+        startScan(deviceFound: (device: DeviceInfo) => boolean): void;
         /**
          * connect to a specific device. This should be a PM5 device which is found by the startScan. You can
          * only call this function after startScan is called. Connection to a device will stop the scan.
@@ -1280,12 +1262,17 @@ declare module ergometer {
          */
         connectToDevice(deviceName: string): void;
         /**
+         *  Dump all information on named device to the debug info
+         *  this is called when the log level is set to trace
+         * @param device
+         */
+        protected readServices(device: any): void;
+        /**
          *
-         * @param serviceUUID
          * @param UUID
          * @param readValue
          */
-        protected readStringCharacteristic(serviceUUID: string, UUID: string, readValue: (value: string) => void): void;
+        protected readStringCharacteristic(UUID: string, readValue: (value: string) => void): void;
         /**
          *
          * @param done

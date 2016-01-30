@@ -7,6 +7,7 @@
  * License:
  *
  * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -519,7 +520,7 @@ module ergometer {
                     dataView.setUint8(0,value);
                     this.writeCharacteristic(ble.PMROWING_SERVICE,ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC,dataView,
                         ()=>{this._sampleRate = value;},
-                        (e)=>{this.handleError(e);});
+                        this.getErrorHandlerFunc("Can not set sample rate"));
                 }
                 catch(e) {
                     this.handleError(e);
@@ -576,7 +577,7 @@ module ergometer {
                 this.enableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC,
                     (data:ArrayBuffer) => { this.handleDataCallbackMulti(data);},
                     ()=>{},
-                    this.handleError);
+                    this.getErrorHandlerFunc("Can not enable multiplex"));
             this._multiplexSubscribeCount++;
         }
 
@@ -587,7 +588,7 @@ module ergometer {
             this._multiplexSubscribeCount--;
             if (this._multiplexSubscribeCount==0)
                 this.disableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC, ()=> {
-                }, this.handleError);
+                }, this.getErrorHandlerFunc("can not disable multiplex"));
         }
 
         /**
@@ -605,13 +606,13 @@ module ergometer {
                                 this.handleDataCallback(data, this.handleRowingGeneralStatus);
                             },
                             ()=>{},
-                            this.handleError);
+                            this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
                     else this.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC, ()=> {
-                    }, this.handleError);
+                    }, this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingAdditionalStatus1Event.count > 0) {
@@ -624,13 +625,13 @@ module ergometer {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStatus1);
                             },
                             ()=>{},
-                            this.handleError);
+                            this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
                     else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC, ()=> {
-                    }, this.handleError);
+                    }, this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingAdditionalStatus2Event.count > 0) {
@@ -643,13 +644,13 @@ module ergometer {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStatus2);
                             },
                             ()=>{},
-                            this.handleError);
+                            this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
                     else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC, ()=> {
-                    }, this.handleError);
+                    }, this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingStrokeDataEvent.count > 0) {
@@ -662,13 +663,13 @@ module ergometer {
                                 this.handleDataCallback(data, this.handleRowingStrokeData);
                             },
                             ()=>{},
-                            this.handleError);
+                            this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
                     else this.disableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC, ()=> {
-                    }, this.handleError);
+                    }, this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingAdditionalStrokeDataEvent.count > 0) {
@@ -681,13 +682,13 @@ module ergometer {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStrokeData);
                             },
                             ()=>{},
-                            this.handleError);
+                            this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
                     else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC, ()=> {
-                    }, this.handleError);
+                    }, this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingSplitIntervalDataEvent.count > 0) {
@@ -700,13 +701,13 @@ module ergometer {
                                 this.handleDataCallback(data, this.handleRowingSplitIntervalData);
                             },
                             ()=>{},
-                            this.handleError);
+                            this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
                     else this.disableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC, ()=> {
-                    }, this.handleError);
+                    }, this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingAdditionalSplitIntervalDataEvent.count > 0) {
@@ -719,13 +720,13 @@ module ergometer {
                                 this.handleDataCallback(data, this.handleRowingAdditionalSplitIntervalData);
                             },
                             ()=>{},
-                            this.handleError);
+                            this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
                     else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC, ()=> {
-                    }, this.handleError);
+                    }, this.getErrorHandlerFunc(""));
                 }
 
                 if (this.workoutSummaryDataEvent.count > 0) {
@@ -738,13 +739,13 @@ module ergometer {
                                 this.handleDataCallback(data, this.handleWorkoutSummaryData);
                             },
                             ()=>{},
-                            this.handleError);
+                            this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
                     else this.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC, ()=> {
-                    }, this.handleError);
+                    }, this.getErrorHandlerFunc(""));
                 }
 
                 if (this.additionalWorkoutSummaryDataEvent.count > 0) {
@@ -757,13 +758,13 @@ module ergometer {
                                 this.handleDataCallback(data, this.handleAdditionalWorkoutSummaryData);
                             },
                             ()=>{},
-                            this.handleError);
+                            this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
                     else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC, ()=> {
-                    }, this.handleError);
+                    }, this.getErrorHandlerFunc(""));
                 }
                 if (this.additionalWorkoutSummaryData2Event.count > 0) {
                     if (this.multiplex) {
@@ -785,13 +786,13 @@ module ergometer {
                                 this.handleDataCallback(data, this.handleHeartRateBeltInformation);
                             },
                             ()=>{},
-                            this.handleError);
+                            this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
                     else this.disableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC, ()=> {
-                    }, this.handleError);
+                    }, this.getErrorHandlerFunc(""));
                 }
                 if (this.powerCurveEvent.count>0) {
                     //when the status changes collect the power info
@@ -925,14 +926,29 @@ module ergometer {
         }
 
         /**
-         *
+         * call the global error hander and call the optional error handler if given
          * @param error
          */
-        public handleError(error:string) {
+        public handleError(error:string,errorFn? : ErrorHandler) {
             if (this.logLevel>=LogLevel.error)
                 this.logEvent.pub(error,LogLevel.error);
+            if (errorFn) errorFn(error);
         }
+        
 
+        /**
+         * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
+         * @param errorDescription
+         * @param errorFn
+         * @returns {function(any): undefined}
+         */
+        public getErrorHandlerFunc(errorDescription : string, errorFn? :ErrorHandler) :ErrorHandler {
+
+            return (e) => {
+                this.handleError(errorDescription+':'+e.toString(),errorFn);
+            }
+
+        }
         /**
          *
          * @param device
@@ -976,59 +992,67 @@ module ergometer {
 
         }
 
+        protected ensureInitialized(success: ()=>void ,error? : ErrorHandler) {
+            bleat.init(success,
+                this.getErrorHandlerFunc("Log blue tooth Status:",error));
+        }
         /**
          * Scan for device use the deviceFound to connect .
          * @param deviceFound
          */
-        public startScan(deviceFound : (device : DeviceInfo)=>boolean ) {
-
-            this._devices=[];
-            // Save it for next time we use the this.
-            //localStorage.setItem('deviceName', this._deviceName);
-
-            // Call stop before you start, just in case something else is running.
-            this.stopScan();
-            this.changeConnectionState(MonitorConnectionState.scanning);
-
-            // Only report devices once.
-            //evothings.easyble.reportDeviceOnce(true);
+        public startScan(deviceFound : (device : DeviceInfo)=>boolean,errorFn? : ErrorHandler ) {
 
 
-            bleat.startScan(
-                 (device) => {
-                    // Do not show un-named devices.
-                    /*var deviceName = device.advertisementData ?
-                        device.advertisementData.kCBAdvDataLocalName : null;
-                        */
-                    if (!device.name) {
-                        return
-                    }
+            this.ensureInitialized(()=>{
+                this._devices=[];
+                // Save it for next time we use the this.
+                //localStorage.setItem('deviceName', this._deviceName);
 
-                    // Print "name : mac address" for every device found.
-                    this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+                // Call stop before you start, just in case something else is running.
+                this.stopScan();
+                this.changeConnectionState(MonitorConnectionState.scanning);
 
-                     // If my device is found connect to it.
-                     //find any thing starting with PM and then a number a space and a serial number
-                     if ( device.name.match(/PM\d \d*/g) ) {
+                // Only report devices once.
+                //evothings.easyble.reportDeviceOnce(true);
 
-                        this.showInfo('Status: DeviceInfo found: ' + device.name);
-                        var deviceInfo : DeviceInfo={
-                            connected:false,
-                            _internalDevice: device,
-                            name:device.name,
-                            address:device.address,
-                            quality: 2* (device.rssi + 100) };
-                        this.addDevice(deviceInfo);
-                        if ( deviceFound(deviceInfo)) {
-                            this.connectToDevice(deviceInfo.name);
+
+                bleat.startScan(
+                    (device) => {
+                        // Do not show un-named devices.
+                        /*var deviceName = device.advertisementData ?
+                         device.advertisementData.kCBAdvDataLocalName : null;
+                         */
+                        if (!device.name) {
+                            return
                         }
 
-                    }
-                },
-                 (error)=> {
-                    this.showInfo('Error: startScan: ' + error);
-                });
-            this.showInfo('Status: Scanning...');
+                        // Print "name : mac address" for every device found.
+                        this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+
+                        // If my device is found connect to it.
+                        //find any thing starting with PM and then a number a space and a serial number
+                        if ( device.name.match(/PM\d \d*/g) ) {
+
+                            this.showInfo('Status: DeviceInfo found: ' + device.name);
+                            var deviceInfo : DeviceInfo={
+                                connected:false,
+                                _internalDevice: device,
+                                name:device.name,
+                                address:device.address,
+                                quality: 2* (device.rssi + 100) };
+                            this.addDevice(deviceInfo);
+                            if ( deviceFound(deviceInfo)) {
+                                this.connectToDevice(deviceInfo.name);
+                            }
+
+                        }
+                    },
+                    this.getErrorHandlerFunc("Error: startScan",errorFn)
+                    );
+                this.showInfo('Status: Scanning...');
+            },errorFn);
+
+
         }
 
 
@@ -1697,14 +1721,10 @@ module ergometer {
                                 if(send) send();
                                 // this.singleRead(receive )
                             },
-                            (e)=>{
-                                if (error) error(e);
-                                this.handleError(e);
-                            });
+                            this.getErrorHandlerFunc(""));
                     }
                     catch(e) {
-                        if (error) error(e);
-                        this.handleError(e);
+                        this.handleError(e,error);
                     }
                 }
 
@@ -1866,7 +1886,7 @@ module ergometer {
 
                 },
                 ()=>{},
-                this.handleError);
+                this.getErrorHandlerFunc(""));
         }
 
         get csafeBuffer():ergometer.csafe.IBuffer {

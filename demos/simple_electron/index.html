@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Hello World2!</title>
+  </head>
+  <body>
+    <h1>Hello Ergometer</h1>
+    We are using node <script>document.write(process.versions.node)</script>,
+    Chrome <script>document.write(process.versions.chrome)</script>,
+    and Electron <script>document.write(process.versions.electron)</script>.
+
+    <select id="devices">
+    </select>
+
+    <h2>Info</h2>
+
+    <p id="data">
+      Extra info
+    </p>
+  </body>
+  <script>
+    //var bleat=window.bleat;
+    window.$ = window.jQuery = require('./libs/jquery/jquery');
+    var bleat = require('./libs/bleat/index');
+  </script>
+  <script src="libs/ergometer.js"></script>
+  <script src="app.js"></script>
+</html>
