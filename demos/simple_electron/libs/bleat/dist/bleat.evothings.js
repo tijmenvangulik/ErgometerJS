@@ -158,6 +158,7 @@
                     });
                     if (hasService) {
                         var device = new bleat._Device(deviceInfo.address, advert.name, advert.serviceUUIDs);
+                        device.rssi= deviceInfo.rssi;
                         foundFn(device);
                     }
                 }, errorFn);

@@ -98,7 +98,7 @@
         this.name = name;
         this.serviceUUIDs = serviceUUIDs;
         this.connected = false;
-        this.rssi=0;
+        this.rssi=null;
         this.services = {};
     };
     Device.prototype.hasService = function(serviceUUID) {
@@ -815,6 +815,8 @@
                                     serviceUUIDs.push(bleat._canonicalUUID(serviceUUID));
                                 });
                                 var device = new bleat._Device(address, deviceInfo.advertisement.localName || address, serviceUUIDs);
+                                device.rssi= deviceInfo.rssi;
+                                device.serviceData = deviceInfo.advertisement.serviceData;
                                 this.foundFn(device);
                             }
                         }.bind(this));

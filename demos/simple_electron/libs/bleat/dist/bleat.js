@@ -52,6 +52,13 @@
         };
     }
 
+    function handleError(errorFn,msg) {
+        return function(error) {
+            if (onError) onError(msg + ": " + error);
+            if (errorFn) errorFn(msg + ": " + error);
+        };
+    }
+
     function executeFn(fn) {
         return function() {
             if (typeof fn === "function") {
@@ -91,6 +98,7 @@
         this.name = name;
         this.serviceUUIDs = serviceUUIDs;
         this.connected = false;
+        this.rssi=null;
         this.services = {};
     };
     Device.prototype.hasService = function(serviceUUID) {
@@ -98,7 +106,7 @@
             return (uuid === serviceUUID);
         });
     };
-    Device.prototype.connect = function(connectFn, disconnectFn, suppressDiscovery) {
+    Device.prototype.connect = function(connectFn, disconnectFn, suppressDiscovery,errorFn) {
         adapter.connect(this, function() {
             this.connected = true;
             if (suppressDiscovery) return executeFn(connectFn)();
@@ -107,7 +115,7 @@
             this.connected = false;
             this.services = {};
             executeFn(disconnectFn)();
-        }.bind(this), raiseError("connect error"));
+        }.bind(this), handleError(errorFn,"connect error"));
     };
     Device.prototype.disconnect = function() {
         adapter.disconnect(this, raiseError("disconnect error"));
@@ -188,17 +196,17 @@
         }
         adapter.discoverDescriptors(this, descriptorUUIDs, executeFn(completeFn), raiseError("descriptor discovery error"));
     };
-    Characteristic.prototype.read = function(completeFn) {
-        adapter.readCharacteristic(this, executeFn(completeFn), raiseError("read characteristic error"));
+    Characteristic.prototype.read = function(completeFn,errorFn) {
+        adapter.readCharacteristic(this, executeFn(completeFn), handleError(errorFn,"read characteristic error"));
     };
-    Characteristic.prototype.write = function(bufferView, completeFn) {
-        adapter.writeCharacteristic(this, bufferView, executeFn(completeFn), raiseError("write characteristic error"));
+    Characteristic.prototype.write = function(bufferView, completeFn,errorFn) {
+        adapter.writeCharacteristic(this, bufferView, executeFn(completeFn), handleError(errorFn,"write characteristic error"));
     };
-    Characteristic.prototype.enableNotify = function(notifyFn, completeFn) {
-        adapter.enableNotify(this, executeFn(notifyFn), executeFn(completeFn), raiseError("enable notify error"));
+    Characteristic.prototype.enableNotify = function(notifyFn, completeFn,errorFn) {
+        adapter.enableNotify(this, executeFn(notifyFn), executeFn(completeFn), handleError(errorFn,"enable notify error"));
     };
-    Characteristic.prototype.disableNotify = function(completeFn) {
-        adapter.disableNotify(this, executeFn(completeFn), raiseError("disable notify error"));
+    Characteristic.prototype.disableNotify = function(completeFn,errorFn) {
+        adapter.disableNotify(this, executeFn(completeFn), handleError(errorFn,"disable notify error"));
     };
 
     // Descriptor Object
@@ -614,6 +622,7 @@
                     });
                     if (hasService) {
                         var device = new bleat._Device(deviceInfo.address, advert.name, advert.serviceUUIDs);
+                        device.rssi= deviceInfo.rssi;
                         foundFn(device);
                     }
                 }, errorFn);
@@ -806,6 +815,8 @@
                                     serviceUUIDs.push(bleat._canonicalUUID(serviceUUID));
                                 });
                                 var device = new bleat._Device(address, deviceInfo.advertisement.localName || address, serviceUUIDs);
+                                device.rssi= deviceInfo.rssi;
+                                device.serviceData = deviceInfo.advertisement.serviceData;
                                 this.foundFn(device);
                             }
                         }.bind(this));
