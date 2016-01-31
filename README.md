@@ -41,7 +41,12 @@ You only need to change the javascript included file
     * separated the demo code from the platform code
     * Refactored error handling
     * Renamed project from MobileErgometer to ErgometerJS
-         
+- 0.0.5
+
+    * Improved npm build script and typescript config files
+    * Send now returns a Promise. Changed the demo for this.
+      I plan to make more use of promises to clean up some internal error handling code.
+    
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
@@ -64,8 +69,6 @@ Components
 
 # Todo
 
-* Make UMD module so the the api can also be used in node
-* write a demo on
 * Make a better conversions of some of the values which the ergometer returns. 
 * Test the android version on a real phone (First need a phone for this!)
 * Write a demo of an app which can really be used. (now it)

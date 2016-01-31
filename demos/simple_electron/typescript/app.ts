@@ -24,7 +24,6 @@
  * limitations under the License.
  */
 
-/// <reference path="demo.ts"/>
 class App {
 
     private _demo : Demo = new Demo();

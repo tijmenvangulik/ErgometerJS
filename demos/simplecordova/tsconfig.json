@@ -3,15 +3,17 @@
     "module": "system",
     "target": "es5",
     "sourceMap": true,
-    "out": "demos/simplecordova/www/app.js"
+    "outFile": "www/app.js"
   },
   "exclude": [
     "node_modules"
   ],
   "filesGlob": [
-    "www/typescript/typings/**/*.d.ts"
   ],
   "files": [
+    "www/typescript/typings/ergometer.d.ts",
+    "www/typescript/typings/jquery.d.ts",
+    "www/typescript/typings/es6-promise.d.ts",
     "www/typescript/demo.ts",
     "www/typescript/app.ts"
   ]

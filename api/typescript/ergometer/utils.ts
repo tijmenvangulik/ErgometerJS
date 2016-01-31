@@ -3,10 +3,7 @@
  */
  /** @internal */
 module ergometer.utils {
-     export function byteArrayToString(byteArray : number[]) {
-         var result="";
-         byteArray.forEach((i : number)=>{result=result+evothings.util.toHexString(i,1) })
-     }
+
 
      /**
      * Interpret byte buffer as unsigned little endian 32 bit integer.

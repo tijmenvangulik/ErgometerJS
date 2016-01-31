@@ -22,8 +22,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/// <reference path="typings/jquery.d.ts"/>
-/// <reference path="typings/ergometer.d.ts"/>
 class Demo {
 
     private _performanceMonitor : ergometer.PerformanceMonitor;
@@ -146,7 +144,10 @@ class Demo {
                     }
                 })
                 .setProgram({program:2})
-                .send();
+                .send()
+                .then(()=>{  //send returns a promise
+                    console.log("send done, you can send th next")
+                }   );
         }
     }
     protected onPowerCurve(curve : number[]) {

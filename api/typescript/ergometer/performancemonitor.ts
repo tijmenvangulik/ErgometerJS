@@ -21,13 +21,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/// <reference path="../typings/evothings/ble.d.ts"/>
-/// <reference path="../typings/bleat.d.ts"/>
-/// <reference path="../typings/evothings/evothings.d.ts"/>
-/// <reference path="../typings/evothings/util.d.ts"/>
-/// <reference path="utils.ts"/>
-/// <reference path="pubsub.ts"/>
-
 module ergometer {
 
     import IRawCommand = ergometer.csafe.IRawCommand;
@@ -940,7 +933,7 @@ module ergometer {
          * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
          * @param errorDescription
          * @param errorFn
-         * @returns {function(any): undefined}
+         * @returns {function(any): void}
          */
         public getErrorHandlerFunc(errorDescription : string, errorFn? :ErrorHandler) :ErrorHandler {
 
@@ -991,7 +984,7 @@ module ergometer {
                 bleat.stopScan();            }
 
         }
-
+typtyp
         protected ensureInitialized(success: ()=>void ,error? : ErrorHandler) {
             bleat.init(success,
                 this.getErrorHandlerFunc("Log blue tooth Status:",error));
@@ -1634,56 +1627,73 @@ module ergometer {
          *                               csafe
          *****************************************************************************************  */
 
+        /**
+         *  send everyt thing which is put into the csave buffer
+         *
+         * @param success
+         * @param error
+         * @returns {Promise<any>|Promise} use promis instead of success and error function
+         */
+        public sendCSafeBuffer(success? : ()=>void,error? : ErrorHandler) : Promise<void>{
+            return new  Promise<any>((resolve, reject) => {
+                try {
+                    this.removeOldSendCommands();
+                    //prepare the array to be send
+                    var rawCommandBuffer = this.csafeBuffer.rawCommands;
+                    var commandArray : number[] = [];
+                    rawCommandBuffer.forEach((command : IRawCommand)=>{
 
-        public sendCSafeBuffer(success? : ()=>void,error? : ErrorHandler) {
-            this.removeOldSendCommands();
-            //prepare the array to be send
-            var rawCommandBuffer = this.csafeBuffer.rawCommands;
-            var commandArray : number[] = [];
-            rawCommandBuffer.forEach((command : IRawCommand)=>{
+                        commandArray.push(command.command);
+                        if (command.command>= csafe.defs.CTRL_CMD_SHORT_MIN)  {
+                            //it is an short command
+                            if (command.detailCommand|| command.data) {
+                                throw "short commands can not contain data or a detail command"
+                            }
+                        }
+                        else {
+                            if (command.detailCommand) {
+                                var dataLength=1;
+                                if (command.data  && command.data.length>0)
+                                    dataLength=dataLength+command.data.length+1;
+                                commandArray.push(dataLength); //length for the short command
+                                //the detail command
+                                commandArray.push(command.detailCommand);
+                            }
+                            //the data
+                            if (command.data && command.data.length>0) {
+                                commandArray.push(command.data.length);
+                                commandArray=commandArray.concat(command.data);
+                            }
+                        }
 
-                commandArray.push(command.command);
-                if (command.command>= csafe.defs.CTRL_CMD_SHORT_MIN)  {
-                    //it is an short command
-                    if (command.detailCommand|| command.data) {
-                        throw "short commands can not contain data or a detail command"
-                    }
+
+
+                    });
+                    this.csafeBuffer.clear();
+                    //send all the csafe commands in one go
+                    this.sendCsafeCommands(commandArray,()=>{
+                        rawCommandBuffer.forEach((command : IRawCommand)=> {
+                            command._timestamp = new Date().getTime();
+                            if (command.waitForResponse)
+                                this._waitResponseCommands.push(command);
+                            if (success) success();
+                            resolve();
+                        })
+                    },(e)=>{
+                        rawCommandBuffer.forEach((command : IRawCommand)=>{
+                            if (command.onError) command.onError(e);
+                            this.handleError(e,error);
+                            reject(e);
+                        })
+                    });
                 }
-                else {
-                    if (command.detailCommand) {
-                        var dataLength=1;
-                        if (command.data  && command.data.length>0)
-                            dataLength=dataLength+command.data.length+1;
-                        commandArray.push(dataLength); //length for the short command
-                        //the detail command
-                        commandArray.push(command.detailCommand);
-                    }
-                    //the data
-                    if (command.data && command.data.length>0) {
-                        commandArray.push(command.data.length);
-                        commandArray=commandArray.concat(command.data);
-                    }
+                catch (e) {;
+                    this.handleError(e,error);
+                    reject(e);
                 }
-
-
 
             });
-            this.csafeBuffer.clear();
-            //send all the csafe commands in one go
-            this.sendCsafeCommands(commandArray,()=>{
-                    rawCommandBuffer.forEach((command : IRawCommand)=> {
-                        command._timestamp = new Date().getTime();
-                        if (command.waitForResponse)
-                            this._waitResponseCommands.push(command);
-                        if (success) success();
-                    })
-                },(e)=>{
-                   rawCommandBuffer.forEach((command : IRawCommand)=>{
 
-                       if (command.onError) command.onError(e);
-                       if (error) error(e);
-                   })
-                })
         }
 
         protected sendCsafeCommands(byteArray : number[], send : ()=>void, error : ErrorHandler) {
@@ -1898,8 +1908,8 @@ module ergometer {
                         this.csafeBuffer.rawCommands = [];
                         return this.csafeBuffer;
                     },
-                    send: (sucess? : ()=>void,error? : ErrorHandler) => {
-                        this.sendCSafeBuffer(sucess,error);
+                    send: (sucess? : ()=>void,error? : ErrorHandler) : Promise<void> => {
+                        return this.sendCSafeBuffer(sucess,error);
                     },
                     addRawCommand: (info:csafe.IRawCommand):csafe.IBuffer=> {
                         this.csafeBuffer.rawCommands.push(info);

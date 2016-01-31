@@ -3,17 +3,19 @@
     "module": "system",
     "target": "es5",
     "sourceMap": true,
-    "out": "api/lib/ergometer.js",
+    "outFile": "lib/ergometer.js",
     "declaration": true,
-    "stripInternal": true
+    "stripInternal": true,
+    "noResolve":true
   },
   "exclude": [
     "node_modules"
   ],
   "filesGlob": [
-    "typescript/typings/**/*.d.ts"
   ],
   "files": [
+    "typescript/typings/es6-promise.d.ts",
+    "typescript/typings/bleat.d.ts",
     "typescript/ergometer/utils.ts",
     "typescript/ergometer/pubsub.ts",
     "typescript/ergometer/typedefinitions.ts",

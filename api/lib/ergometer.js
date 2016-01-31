@@ -6,11 +6,6 @@ var ergometer;
 (function (ergometer) {
     var utils;
     (function (utils) {
-        function byteArrayToString(byteArray) {
-            var result = "";
-            byteArray.forEach(function (i) { result = result + evothings.util.toHexString(i, 1); });
-        }
-        utils.byteArrayToString = byteArrayToString;
         /**
         * Interpret byte buffer as unsigned little endian 32 bit integer.
         * Returns converted number.
@@ -639,12 +634,6 @@ var ergometer;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/// <reference path="../typings/evothings/ble.d.ts"/>
-/// <reference path="../typings/bleat.d.ts"/>
-/// <reference path="../typings/evothings/evothings.d.ts"/>
-/// <reference path="../typings/evothings/util.d.ts"/>
-/// <reference path="utils.ts"/>
-/// <reference path="pubsub.ts"/>
 var ergometer;
 (function (ergometer) {
     (function (MonitorConnectionState) {
@@ -1501,7 +1490,7 @@ var ergometer;
          * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
          * @param errorDescription
          * @param errorFn
-         * @returns {function(any): undefined}
+         * @returns {function(any): void}
          */
         PerformanceMonitor.prototype.getErrorHandlerFunc = function (errorDescription, errorFn) {
             var _this = this;
@@ -2120,53 +2109,70 @@ var ergometer;
         /* ***************************************************************************************
          *                               csafe
          *****************************************************************************************  */
+        /**
+         *  send everyt thing which is put into the csave buffer
+         *
+         * @param success
+         * @param error
+         * @returns {Promise<any>|Promise} use promis instead of success and error function
+         */
         PerformanceMonitor.prototype.sendCSafeBuffer = function (success, error) {
             var _this = this;
-            this.removeOldSendCommands();
-            //prepare the array to be send
-            var rawCommandBuffer = this.csafeBuffer.rawCommands;
-            var commandArray = [];
-            rawCommandBuffer.forEach(function (command) {
-                commandArray.push(command.command);
-                if (command.command >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN) {
-                    //it is an short command
-                    if (command.detailCommand || command.data) {
-                        throw "short commands can not contain data or a detail command";
-                    }
+            return new Promise(function (resolve, reject) {
+                try {
+                    _this.removeOldSendCommands();
+                    //prepare the array to be send
+                    var rawCommandBuffer = _this.csafeBuffer.rawCommands;
+                    var commandArray = [];
+                    rawCommandBuffer.forEach(function (command) {
+                        commandArray.push(command.command);
+                        if (command.command >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN) {
+                            //it is an short command
+                            if (command.detailCommand || command.data) {
+                                throw "short commands can not contain data or a detail command";
+                            }
+                        }
+                        else {
+                            if (command.detailCommand) {
+                                var dataLength = 1;
+                                if (command.data && command.data.length > 0)
+                                    dataLength = dataLength + command.data.length + 1;
+                                commandArray.push(dataLength); //length for the short command
+                                //the detail command
+                                commandArray.push(command.detailCommand);
+                            }
+                            //the data
+                            if (command.data && command.data.length > 0) {
+                                commandArray.push(command.data.length);
+                                commandArray = commandArray.concat(command.data);
+                            }
+                        }
+                    });
+                    _this.csafeBuffer.clear();
+                    //send all the csafe commands in one go
+                    _this.sendCsafeCommands(commandArray, function () {
+                        rawCommandBuffer.forEach(function (command) {
+                            command._timestamp = new Date().getTime();
+                            if (command.waitForResponse)
+                                _this._waitResponseCommands.push(command);
+                            if (success)
+                                success();
+                            resolve();
+                        });
+                    }, function (e) {
+                        rawCommandBuffer.forEach(function (command) {
+                            if (command.onError)
+                                command.onError(e);
+                            _this.handleError(e, error);
+                            reject(e);
+                        });
+                    });
                 }
-                else {
-                    if (command.detailCommand) {
-                        var dataLength = 1;
-                        if (command.data && command.data.length > 0)
-                            dataLength = dataLength + command.data.length + 1;
-                        commandArray.push(dataLength); //length for the short command
-                        //the detail command
-                        commandArray.push(command.detailCommand);
-                    }
-                    //the data
-                    if (command.data && command.data.length > 0) {
-                        commandArray.push(command.data.length);
-                        commandArray = commandArray.concat(command.data);
-                    }
+                catch (e) {
+                    ;
+                    _this.handleError(e, error);
+                    reject(e);
                 }
-            });
-            this.csafeBuffer.clear();
-            //send all the csafe commands in one go
-            this.sendCsafeCommands(commandArray, function () {
-                rawCommandBuffer.forEach(function (command) {
-                    command._timestamp = new Date().getTime();
-                    if (command.waitForResponse)
-                        _this._waitResponseCommands.push(command);
-                    if (success)
-                        success();
-                });
-            }, function (e) {
-                rawCommandBuffer.forEach(function (command) {
-                    if (command.onError)
-                        command.onError(e);
-                    if (error)
-                        error(e);
-                });
             });
         };
         PerformanceMonitor.prototype.sendCsafeCommands = function (byteArray, send, error) {
@@ -2354,7 +2360,7 @@ var ergometer;
                             return _this.csafeBuffer;
                         },
                         send: function (sucess, error) {
-                            _this.sendCSafeBuffer(sucess, error);
+                            return _this.sendCSafeBuffer(sucess, error);
                         },
                         addRawCommand: function (info) {
                             _this.csafeBuffer.rawCommands.push(info);

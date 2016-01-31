@@ -21,7 +21,7 @@ module ergometer.csafe {
         rawCommands : IRawCommand[];
         clear() : IBuffer;
         addRawCommand(info : IRawCommand);
-        send(success? : ()=>void,error? : ErrorHandler); //todo use a promis to implement a a-sync result of the send
+        send(success? : ()=>void,error? : ErrorHandler) : Promise<void>;
 
     }
 

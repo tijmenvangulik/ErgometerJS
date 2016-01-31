@@ -1,7 +1,3 @@
-/// <reference path="../typescript/typings/evothings/ble.d.ts" />
-/// <reference path="../typescript/typings/bleat.d.ts" />
-/// <reference path="../typescript/typings/evothings/evothings.d.ts" />
-/// <reference path="../typescript/typings/evothings/util.d.ts" />
 /**
  *
  * Created by tijmen on 01-06-15.
@@ -758,7 +754,7 @@ declare module ergometer.csafe {
         rawCommands: IRawCommand[];
         clear(): IBuffer;
         addRawCommand(info: IRawCommand): any;
-        send(success?: () => void, error?: ErrorHandler): any;
+        send(success?: () => void, error?: ErrorHandler): Promise<void>;
     }
     interface ICommand {
         (buffer: IBuffer, monitor: PerformanceMonitor): void;
@@ -1244,7 +1240,7 @@ declare module ergometer {
          * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
          * @param errorDescription
          * @param errorFn
-         * @returns {function(any): undefined}
+         * @returns {function(any): void}
          */
         getErrorHandlerFunc(errorDescription: string, errorFn?: ErrorHandler): ErrorHandler;
         /**
@@ -1267,6 +1263,7 @@ declare module ergometer {
          *
          */
         protected stopScan(): void;
+        typtyp: any;
         protected ensureInitialized(success: () => void, error?: ErrorHandler): void;
         /**
          * Scan for device use the deviceFound to connect .
@@ -1368,7 +1365,14 @@ declare module ergometer {
          */
         protected handleDataCallback(data: ArrayBuffer, func: (data: DataView) => void): void;
         protected removeOldSendCommands(): void;
-        sendCSafeBuffer(success?: () => void, error?: ErrorHandler): void;
+        /**
+         *  send everyt thing which is put into the csave buffer
+         *
+         * @param success
+         * @param error
+         * @returns {Promise<any>|Promise} use promis instead of success and error function
+         */
+        sendCSafeBuffer(success?: () => void, error?: ErrorHandler): Promise<void>;
         protected sendCsafeCommands(byteArray: number[], send: () => void, error: ErrorHandler): void;
         receivedCSaveCommand(parsed: ParsedCSafeCommand): void;
         handleCSafeNotifications(): void;

@@ -22,8 +22,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/// <reference path="typings/jquery.d.ts"/>
-/// <reference path="typings/ergometer.d.ts"/>
 var Demo = (function () {
     function Demo() {
         this._lastDeviceName = null;
@@ -142,7 +140,10 @@ var Demo = (function () {
                 }
             })
                 .setProgram({ program: 2 })
-                .send();
+                .send()
+                .then(function () {
+                console.log("send done, you can send th next");
+            });
         }
     };
     Demo.prototype.onPowerCurve = function (curve) {
@@ -209,7 +210,6 @@ var Demo = (function () {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/// <reference path="demo.ts"/>
 var App = (function () {
     function App() {
         var _this = this;
