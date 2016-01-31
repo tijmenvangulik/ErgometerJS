@@ -289,7 +289,10 @@ allways send raw commands. For example
                             alert(data.getUint8(0));
                         }
                     })
-        .send();  
+        .send(); 
+        .then(()=>{  //send returns a promise
+           console.log("send done, you can send th next")
+         }); 
                   
 # Electron
 
