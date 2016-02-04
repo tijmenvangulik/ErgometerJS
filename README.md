@@ -46,7 +46,11 @@ You only need to change the javascript included file
     * Improved npm build script and typescript config files
     * Send now returns a Promise. Changed the demo for this.
       I plan to make more use of promises to clean up some internal error handling code.
-    
+- 0.0.6
+     * Refactored all internal error handling to make use of Promises
+     * Made internal driver layer based on Promises which gives some more protection and 
+       will make recording easier in the future.
+       
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
@@ -78,11 +82,16 @@ Components
 
 #Known problems
                   
-There are problems in the PM5 BLE firmware. Some csafe commands give back invalid responses. 
+* There are problems in the PM5 BLE firmware. Some csafe commands give back invalid responses. 
 I hope they fix it soon. See
 
 http://www.c2forum.com/viewtopic.php?f=15&t=93321
 
+* ES6-Promises
+The library uses ES6-Promises. I assume that the library is uses in modern browsers. If this is
+not the case you need to include a poly fill javascript library:
+
+ https://github.com/lahmatiy/es6-promise-polyfill
 
 # Installation
 
@@ -313,3 +322,5 @@ Optional: You can rebuild the javascipt from the type script by typing in the ma
 Debugging electron
 
 I found that WebStorm-EAP was a nice environment for debugging and developing electron applications.
+
+ 

@@ -55,6 +55,49 @@ declare namespace ergometer.pubSub {
     }
 }
 /**
+ * Created by tijmen on 01-02-16.
+ */
+declare module ergometer.ble {
+    interface IDevice {
+        address: string;
+        name: string;
+        rssi: number;
+        _internalDevice: any;
+    }
+    interface IFoundFunc {
+        (device: IDevice): void;
+    }
+    interface IDriver {
+        startScan(foundFn?: IFoundFunc): Promise<void>;
+        stopScan(): any;
+        connect(device: IDevice, disconnectFn: () => void): Promise<void>;
+        disconnect(): any;
+        writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
+        readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
+        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<any>;
+        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<any>;
+    }
+}
+/**
+ * Created by tijmen on 01-02-16.
+ */
+declare module ergometer.ble {
+    class DriverBleat implements IDriver {
+        private _device;
+        private _initialized;
+        private getCharacteristic(serviceUid, characteristicUid);
+        connect(device: IDevice, disconnectFn: () => void): Promise<void>;
+        disconnect(): Promise<void>;
+        init(): Promise<any>;
+        startScan(foundFn?: IFoundFunc): Promise<void>;
+        stopScan(): Promise<void>;
+        writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
+        readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
+        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<any>;
+        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<any>;
+    }
+}
+/**
  * Created by tijmen on 28-12-15.
  */
 declare module ergometer {
@@ -945,7 +988,7 @@ declare module ergometer {
      *
      */
     class PerformanceMonitor {
-        private _device;
+        private _driver;
         private _connectionState;
         private _logEvent;
         private _connectionStateChangedEvent;
@@ -983,11 +1026,7 @@ declare module ergometer {
         private _csafeBuffer;
         private _waitResponseCommands;
         private _generalStatusEventAttachedByPowerCurve;
-        private getCharacteristic(serviceUid, characteristicUid);
-        private writeCharacteristic(serviceUIID, characteristicUUID, data, success, fail);
-        private readCharacteristic(serviceUIID, characteristicUUID, success, fail);
-        private enableNotification(serviceUIID, characteristicUUID, receive, success, fail);
-        private disableNotification(serviceUIID, characteristicUUID, success, fail);
+        protected driver: ergometer.ble.IDriver;
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
          * @returns {LogLevel}
@@ -1240,7 +1279,6 @@ declare module ergometer {
          * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
          * @param errorDescription
          * @param errorFn
-         * @returns {function(any): void}
          */
         getErrorHandlerFunc(errorDescription: string, errorFn?: ErrorHandler): ErrorHandler;
         /**
@@ -1263,41 +1301,34 @@ declare module ergometer {
          *
          */
         protected stopScan(): void;
-        typtyp: any;
-        protected ensureInitialized(success: () => void, error?: ErrorHandler): void;
         /**
          * Scan for device use the deviceFound to connect .
          * @param deviceFound
          */
-        startScan(deviceFound: (device: DeviceInfo) => boolean, errorFn?: ErrorHandler): void;
+        startScan(deviceFound: (device: DeviceInfo) => boolean, errorFn?: ErrorHandler): Promise<void>;
         /**
          * connect to a specific device. This should be a PM5 device which is found by the startScan. You can
          * only call this function after startScan is called. Connection to a device will stop the scan.
          * @param deviceName
          */
-        connectToDevice(deviceName: string): void;
+        connectToDevice(deviceName: string): Promise<void>;
         /**
-         *
+         * the promise is never fail
          * @param serviceUUID
          * @param UUID
          * @param readValue
          */
-        protected readStringCharacteristic(serviceUUID: string, UUID: string, readValue: (value: string) => void): void;
+        protected readStringCharacteristic(serviceUUID: string, UUID: string): Promise<string>;
+        /**
+         * the promise will never fail
+         * @param done
+         */
+        protected readSampleRate(): Promise<void>;
         /**
          *
          * @param done
          */
-        protected readSampleRate(done: () => void): void;
-        /**
-         *
-         * @param done
-         */
-        protected readPheripheralInfo(done: () => void): void;
-        /**
-         *   Debug logging of found services, characteristics and descriptors.
-         * @param device
-         */
-        protected logAllServices(device: any): void;
+        protected readPheripheralInfo(): Promise<void>;
         /**
          *
          * @param data
@@ -1372,8 +1403,8 @@ declare module ergometer {
          * @param error
          * @returns {Promise<any>|Promise} use promis instead of success and error function
          */
-        sendCSafeBuffer(success?: () => void, error?: ErrorHandler): Promise<void>;
-        protected sendCsafeCommands(byteArray: number[], send: () => void, error: ErrorHandler): void;
+        sendCSafeBuffer(): Promise<void>;
+        protected sendCsafeCommands(byteArray: number[]): Promise<void>;
         receivedCSaveCommand(parsed: ParsedCSafeCommand): void;
         handleCSafeNotifications(): void;
         csafeBuffer: ergometer.csafe.IBuffer;

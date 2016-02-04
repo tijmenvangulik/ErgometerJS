@@ -18,6 +18,8 @@
     "typescript/typings/bleat.d.ts",
     "typescript/ergometer/utils.ts",
     "typescript/ergometer/pubsub.ts",
+    "typescript/ergometer/bleDriver.ts",
+    "typescript/ergometer/bleDriverBleat.ts",
     "typescript/ergometer/typedefinitions.ts",
     "typescript/ergometer/typedefinitions_ble.ts",
     "typescript/ergometer/csafe/typedefinitions.ts",

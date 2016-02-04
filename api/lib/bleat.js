@@ -238,23 +238,24 @@
             if (!adapter) return raiseError("init error")("adapter not found");
             adapter.init(executeFn(readyFn), raiseError("init error"));
         },
-        startScan: function(serviceUUIDs, foundFn) {
+        startScan: function(serviceUUIDs, foundFn,errorFn) {
             if (typeof serviceUUIDs === "function") {
                 foundFn = serviceUUIDs;
+                errorFn=foundFn;
                 serviceUUIDs = [];
             } else if (typeof serviceUUIDs === "string") {
                 serviceUUIDs = [serviceUUIDs];
             }
-            adapter.stopScan(raiseError("stop scan error"));
+            adapter.stopScan(handleError(errorFn,"stop scan error"));
             var devices = {};
             adapter.startScan(serviceUUIDs, function(device) {
                 if (devices[device.address]) return;
                 devices[device.address] = device;
                 if (foundFn) foundFn(device);
-            }.bind(this), raiseError("scan error"));
+            }.bind(this), handleError(errorFn,"scan error"));
         },
-        stopScan: function() {
-            adapter.stopScan(raiseError("stop scan error"));
+        stopScan: function(errorFn) {
+            adapter.stopScan(handleError(errorFn,"stop scan error"));
         }
     };
 }));

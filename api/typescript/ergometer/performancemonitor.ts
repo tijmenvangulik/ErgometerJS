@@ -73,7 +73,7 @@ module ergometer {
     }
 
     export interface ErrorHandler {
-        (e) : void;
+        (e : any) : void;
     }
     export interface DeviceInfo {
         //values filled when the device is found
@@ -88,16 +88,13 @@ module ergometer {
         firmwareRevision? : string;
         manufacturer? : string;
         /** @internal */
-        _internalDevice : bleat.Device; //for internal usage when you use this I can not guarantee compatibility
+        _internalDevice : ble.IDevice; //for internal usage when you use this I can not guarantee compatibility
     }
 
     export interface ParsedCSafeCommand {
         command: number;
         detailCommand : number;
         data : Uint8Array;
-    }
-    interface FailCallback {
-        (errorString:string) :void;
     }
 
     interface EmptyCallback {
@@ -132,9 +129,7 @@ module ergometer {
      *
      */
     export class PerformanceMonitor {
-
-
-        private _device:bleat.Device;
+        private _driver: ble.IDriver;
         private _connectionState : MonitorConnectionState = MonitorConnectionState.inactive;
 
         //events
@@ -180,28 +175,10 @@ module ergometer {
         private _waitResponseCommands : csafe.IRawCommand[] = [];
         private _generalStatusEventAttachedByPowerCurve =false;
 
-        //simple wrapper for bleat characteristic functions
-        private getCharacteristic(serviceUid : string,characteristicUid : string) : bleat.Characteristic {
-            var service= this._device.services[serviceUid];
-            if (service) {
-                var found = service.characteristics[characteristicUid];
-                if (found) return found;
-                else throw `characteristics ${characteristicUid} not found in service ${serviceUid}`;
-            }
-            else throw `service ${serviceUid} not found`
+        protected get driver():ergometer.ble.IDriver {
+            return this._driver;
         }
-        private writeCharacteristic(serviceUIID : string,characteristicUUID:string, data:ArrayBufferView, success:EmptyCallback, fail:FailCallback) {
-            this.getCharacteristic(serviceUIID,characteristicUUID).write(data,success,fail);
-        }
-        private readCharacteristic(serviceUIID : string,characteristicUUID:string, success:(data:ArrayBuffer) =>void, fail:FailCallback) {
-            this.getCharacteristic(serviceUIID,characteristicUUID).read(success,fail);
-        }
-        private enableNotification(serviceUIID : string,characteristicUUID:string, receive:(data:ArrayBuffer) =>void,success:EmptyCallback, fail:FailCallback) {
-            this.getCharacteristic(serviceUIID,characteristicUUID).enableNotify(receive,success,fail);
-        }
-        private disableNotification(serviceUIID : string,characteristicUUID:string, success:EmptyCallback, fail:FailCallback) {
-            this.getCharacteristic(serviceUIID,characteristicUUID).disableNotify(success,fail);
-        }
+
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
          * @returns {LogLevel}
@@ -507,29 +484,24 @@ module ergometer {
          * @param value
          */
         public set sampleRate(value:SampleRate) {
-            if (value!=this._sampleRate) {
-                try {
-                    var dataView = new DataView(new ArrayBuffer(1));
-                    dataView.setUint8(0,value);
-                    this.writeCharacteristic(ble.PMROWING_SERVICE,ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC,dataView,
-                        ()=>{this._sampleRate = value;},
+            if (value != this._sampleRate) {
+                var dataView = new DataView(new ArrayBuffer(1));
+                dataView.setUint8(0, value);
+                this.driver.writeCharacteristic(ble.PMROWING_SERVICE, ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC, dataView)
+                    .then(
+                        ()=> {
+                            this._sampleRate = value;
+                        },
                         this.getErrorHandlerFunc("Can not set sample rate"));
-                }
-                catch(e) {
-                    this.handleError(e);
-                }
             }
-
         }
-
 
         /**
          * disconnect the current connected device
          */
         protected disconnect() {
             if (this.connectionState>=MonitorConnectionState.deviceReady)  {
-                if (this._device)
-                    this._device.disconnect();
+                this.driver.disconnect().catch(this.getErrorHandlerFunc("Can not disconnect"));
                 this.connectionState=MonitorConnectionState.deviceReady
             }
         }
@@ -567,10 +539,9 @@ module ergometer {
          */
         protected enableMultiplexNotification() {
             if (this._multiplexSubscribeCount==0)
-                this.enableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC,
-                    (data:ArrayBuffer) => { this.handleDataCallbackMulti(data);},
-                    ()=>{},
-                    this.getErrorHandlerFunc("Can not enable multiplex"));
+                this.driver.enableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC,
+                    (data:ArrayBuffer) => { this.handleDataCallbackMulti(data);})
+                    .catch( this.getErrorHandlerFunc("Can not enable multiplex"));
             this._multiplexSubscribeCount++;
         }
 
@@ -580,8 +551,8 @@ module ergometer {
         protected disableMultiPlexNotification() {
             this._multiplexSubscribeCount--;
             if (this._multiplexSubscribeCount==0)
-                this.disableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC, ()=> {
-                }, this.getErrorHandlerFunc("can not disable multiplex"));
+                this.driver.disableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC)
+                  .catch( this.getErrorHandlerFunc("can not disable multiplex"));
         }
 
         /**
@@ -594,18 +565,16 @@ module ergometer {
                        this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC,
+                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingGeneralStatus);
-                            },
-                            ()=>{},
-                            this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC, ()=> {
-                    }, this.getErrorHandlerFunc(""));
+                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC)
+                        .catch(this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingAdditionalStatus1Event.count > 0) {
@@ -613,18 +582,16 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC,
+                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStatus1);
-                            },
-                            ()=>{},
-                            this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC, ()=> {
-                    }, this.getErrorHandlerFunc(""));
+                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC)
+                       .catch(this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingAdditionalStatus2Event.count > 0) {
@@ -632,18 +599,16 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC,
+                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStatus2);
-                            },
-                            ()=>{},
-                            this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC, ()=> {
-                    }, this.getErrorHandlerFunc(""));
+                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC)
+                        .catch( this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingStrokeDataEvent.count > 0) {
@@ -651,18 +616,16 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC,
+                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingStrokeData);
-                            },
-                            ()=>{},
-                            this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.disableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC, ()=> {
-                    }, this.getErrorHandlerFunc(""));
+                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC)
+                        .catch( this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingAdditionalStrokeDataEvent.count > 0) {
@@ -670,18 +633,16 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC,
+                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStrokeData);
-                            },
-                            ()=>{},
-                            this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC, ()=> {
-                    }, this.getErrorHandlerFunc(""));
+                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC)
+                        .catch(this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingSplitIntervalDataEvent.count > 0) {
@@ -689,18 +650,16 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC,
+                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingSplitIntervalData);
-                            },
-                            ()=>{},
-                            this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.disableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC, ()=> {
-                    }, this.getErrorHandlerFunc(""));
+                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC)
+                        .catch(this.getErrorHandlerFunc(""));
                 }
 
                 if (this.rowingAdditionalSplitIntervalDataEvent.count > 0) {
@@ -708,18 +667,16 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC,
+                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalSplitIntervalData);
-                            },
-                            ()=>{},
-                            this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC, ()=> {
-                    }, this.getErrorHandlerFunc(""));
+                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC)
+                        .catch( this.getErrorHandlerFunc(""));
                 }
 
                 if (this.workoutSummaryDataEvent.count > 0) {
@@ -727,18 +684,16 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC,
+                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleWorkoutSummaryData);
-                            },
-                            ()=>{},
-                            this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC, ()=> {
-                    }, this.getErrorHandlerFunc(""));
+                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC)
+                        .catch(this.getErrorHandlerFunc(""));
                 }
 
                 if (this.additionalWorkoutSummaryDataEvent.count > 0) {
@@ -746,18 +701,16 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC,
+                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleAdditionalWorkoutSummaryData);
-                            },
-                            ()=>{},
-                            this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC, ()=> {
-                    }, this.getErrorHandlerFunc(""));
+                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC )
+                        .catch( this.getErrorHandlerFunc(""));
                 }
                 if (this.additionalWorkoutSummaryData2Event.count > 0) {
                     if (this.multiplex) {
@@ -774,18 +727,16 @@ module ergometer {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC,
+                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleHeartRateBeltInformation);
-                            },
-                            ()=>{},
-                            this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.disableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC, ()=> {
-                    }, this.getErrorHandlerFunc(""));
+                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC)
+                        .catch( this.getErrorHandlerFunc(""));
                 }
                 if (this.powerCurveEvent.count>0) {
                     //when the status changes collect the power info
@@ -837,6 +788,7 @@ module ergometer {
                      evothings.scriptsLoaded(()=>{
                          this.onDeviceReady();})},
                 false);   */
+            this._driver = new ble.DriverBleat();
 
             var enableDisableFunc = ()=>{this.enableDisableNotification()};
             this._rowingGeneralStatusEvent = new pubSub.Event<RowingGeneralStatusEvent>();
@@ -933,7 +885,6 @@ module ergometer {
          * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
          * @param errorDescription
          * @param errorFn
-         * @returns {function(any): void}
          */
         public getErrorHandlerFunc(errorDescription : string, errorFn? :ErrorHandler) :ErrorHandler {
 
@@ -981,72 +932,70 @@ module ergometer {
          */
         protected stopScan() {
             if (this.connectionState==MonitorConnectionState.scanning) {
-                bleat.stopScan();            }
+                this.driver.stopScan();            }
 
         }
-typtyp
-        protected ensureInitialized(success: ()=>void ,error? : ErrorHandler) {
-            bleat.init(success,
-                this.getErrorHandlerFunc("Log blue tooth Status:",error));
-        }
+
         /**
          * Scan for device use the deviceFound to connect .
          * @param deviceFound
          */
-        public startScan(deviceFound : (device : DeviceInfo)=>boolean,errorFn? : ErrorHandler ) {
+        public startScan(deviceFound : (device : DeviceInfo)=>boolean,errorFn? : ErrorHandler ) :Promise<void> {
 
 
-            this.ensureInitialized(()=>{
-                this._devices=[];
-                // Save it for next time we use the this.
-                //localStorage.setItem('deviceName', this._deviceName);
 
-                // Call stop before you start, just in case something else is running.
-                this.stopScan();
-                this.changeConnectionState(MonitorConnectionState.scanning);
+            this._devices=[];
+            // Save it for next time we use the this.
+            //localStorage.setItem('deviceName', this._deviceName);
 
-                // Only report devices once.
-                //evothings.easyble.reportDeviceOnce(true);
+            // Call stop before you start, just in case something else is running.
+            this.stopScan();
+            this.changeConnectionState(MonitorConnectionState.scanning);
+
+            // Only report s once.
+            //evothings.easyble.reportDeviceOnce(true);
 
 
-                bleat.startScan(
-                    (device) => {
-                        // Do not show un-named devices.
-                        /*var deviceName = device.advertisementData ?
-                         device.advertisementData.kCBAdvDataLocalName : null;
-                         */
-                        if (!device.name) {
-                            return
+            return this.driver.startScan(
+                (device) => {
+                    // Do not show un-named devices.
+                    /*var deviceName = device.advertisementData ?
+                     device.advertisementData.kCBAdvDataLocalName : null;
+                     */
+                    if (!device.name) {
+                        return
+                    }
+
+                    // Print "name : mac address" for every device found.
+                    this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+
+                    // If my device is found connect to it.
+                    //find any thing starting with PM and then a number a space and a serial number
+                    if ( device.name.match(/PM\d \d*/g) ) {
+
+                        this.showInfo('Status: DeviceInfo found: ' + device.name);
+                        var deviceInfo : DeviceInfo={
+                            connected:false,
+                            _internalDevice: device,
+                            name:device.name,
+                            address:device.address,
+                            quality: 2* (device.rssi + 100) };
+                        this.addDevice(deviceInfo);
+                        if ( deviceFound(deviceInfo)) {
+                            this.connectToDevice(deviceInfo.name);
                         }
 
-                        // Print "name : mac address" for every device found.
-                        this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+                    }
+                }
 
-                        // If my device is found connect to it.
-                        //find any thing starting with PM and then a number a space and a serial number
-                        if ( device.name.match(/PM\d \d*/g) ) {
-
-                            this.showInfo('Status: DeviceInfo found: ' + device.name);
-                            var deviceInfo : DeviceInfo={
-                                connected:false,
-                                _internalDevice: device,
-                                name:device.name,
-                                address:device.address,
-                                quality: 2* (device.rssi + 100) };
-                            this.addDevice(deviceInfo);
-                            if ( deviceFound(deviceInfo)) {
-                                this.connectToDevice(deviceInfo.name);
-                            }
-
-                        }
-                    },
-                    this.getErrorHandlerFunc("Error: startScan",errorFn)
-                    );
+            ).then(()=> {
                 this.showInfo('Status: Scanning...');
-            },errorFn);
-
+            }).catch(
+                this.getErrorHandlerFunc("Scan error",errorFn)
+            );
 
         }
+
 
 
         /**
@@ -1054,137 +1003,102 @@ typtyp
          * only call this function after startScan is called. Connection to a device will stop the scan.
          * @param deviceName
          */
-        public connectToDevice(deviceName : string) {
+        public connectToDevice(deviceName : string) : Promise<void> {
             this.showInfo('Status: Connecting...');
             this.stopScan();
             this.changeConnectionState(MonitorConnectionState.connecting);
             var deviceInfo = this.findDevice(deviceName);
             if (!deviceInfo) throw `Device ${deviceName} not found`;
-            this._deviceInfo =deviceInfo;
-            deviceInfo._internalDevice.connect(
-                 ()=> {
+            this._deviceInfo = deviceInfo;
+
+
+            return this.driver.connect(deviceInfo._internalDevice,
+                () => {
+                    this.changeConnectionState(MonitorConnectionState.deviceReady);
+                    this.showInfo('Disconnected');
+                    if (this.autoReConnect) {
+                        this.startScan((device:DeviceInfo)=> {
+                            return device.name == deviceName
+                        });
+                    }
+                }
+                ).then(()=> {
                     this.changeConnectionState(MonitorConnectionState.connected);
-                    this._device = deviceInfo._internalDevice;
                     this.showInfo('Status: Connected');
 
-                     if (this.logLevel>LogLevel.trace)
-                         this.logAllServices(this._device);
-                     this.readPheripheralInfo(()=>{
-                         // Debug logging of all services, characteristics and descriptors
-                         // reported by the BLE board.
-                         this.deviceConnected();
-                     });
-                },
-                () =>{
-                    this.changeConnectionState(MonitorConnectionState.deviceReady);
-                        this.showInfo('Disconnected');
-                        if (this.autoReConnect) {
-                            this.startScan((device : DeviceInfo)=>{
-                                return device.name==deviceName});
-                        }
-                },
-                false,
-                (errorCode)=> {
+                    return this.readPheripheralInfo()
+                }).then( ()=> {
+                    // Debug logging of all services, characteristics and descriptors
+                    // reported by the BLE board.
+                    this.deviceConnected();
+                }).catch((errorCode)=> {
                     this.changeConnectionState(MonitorConnectionState.deviceReady);
                     this.handleError(errorCode);
-
                 });
         }
 
-
         /**
-         *
+         * the promise is never fail
          * @param serviceUUID
          * @param UUID
          * @param readValue
          */
-        protected readStringCharacteristic(serviceUUID : string,UUID : string,readValue : (value : string) =>void ) {
-            try {
-                this.readCharacteristic(serviceUUID,UUID,(data:ArrayBuffer)=>{
-                    readValue( utils.bufferToString(data));
-                },(e)=>{this.handleError(e);readValue("");});
-            }
-            catch(e) {
-                readValue("");
-                this.handleError(e);
-            }
-
+        protected readStringCharacteristic(serviceUUID : string,UUID : string) : Promise<string> {
+            return new Promise<string>((resolve, reject) => {
+                this.driver.readCharacteristic(serviceUUID, UUID).then(
+                    (data:ArrayBuffer)=> {
+                        resolve(utils.bufferToString(data));
+                    },
+                    reject
+                )
+            })
         }
 
         /**
-         *
+         * the promise will never fail
          * @param done
          */
-        protected readSampleRate(done : ()=>void ) {
-            //allways call done, don not let get errors into the way
-            try {
-                this.readCharacteristic(ble.PMROWING_SERVICE,ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC,(data:ArrayBuffer)=>{
+        protected readSampleRate( )  : Promise<void>  {
+            return this.driver.readCharacteristic(ble.PMROWING_SERVICE,ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC)
+                 .then((data:ArrayBuffer)=>{
                     var view = new DataView(data);
                     this._sampleRate= view.getUint8(0);
-                    done();
-                },(e)=>{this.handleError(e);done();});
-            }
-            catch(e) {
-                this.handleError(e);
-                done();
-            }
-
-
+                })
         }
 
         /**
          *
          * @param done
          */
-        protected readPheripheralInfo(done : ()=>void) {
+        protected readPheripheralInfo() :Promise<void> {
+            return new Promise<void>((resolve, reject) => {
+                Promise.all([
 
-            //todo: should implement is a less tricky way. is the readCharacteristic really none blocking?, it not it can be written different
-            this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE,ble.SERIALNUMBER_CHARACTERISTIC, (value : string)=> {
-                    this._deviceInfo.serial=value;
-                    this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE,ble.HWREVISION_CHARACTERISIC, (value : string)=> {
-                        this._deviceInfo.hardwareRevision=value;
-                        this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE,ble.FWREVISION_CHARACTERISIC, (value : string)=> {
-                            this._deviceInfo.firmwareRevision=value;
-                            this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE,ble.MANUFNAME_CHARACTERISIC, (value : string)=> {
-                                this._deviceInfo.manufacturer=value;
-                                this._deviceInfo.connected=true;
-                                this.readSampleRate(()=>{done();})
-                            });
-                        });
-                    });
-                });
-        }
+                    this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE, ble.SERIALNUMBER_CHARACTERISTIC)
+                        .then((value:string)=> {
+                            this._deviceInfo.serial = value;
+                        }),
+                    this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE, ble.HWREVISION_CHARACTERISIC)
+                        .then((value:string)=> {
+                            this._deviceInfo.hardwareRevision = value;
+                        }),
+                    this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE, ble.FWREVISION_CHARACTERISIC)
+                        .then((value:string)=> {
+                            this._deviceInfo.firmwareRevision = value;
+                        }),
+                    this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE, ble.MANUFNAME_CHARACTERISIC)
+                        .then((value:string)=> {
+                            this._deviceInfo.manufacturer = value;
+                            this._deviceInfo.connected = true;
+                        }),
+                    this.readSampleRate()
 
-
-        /**
-         *   Debug logging of found services, characteristics and descriptors.
-         * @param device
-         */
-        protected logAllServices(device) {
-            // Here we simply print found services, characteristics,
-            // and descriptors to the debug console in Evothings Workbench.
-
-            // Notice that the fields prefixed with "__" are arrays that
-            // contain services, characteristics and notifications found
-            // in the call to device.readServices().
-
-            // Print all services.
-            this.traceInfo('Found services:');
-            var self=this;
-            Object.keys(this._device.services).forEach(function(serviceID) {
-                var service = device.services[serviceID];
-                self.traceInfo("\nservice: " + service.uuid);
-
-                Object.keys(service.characteristics).forEach(function(characteristicID) {
-                    var characteristic = service.characteristics[characteristicID];
-                    self.traceInfo("\t└characteristic: " + characteristic.uuid+" "+characteristicID);
-
-                    Object.keys(characteristic.descriptors).forEach(function(descriptorID) {
-                        var descriptor = characteristic.descriptors[descriptorID];
-                        self.traceInfo("\t\t└descriptor: " + descriptor.uuid);
-                    });
-                });
+                ]).then(
+                    ()=>{resolve()},
+                    (e)=>{this.handleError(e); resolve(e)}); //log erro let not get this into the way of connecting
             });
+
+
 
         }
 
@@ -1521,9 +1435,6 @@ typtyp
         protected deviceConnected() {
             this.debugInfo("readServices success");
 
-            // Debug logging of all services, characteristics and descriptors
-            // reported by the BLE board.
-            this.logAllServices(this._device);
 
             this.debugInfo('Status: notifications are activated');
             //handle to the notification
@@ -1634,85 +1545,71 @@ typtyp
          * @param error
          * @returns {Promise<any>|Promise} use promis instead of success and error function
          */
-        public sendCSafeBuffer(success? : ()=>void,error? : ErrorHandler) : Promise<void>{
-            return new  Promise<any>((resolve, reject) => {
-                try {
-                    this.removeOldSendCommands();
-                    //prepare the array to be send
-                    var rawCommandBuffer = this.csafeBuffer.rawCommands;
-                    var commandArray : number[] = [];
-                    rawCommandBuffer.forEach((command : IRawCommand)=>{
+        public sendCSafeBuffer() : Promise<void>{
+            this.removeOldSendCommands();
+            //prepare the array to be send
+            var rawCommandBuffer = this.csafeBuffer.rawCommands;
+            var commandArray : number[] = [];
+            rawCommandBuffer.forEach((command : IRawCommand)=>{
 
-                        commandArray.push(command.command);
-                        if (command.command>= csafe.defs.CTRL_CMD_SHORT_MIN)  {
-                            //it is an short command
-                            if (command.detailCommand|| command.data) {
-                                throw "short commands can not contain data or a detail command"
-                            }
-                        }
-                        else {
-                            if (command.detailCommand) {
-                                var dataLength=1;
-                                if (command.data  && command.data.length>0)
-                                    dataLength=dataLength+command.data.length+1;
-                                commandArray.push(dataLength); //length for the short command
-                                //the detail command
-                                commandArray.push(command.detailCommand);
-                            }
-                            //the data
-                            if (command.data && command.data.length>0) {
-                                commandArray.push(command.data.length);
-                                commandArray=commandArray.concat(command.data);
-                            }
-                        }
-
-
-
-                    });
-                    this.csafeBuffer.clear();
-                    //send all the csafe commands in one go
-                    this.sendCsafeCommands(commandArray,()=>{
-                        rawCommandBuffer.forEach((command : IRawCommand)=> {
-                            command._timestamp = new Date().getTime();
-                            if (command.waitForResponse)
-                                this._waitResponseCommands.push(command);
-                            if (success) success();
-                            resolve();
-                        })
-                    },(e)=>{
-                        rawCommandBuffer.forEach((command : IRawCommand)=>{
-                            if (command.onError) command.onError(e);
-                            this.handleError(e,error);
-                            reject(e);
-                        })
-                    });
+                commandArray.push(command.command);
+                if (command.command>= csafe.defs.CTRL_CMD_SHORT_MIN)  {
+                    //it is an short command
+                    if (command.detailCommand|| command.data) {
+                        throw "short commands can not contain data or a detail command"
+                    }
                 }
-                catch (e) {;
-                    this.handleError(e,error);
-                    reject(e);
+                else {
+                    if (command.detailCommand) {
+                        var dataLength=1;
+                        if (command.data  && command.data.length>0)
+                            dataLength=dataLength+command.data.length+1;
+                        commandArray.push(dataLength); //length for the short command
+                        //the detail command
+                        commandArray.push(command.detailCommand);
+                    }
+                    //the data
+                    if (command.data && command.data.length>0) {
+                        commandArray.push(command.data.length);
+                        commandArray=commandArray.concat(command.data);
+                    }
                 }
 
             });
-
+            this.csafeBuffer.clear();
+            //send all the csafe commands in one go
+            return this.sendCsafeCommands(commandArray)
+               .then(()=>{
+                rawCommandBuffer.forEach((command : IRawCommand)=> {
+                    command._timestamp = new Date().getTime();
+                    if (command.waitForResponse)
+                        this._waitResponseCommands.push(command);
+                })
+                },(e)=>{
+                        rawCommandBuffer.forEach((command : IRawCommand)=>{
+                        if (command.onError) command.onError(e);
+                        })
+                    }
+               );
         }
 
-        protected sendCsafeCommands(byteArray : number[], send : ()=>void, error : ErrorHandler) {
 
-            //is there anything to send?
-            if (byteArray && byteArray.length>0 ) {
-                //calc the checksum of the data to be send
-                var checksum =0;
-                for (let i=0;i<byteArray.length;i++) checksum=checksum ^ byteArray[i];
-                //prepare all the data to be send in one array
-                //begin with a start byte ad end with a checksum and an end byte
-                var bytesToSend : number[] =
-                    ([csafe.defs.FRAME_START_BYTE].concat(byteArray)).concat([checksum,csafe.defs.FRAME_END_BYTE]);
+        protected sendCsafeCommands(byteArray : number[]) : Promise<void> {
+            return new Promise<void>((resolve, reject) => {
+                //is there anything to send?
+                if (byteArray && byteArray.length>0 ) {
+                    //calc the checksum of the data to be send
+                    var checksum =0;
+                    for (let i=0;i<byteArray.length;i++) checksum=checksum ^ byteArray[i];
+                    //prepare all the data to be send in one array
+                    //begin with a start byte ad end with a checksum and an end byte
+                    var bytesToSend : number[] =
+                        ([csafe.defs.FRAME_START_BYTE].concat(byteArray)).concat([checksum,csafe.defs.FRAME_END_BYTE]);
 
-                //send in packages of max 20 bytes (ble.PACKET_SIZE)
-                var sendBytesIndex=0;
-                //continue while not all bytes are send
-                while (sendBytesIndex<bytesToSend.length) {
-                    try {
+                    //send in packages of max 20 bytes (ble.PACKET_SIZE)
+                    var sendBytesIndex=0;
+                    //continue while not all bytes are send
+                    while (sendBytesIndex<bytesToSend.length) {
                         //prepare a buffer with the data which can be send in one packet
                         var bufferLength = Math.min(ble.PACKET_SIZE,bytesToSend.length-sendBytesIndex);
                         var buffer = new ArrayBuffer(bufferLength); //start and end and
@@ -1725,21 +1622,18 @@ typtyp
                             bufferIndex++;
                         }
                         this.traceInfo("send csafe: "+utils.typedArrayToHexString(buffer));
-                        this.writeCharacteristic(ble.PMCONTROL_SERVICE,ble.TRANSMIT_TO_PM_CHARACTERISIC,dataView,
-                            ()=>{
-                                this.traceInfo("csafe command send");
-                                if(send) send();
-                                // this.singleRead(receive )
-                            },
-                            this.getErrorHandlerFunc(""));
+                        this.driver.writeCharacteristic(ble.PMCONTROL_SERVICE,ble.TRANSMIT_TO_PM_CHARACTERISIC,dataView)
+                            .then(
+                                ()=>{
+                                    this.traceInfo("csafe command send");
+                                    if (sendBytesIndex>=bytesToSend.length) resolve();
+                                })
+                            .catch( (e)=> { reject(e);});
                     }
-                    catch(e) {
-                        this.handleError(e,error);
-                    }
+
                 }
-
-            }
-
+                else resolve();
+            })
         }
 
 
@@ -1775,7 +1669,7 @@ typtyp
 
             var calcCheck=0;
             this.traceInfo("enable notifications csafe");
-            this.enableNotification(ble.PMCONTROL_SERVICE,ble.RECEIVE_FROM_PM_CHARACTERISIC,
+            this.driver.enableNotification(ble.PMCONTROL_SERVICE,ble.RECEIVE_FROM_PM_CHARACTERISIC,
                 (data:ArrayBuffer) => {
                     var dataView = new DataView(data);
                     //skipp empty 0 ble blocks
@@ -1894,9 +1788,8 @@ typtyp
                     }
 
 
-                },
-                ()=>{},
-                this.getErrorHandlerFunc(""));
+                }
+            ).catch(this.getErrorHandlerFunc(""));
         }
 
         get csafeBuffer():ergometer.csafe.IBuffer {
@@ -1909,7 +1802,7 @@ typtyp
                         return this.csafeBuffer;
                     },
                     send: (sucess? : ()=>void,error? : ErrorHandler) : Promise<void> => {
-                        return this.sendCSafeBuffer(sucess,error);
+                        return this.sendCSafeBuffer().then(sucess,error);
                     },
                     addRawCommand: (info:csafe.IRawCommand):csafe.IBuffer=> {
                         this.csafeBuffer.rawCommands.push(info);

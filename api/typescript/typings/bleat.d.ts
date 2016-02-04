@@ -13,8 +13,8 @@ declare module bleat {
     export var onError : (msg : string)=>void;
     export function init(readyFn: EmptyCallback, errorFn : ErrorFunc, adapterName?: string);
     export interface FoundFunc { (device : Device) : void }
-    export function startScan(serviceUUIDs :string | FoundFunc , foundFn? : FoundFunc);
-    export function stopScan();
+    export function startScan(serviceUUIDs :string | FoundFunc , foundFn? : FoundFunc,errorFn? : ErrorFunc);
+    export function stopScan(errorFn? : ErrorFunc);
 
 
     export interface Services {
@@ -44,7 +44,7 @@ declare module bleat {
         //properties = properties;
         descriptors : Descriptors;
         read(completeFn : (data : ArrayBuffer)=>void,errorFn? : ErrorFunc);
-        write(bufferView, completeFn :(data : ArrayBufferView)=>void,errorFn? : ErrorFunc);
+        write(bufferView, completeFn :EmptyCallback,errorFn? : ErrorFunc);
         enableNotify(notifyFn : (data : ArrayBuffer)=>void, completeFn? :EmptyCallback,errorFn? : ErrorFunc);
         disableNotify(completeFn,errorFn? :ErrorFunc );
     }

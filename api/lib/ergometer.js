@@ -257,6 +257,161 @@ var ergometer;
     })(pubSub = ergometer.pubSub || (ergometer.pubSub = {}));
 })(ergometer || (ergometer = {}));
 /**
+ * Created by tijmen on 01-02-16.
+ */
+var ergometer;
+(function (ergometer) {
+    var ble;
+    (function (ble) {
+        var DriverBleat = (function () {
+            function DriverBleat() {
+                this._initialized = false;
+            }
+            //simple wrapper for bleat characteristic functions
+            DriverBleat.prototype.getCharacteristic = function (serviceUid, characteristicUid) {
+                var service = this._device.services[serviceUid];
+                if (service) {
+                    var found = service.characteristics[characteristicUid];
+                    if (found)
+                        return found;
+                    else
+                        throw "characteristics " + characteristicUid + " not found in service " + serviceUid;
+                }
+                else
+                    throw "service " + serviceUid + " not found";
+            };
+            DriverBleat.prototype.connect = function (device, disconnectFn) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        var newDevice = device._internalDevice;
+                        newDevice.connect(function () {
+                            _this._device = newDevice;
+                            resolve();
+                        }, disconnectFn, false, reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverBleat.prototype.disconnect = function () {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        if (_this._device)
+                            _this._device.disconnect();
+                        else
+                            reject("Device not connected");
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverBleat.prototype.init = function () {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        if (_this._initialized)
+                            resolve();
+                        else {
+                            bleat.init(function () {
+                                resolve();
+                                _this._initialized = true;
+                            }, reject);
+                        }
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverBleat.prototype.startScan = function (foundFn) {
+                return this.init()
+                    .then(function () {
+                    return new Promise(function (resolve, reject) {
+                        try {
+                            bleat.startScan(function (device) {
+                                foundFn({
+                                    address: device.address,
+                                    name: device.name,
+                                    rssi: device.rssi,
+                                    _internalDevice: device
+                                });
+                            }, reject);
+                            resolve();
+                        }
+                        catch (e) {
+                            reject(e);
+                        }
+                    });
+                });
+            };
+            DriverBleat.prototype.stopScan = function () {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        if (_this._initialized)
+                            bleat.stopScan(reject);
+                        resolve();
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverBleat.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        _this.getCharacteristic(serviceUIID, characteristicUUID).write(data, resolve, reject);
+                        resolve();
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverBleat.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        _this.getCharacteristic(serviceUIID, characteristicUUID).read(resolve, reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverBleat.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        _this.getCharacteristic(serviceUIID, characteristicUUID).enableNotify(receive, resolve, reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverBleat.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        _this.getCharacteristic(serviceUIID, characteristicUUID).disableNotify(resolve, reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            return DriverBleat;
+        })();
+        ble.DriverBleat = DriverBleat;
+    })(ble = ergometer.ble || (ergometer.ble = {}));
+})(ergometer || (ergometer = {}));
+/**
  * Created by tijmen on 16-01-16.
  */
 /** @internal */
@@ -701,31 +856,13 @@ var ergometer;
             this._generalStatusEventAttachedByPowerCurve = false;
             this.initialize();
         }
-        //simple wrapper for bleat characteristic functions
-        PerformanceMonitor.prototype.getCharacteristic = function (serviceUid, characteristicUid) {
-            var service = this._device.services[serviceUid];
-            if (service) {
-                var found = service.characteristics[characteristicUid];
-                if (found)
-                    return found;
-                else
-                    throw "characteristics " + characteristicUid + " not found in service " + serviceUid;
-            }
-            else
-                throw "service " + serviceUid + " not found";
-        };
-        PerformanceMonitor.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data, success, fail) {
-            this.getCharacteristic(serviceUIID, characteristicUUID).write(data, success, fail);
-        };
-        PerformanceMonitor.prototype.readCharacteristic = function (serviceUIID, characteristicUUID, success, fail) {
-            this.getCharacteristic(serviceUIID, characteristicUUID).read(success, fail);
-        };
-        PerformanceMonitor.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive, success, fail) {
-            this.getCharacteristic(serviceUIID, characteristicUUID).enableNotify(receive, success, fail);
-        };
-        PerformanceMonitor.prototype.disableNotification = function (serviceUIID, characteristicUUID, success, fail) {
-            this.getCharacteristic(serviceUIID, characteristicUUID).disableNotify(success, fail);
-        };
+        Object.defineProperty(PerformanceMonitor.prototype, "driver", {
+            get: function () {
+                return this._driver;
+            },
+            enumerable: true,
+            configurable: true
+        });
         Object.defineProperty(PerformanceMonitor.prototype, "logLevel", {
             /**
              * By default it the logEvent will return errors if you want more debug change the log level
@@ -1121,14 +1258,12 @@ var ergometer;
             set: function (value) {
                 var _this = this;
                 if (value != this._sampleRate) {
-                    try {
-                        var dataView = new DataView(new ArrayBuffer(1));
-                        dataView.setUint8(0, value);
-                        this.writeCharacteristic(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC, dataView, function () { _this._sampleRate = value; }, this.getErrorHandlerFunc("Can not set sample rate"));
-                    }
-                    catch (e) {
-                        this.handleError(e);
-                    }
+                    var dataView = new DataView(new ArrayBuffer(1));
+                    dataView.setUint8(0, value);
+                    this.driver.writeCharacteristic(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC, dataView)
+                        .then(function () {
+                        _this._sampleRate = value;
+                    }, this.getErrorHandlerFunc("Can not set sample rate"));
                 }
             },
             enumerable: true,
@@ -1139,8 +1274,7 @@ var ergometer;
          */
         PerformanceMonitor.prototype.disconnect = function () {
             if (this.connectionState >= MonitorConnectionState.deviceReady) {
-                if (this._device)
-                    this._device.disconnect();
+                this.driver.disconnect().catch(this.getErrorHandlerFunc("Can not disconnect"));
                 this.connectionState = MonitorConnectionState.deviceReady;
             }
         };
@@ -1172,7 +1306,8 @@ var ergometer;
         PerformanceMonitor.prototype.enableMultiplexNotification = function () {
             var _this = this;
             if (this._multiplexSubscribeCount == 0)
-                this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC, function (data) { _this.handleDataCallbackMulti(data); }, function () { }, this.getErrorHandlerFunc("Can not enable multiplex"));
+                this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC, function (data) { _this.handleDataCallbackMulti(data); })
+                    .catch(this.getErrorHandlerFunc("Can not enable multiplex"));
             this._multiplexSubscribeCount++;
         };
         /**
@@ -1181,8 +1316,8 @@ var ergometer;
         PerformanceMonitor.prototype.disableMultiPlexNotification = function () {
             this._multiplexSubscribeCount--;
             if (this._multiplexSubscribeCount == 0)
-                this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC, function () {
-                }, this.getErrorHandlerFunc("can not disable multiplex"));
+                this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC)
+                    .catch(this.getErrorHandlerFunc("can not disable multiplex"));
         };
         /**
          *
@@ -1195,153 +1330,153 @@ var ergometer;
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_CHARACTERISIC, function (data) {
+                        this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingGeneralStatus);
-                        }, function () { }, this.getErrorHandlerFunc(""));
+                        }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex)
                         this.disableMultiPlexNotification();
                     else
-                        this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_CHARACTERISIC, function () {
-                        }, this.getErrorHandlerFunc(""));
+                        this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_CHARACTERISIC)
+                            .catch(this.getErrorHandlerFunc(""));
                 }
                 if (this.rowingAdditionalStatus1Event.count > 0) {
                     if (this.multiplex) {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS1_CHARACTERISIC, function (data) {
+                        this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS1_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingAdditionalStatus1);
-                        }, function () { }, this.getErrorHandlerFunc(""));
+                        }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex)
                         this.disableMultiPlexNotification();
                     else
-                        this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS1_CHARACTERISIC, function () {
-                        }, this.getErrorHandlerFunc(""));
+                        this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS1_CHARACTERISIC)
+                            .catch(this.getErrorHandlerFunc(""));
                 }
                 if (this.rowingAdditionalStatus2Event.count > 0) {
                     if (this.multiplex) {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS2_CHARACTERISIC, function (data) {
+                        this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS2_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingAdditionalStatus2);
-                        }, function () { }, this.getErrorHandlerFunc(""));
+                        }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex)
                         this.disableMultiPlexNotification();
                     else
-                        this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS2_CHARACTERISIC, function () {
-                        }, this.getErrorHandlerFunc(""));
+                        this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS2_CHARACTERISIC)
+                            .catch(this.getErrorHandlerFunc(""));
                 }
                 if (this.rowingStrokeDataEvent.count > 0) {
                     if (this.multiplex) {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.STROKE_DATA_CHARACTERISIC, function (data) {
+                        this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.STROKE_DATA_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingStrokeData);
-                        }, function () { }, this.getErrorHandlerFunc(""));
+                        }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex)
                         this.disableMultiPlexNotification();
                     else
-                        this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.STROKE_DATA_CHARACTERISIC, function () {
-                        }, this.getErrorHandlerFunc(""));
+                        this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.STROKE_DATA_CHARACTERISIC)
+                            .catch(this.getErrorHandlerFunc(""));
                 }
                 if (this.rowingAdditionalStrokeDataEvent.count > 0) {
                     if (this.multiplex) {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STROKE_DATA_CHARACTERISIC, function (data) {
+                        this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STROKE_DATA_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingAdditionalStrokeData);
-                        }, function () { }, this.getErrorHandlerFunc(""));
+                        }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex)
                         this.disableMultiPlexNotification();
                     else
-                        this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STROKE_DATA_CHARACTERISIC, function () {
-                        }, this.getErrorHandlerFunc(""));
+                        this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STROKE_DATA_CHARACTERISIC)
+                            .catch(this.getErrorHandlerFunc(""));
                 }
                 if (this.rowingSplitIntervalDataEvent.count > 0) {
                     if (this.multiplex) {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.SPLIT_INTERVAL_DATA_CHARACTERISIC, function (data) {
+                        this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.SPLIT_INTERVAL_DATA_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingSplitIntervalData);
-                        }, function () { }, this.getErrorHandlerFunc(""));
+                        }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex)
                         this.disableMultiPlexNotification();
                     else
-                        this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.SPLIT_INTERVAL_DATA_CHARACTERISIC, function () {
-                        }, this.getErrorHandlerFunc(""));
+                        this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.SPLIT_INTERVAL_DATA_CHARACTERISIC)
+                            .catch(this.getErrorHandlerFunc(""));
                 }
                 if (this.rowingAdditionalSplitIntervalDataEvent.count > 0) {
                     if (this.multiplex) {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC, function (data) {
+                        this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingAdditionalSplitIntervalData);
-                        }, function () { }, this.getErrorHandlerFunc(""));
+                        }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex)
                         this.disableMultiPlexNotification();
                     else
-                        this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC, function () {
-                        }, this.getErrorHandlerFunc(""));
+                        this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC)
+                            .catch(this.getErrorHandlerFunc(""));
                 }
                 if (this.workoutSummaryDataEvent.count > 0) {
                     if (this.multiplex) {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_SUMMARY_CHARACTERISIC, function (data) {
+                        this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_SUMMARY_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleWorkoutSummaryData);
-                        }, function () { }, this.getErrorHandlerFunc(""));
+                        }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex)
                         this.disableMultiPlexNotification();
                     else
-                        this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_SUMMARY_CHARACTERISIC, function () {
-                        }, this.getErrorHandlerFunc(""));
+                        this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_SUMMARY_CHARACTERISIC)
+                            .catch(this.getErrorHandlerFunc(""));
                 }
                 if (this.additionalWorkoutSummaryDataEvent.count > 0) {
                     if (this.multiplex) {
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC, function (data) {
+                        this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleAdditionalWorkoutSummaryData);
-                        }, function () { }, this.getErrorHandlerFunc(""));
+                        }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex)
                         this.disableMultiPlexNotification();
                     else
-                        this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC, function () {
-                        }, this.getErrorHandlerFunc(""));
+                        this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC)
+                            .catch(this.getErrorHandlerFunc(""));
                 }
                 if (this.additionalWorkoutSummaryData2Event.count > 0) {
                     if (this.multiplex) {
@@ -1357,17 +1492,17 @@ var ergometer;
                         this.enableMultiplexNotification();
                     }
                     else {
-                        this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.HEART_RATE_BELT_INFO_CHARACTERISIC, function (data) {
+                        this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.HEART_RATE_BELT_INFO_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleHeartRateBeltInformation);
-                        }, function () { }, this.getErrorHandlerFunc(""));
+                        }).catch(this.getErrorHandlerFunc(""));
                     }
                 }
                 else {
                     if (this.multiplex)
                         this.disableMultiPlexNotification();
                     else
-                        this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.HEART_RATE_BELT_INFO_CHARACTERISIC, function () {
-                        }, this.getErrorHandlerFunc(""));
+                        this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.HEART_RATE_BELT_INFO_CHARACTERISIC)
+                            .catch(this.getErrorHandlerFunc(""));
                 }
                 if (this.powerCurveEvent.count > 0) {
                     //when the status changes collect the power info
@@ -1407,13 +1542,14 @@ var ergometer;
          *
          */
         PerformanceMonitor.prototype.initialize = function () {
+            var _this = this;
             /*document.addEventListener(
                 'deviceready',
                  ()=> {
                      evothings.scriptsLoaded(()=>{
                          this.onDeviceReady();})},
                 false);   */
-            var _this = this;
+            this._driver = new ergometer.ble.DriverBleat();
             var enableDisableFunc = function () { _this.enableDisableNotification(); };
             this._rowingGeneralStatusEvent = new ergometer.pubSub.Event();
             this.rowingGeneralStatusEvent.registerChangedEvent(enableDisableFunc);
@@ -1490,7 +1626,6 @@ var ergometer;
          * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
          * @param errorDescription
          * @param errorFn
-         * @returns {function(any): void}
          */
         PerformanceMonitor.prototype.getErrorHandlerFunc = function (errorDescription, errorFn) {
             var _this = this;
@@ -1535,11 +1670,8 @@ var ergometer;
          */
         PerformanceMonitor.prototype.stopScan = function () {
             if (this.connectionState == MonitorConnectionState.scanning) {
-                bleat.stopScan();
+                this.driver.stopScan();
             }
-        };
-        PerformanceMonitor.prototype.ensureInitialized = function (success, error) {
-            bleat.init(success, this.getErrorHandlerFunc("Log blue tooth Status:", error));
         };
         /**
          * Scan for device use the deviceFound to connect .
@@ -1547,43 +1679,42 @@ var ergometer;
          */
         PerformanceMonitor.prototype.startScan = function (deviceFound, errorFn) {
             var _this = this;
-            this.ensureInitialized(function () {
-                _this._devices = [];
-                // Save it for next time we use the this.
-                //localStorage.setItem('deviceName', this._deviceName);
-                // Call stop before you start, just in case something else is running.
-                _this.stopScan();
-                _this.changeConnectionState(MonitorConnectionState.scanning);
-                // Only report devices once.
-                //evothings.easyble.reportDeviceOnce(true);
-                bleat.startScan(function (device) {
-                    // Do not show un-named devices.
-                    /*var deviceName = device.advertisementData ?
-                     device.advertisementData.kCBAdvDataLocalName : null;
-                     */
-                    if (!device.name) {
-                        return;
+            this._devices = [];
+            // Save it for next time we use the this.
+            //localStorage.setItem('deviceName', this._deviceName);
+            // Call stop before you start, just in case something else is running.
+            this.stopScan();
+            this.changeConnectionState(MonitorConnectionState.scanning);
+            // Only report s once.
+            //evothings.easyble.reportDeviceOnce(true);
+            return this.driver.startScan(function (device) {
+                // Do not show un-named devices.
+                /*var deviceName = device.advertisementData ?
+                 device.advertisementData.kCBAdvDataLocalName : null;
+                 */
+                if (!device.name) {
+                    return;
+                }
+                // Print "name : mac address" for every device found.
+                _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+                // If my device is found connect to it.
+                //find any thing starting with PM and then a number a space and a serial number
+                if (device.name.match(/PM\d \d*/g)) {
+                    _this.showInfo('Status: DeviceInfo found: ' + device.name);
+                    var deviceInfo = {
+                        connected: false,
+                        _internalDevice: device,
+                        name: device.name,
+                        address: device.address,
+                        quality: 2 * (device.rssi + 100) };
+                    _this.addDevice(deviceInfo);
+                    if (deviceFound(deviceInfo)) {
+                        _this.connectToDevice(deviceInfo.name);
                     }
-                    // Print "name : mac address" for every device found.
-                    _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
-                    // If my device is found connect to it.
-                    //find any thing starting with PM and then a number a space and a serial number
-                    if (device.name.match(/PM\d \d*/g)) {
-                        _this.showInfo('Status: DeviceInfo found: ' + device.name);
-                        var deviceInfo = {
-                            connected: false,
-                            _internalDevice: device,
-                            name: device.name,
-                            address: device.address,
-                            quality: 2 * (device.rssi + 100) };
-                        _this.addDevice(deviceInfo);
-                        if (deviceFound(deviceInfo)) {
-                            _this.connectToDevice(deviceInfo.name);
-                        }
-                    }
-                }, _this.getErrorHandlerFunc("Error: startScan", errorFn));
+                }
+            }).then(function () {
                 _this.showInfo('Status: Scanning...');
-            }, errorFn);
+            }).catch(this.getErrorHandlerFunc("Scan error", errorFn));
         };
         /**
          * connect to a specific device. This should be a PM5 device which is found by the startScan. You can
@@ -1599,18 +1730,7 @@ var ergometer;
             if (!deviceInfo)
                 throw "Device " + deviceName + " not found";
             this._deviceInfo = deviceInfo;
-            deviceInfo._internalDevice.connect(function () {
-                _this.changeConnectionState(MonitorConnectionState.connected);
-                _this._device = deviceInfo._internalDevice;
-                _this.showInfo('Status: Connected');
-                if (_this.logLevel > LogLevel.trace)
-                    _this.logAllServices(_this._device);
-                _this.readPheripheralInfo(function () {
-                    // Debug logging of all services, characteristics and descriptors
-                    // reported by the BLE board.
-                    _this.deviceConnected();
-                });
-            }, function () {
+            return this.driver.connect(deviceInfo._internalDevice, function () {
                 _this.changeConnectionState(MonitorConnectionState.deviceReady);
                 _this.showInfo('Disconnected');
                 if (_this.autoReConnect) {
@@ -1618,94 +1738,72 @@ var ergometer;
                         return device.name == deviceName;
                     });
                 }
-            }, false, function (errorCode) {
+            }).then(function () {
+                _this.changeConnectionState(MonitorConnectionState.connected);
+                _this.showInfo('Status: Connected');
+                return _this.readPheripheralInfo();
+            }).then(function () {
+                // Debug logging of all services, characteristics and descriptors
+                // reported by the BLE board.
+                _this.deviceConnected();
+            }).catch(function (errorCode) {
                 _this.changeConnectionState(MonitorConnectionState.deviceReady);
                 _this.handleError(errorCode);
             });
         };
         /**
-         *
+         * the promise is never fail
          * @param serviceUUID
          * @param UUID
          * @param readValue
          */
-        PerformanceMonitor.prototype.readStringCharacteristic = function (serviceUUID, UUID, readValue) {
+        PerformanceMonitor.prototype.readStringCharacteristic = function (serviceUUID, UUID) {
             var _this = this;
-            try {
-                this.readCharacteristic(serviceUUID, UUID, function (data) {
-                    readValue(ergometer.utils.bufferToString(data));
-                }, function (e) { _this.handleError(e); readValue(""); });
-            }
-            catch (e) {
-                readValue("");
-                this.handleError(e);
-            }
-        };
-        /**
-         *
-         * @param done
-         */
-        PerformanceMonitor.prototype.readSampleRate = function (done) {
-            var _this = this;
-            //allways call done, don not let get errors into the way
-            try {
-                this.readCharacteristic(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC, function (data) {
-                    var view = new DataView(data);
-                    _this._sampleRate = view.getUint8(0);
-                    done();
-                }, function (e) { _this.handleError(e); done(); });
-            }
-            catch (e) {
-                this.handleError(e);
-                done();
-            }
-        };
-        /**
-         *
-         * @param done
-         */
-        PerformanceMonitor.prototype.readPheripheralInfo = function (done) {
-            var _this = this;
-            //todo: should implement is a less tricky way. is the readCharacteristic really none blocking?, it not it can be written different
-            this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.SERIALNUMBER_CHARACTERISTIC, function (value) {
-                _this._deviceInfo.serial = value;
-                _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.HWREVISION_CHARACTERISIC, function (value) {
-                    _this._deviceInfo.hardwareRevision = value;
-                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.FWREVISION_CHARACTERISIC, function (value) {
-                        _this._deviceInfo.firmwareRevision = value;
-                        _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.MANUFNAME_CHARACTERISIC, function (value) {
-                            _this._deviceInfo.manufacturer = value;
-                            _this._deviceInfo.connected = true;
-                            _this.readSampleRate(function () { done(); });
-                        });
-                    });
-                });
+            return new Promise(function (resolve, reject) {
+                _this.driver.readCharacteristic(serviceUUID, UUID).then(function (data) {
+                    resolve(ergometer.utils.bufferToString(data));
+                }, reject);
             });
         };
         /**
-         *   Debug logging of found services, characteristics and descriptors.
-         * @param device
+         * the promise will never fail
+         * @param done
          */
-        PerformanceMonitor.prototype.logAllServices = function (device) {
-            // Here we simply print found services, characteristics,
-            // and descriptors to the debug console in Evothings Workbench.
-            // Notice that the fields prefixed with "__" are arrays that
-            // contain services, characteristics and notifications found
-            // in the call to device.readServices().
-            // Print all services.
-            this.traceInfo('Found services:');
-            var self = this;
-            Object.keys(this._device.services).forEach(function (serviceID) {
-                var service = device.services[serviceID];
-                self.traceInfo("\nservice: " + service.uuid);
-                Object.keys(service.characteristics).forEach(function (characteristicID) {
-                    var characteristic = service.characteristics[characteristicID];
-                    self.traceInfo("\t└characteristic: " + characteristic.uuid + " " + characteristicID);
-                    Object.keys(characteristic.descriptors).forEach(function (descriptorID) {
-                        var descriptor = characteristic.descriptors[descriptorID];
-                        self.traceInfo("\t\t└descriptor: " + descriptor.uuid);
-                    });
-                });
+        PerformanceMonitor.prototype.readSampleRate = function () {
+            var _this = this;
+            return this.driver.readCharacteristic(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC)
+                .then(function (data) {
+                var view = new DataView(data);
+                _this._sampleRate = view.getUint8(0);
+            });
+        };
+        /**
+         *
+         * @param done
+         */
+        PerformanceMonitor.prototype.readPheripheralInfo = function () {
+            var _this = this;
+            return new Promise(function (resolve, reject) {
+                Promise.all([
+                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.SERIALNUMBER_CHARACTERISTIC)
+                        .then(function (value) {
+                        _this._deviceInfo.serial = value;
+                    }),
+                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.HWREVISION_CHARACTERISIC)
+                        .then(function (value) {
+                        _this._deviceInfo.hardwareRevision = value;
+                    }),
+                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.FWREVISION_CHARACTERISIC)
+                        .then(function (value) {
+                        _this._deviceInfo.firmwareRevision = value;
+                    }),
+                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.MANUFNAME_CHARACTERISIC)
+                        .then(function (value) {
+                        _this._deviceInfo.manufacturer = value;
+                        _this._deviceInfo.connected = true;
+                    }),
+                    _this.readSampleRate()
+                ]).then(function () { resolve(); }, function (e) { _this.handleError(e); resolve(e); }); //log erro let not get this into the way of connecting
             });
         };
         /**
@@ -2002,9 +2100,6 @@ var ergometer;
          */
         PerformanceMonitor.prototype.deviceConnected = function () {
             this.debugInfo("readServices success");
-            // Debug logging of all services, characteristics and descriptors
-            // reported by the BLE board.
-            this.logAllServices(this._device);
             this.debugInfo('Status: notifications are activated');
             //handle to the notification
             this.changeConnectionState(MonitorConnectionState.servicesFound);
@@ -2116,81 +2211,68 @@ var ergometer;
          * @param error
          * @returns {Promise<any>|Promise} use promis instead of success and error function
          */
-        PerformanceMonitor.prototype.sendCSafeBuffer = function (success, error) {
+        PerformanceMonitor.prototype.sendCSafeBuffer = function () {
             var _this = this;
-            return new Promise(function (resolve, reject) {
-                try {
-                    _this.removeOldSendCommands();
-                    //prepare the array to be send
-                    var rawCommandBuffer = _this.csafeBuffer.rawCommands;
-                    var commandArray = [];
-                    rawCommandBuffer.forEach(function (command) {
-                        commandArray.push(command.command);
-                        if (command.command >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN) {
-                            //it is an short command
-                            if (command.detailCommand || command.data) {
-                                throw "short commands can not contain data or a detail command";
-                            }
-                        }
-                        else {
-                            if (command.detailCommand) {
-                                var dataLength = 1;
-                                if (command.data && command.data.length > 0)
-                                    dataLength = dataLength + command.data.length + 1;
-                                commandArray.push(dataLength); //length for the short command
-                                //the detail command
-                                commandArray.push(command.detailCommand);
-                            }
-                            //the data
-                            if (command.data && command.data.length > 0) {
-                                commandArray.push(command.data.length);
-                                commandArray = commandArray.concat(command.data);
-                            }
-                        }
-                    });
-                    _this.csafeBuffer.clear();
-                    //send all the csafe commands in one go
-                    _this.sendCsafeCommands(commandArray, function () {
-                        rawCommandBuffer.forEach(function (command) {
-                            command._timestamp = new Date().getTime();
-                            if (command.waitForResponse)
-                                _this._waitResponseCommands.push(command);
-                            if (success)
-                                success();
-                            resolve();
-                        });
-                    }, function (e) {
-                        rawCommandBuffer.forEach(function (command) {
-                            if (command.onError)
-                                command.onError(e);
-                            _this.handleError(e, error);
-                            reject(e);
-                        });
-                    });
+            this.removeOldSendCommands();
+            //prepare the array to be send
+            var rawCommandBuffer = this.csafeBuffer.rawCommands;
+            var commandArray = [];
+            rawCommandBuffer.forEach(function (command) {
+                commandArray.push(command.command);
+                if (command.command >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN) {
+                    //it is an short command
+                    if (command.detailCommand || command.data) {
+                        throw "short commands can not contain data or a detail command";
+                    }
                 }
-                catch (e) {
-                    ;
-                    _this.handleError(e, error);
-                    reject(e);
+                else {
+                    if (command.detailCommand) {
+                        var dataLength = 1;
+                        if (command.data && command.data.length > 0)
+                            dataLength = dataLength + command.data.length + 1;
+                        commandArray.push(dataLength); //length for the short command
+                        //the detail command
+                        commandArray.push(command.detailCommand);
+                    }
+                    //the data
+                    if (command.data && command.data.length > 0) {
+                        commandArray.push(command.data.length);
+                        commandArray = commandArray.concat(command.data);
+                    }
                 }
             });
+            this.csafeBuffer.clear();
+            //send all the csafe commands in one go
+            return this.sendCsafeCommands(commandArray)
+                .then(function () {
+                rawCommandBuffer.forEach(function (command) {
+                    command._timestamp = new Date().getTime();
+                    if (command.waitForResponse)
+                        _this._waitResponseCommands.push(command);
+                });
+            }, function (e) {
+                rawCommandBuffer.forEach(function (command) {
+                    if (command.onError)
+                        command.onError(e);
+                });
+            });
         };
-        PerformanceMonitor.prototype.sendCsafeCommands = function (byteArray, send, error) {
+        PerformanceMonitor.prototype.sendCsafeCommands = function (byteArray) {
             var _this = this;
-            //is there anything to send?
-            if (byteArray && byteArray.length > 0) {
-                //calc the checksum of the data to be send
-                var checksum = 0;
-                for (var i = 0; i < byteArray.length; i++)
-                    checksum = checksum ^ byteArray[i];
-                //prepare all the data to be send in one array
-                //begin with a start byte ad end with a checksum and an end byte
-                var bytesToSend = ([ergometer.csafe.defs.FRAME_START_BYTE].concat(byteArray)).concat([checksum, ergometer.csafe.defs.FRAME_END_BYTE]);
-                //send in packages of max 20 bytes (ble.PACKET_SIZE)
-                var sendBytesIndex = 0;
-                //continue while not all bytes are send
-                while (sendBytesIndex < bytesToSend.length) {
-                    try {
+            return new Promise(function (resolve, reject) {
+                //is there anything to send?
+                if (byteArray && byteArray.length > 0) {
+                    //calc the checksum of the data to be send
+                    var checksum = 0;
+                    for (var i = 0; i < byteArray.length; i++)
+                        checksum = checksum ^ byteArray[i];
+                    //prepare all the data to be send in one array
+                    //begin with a start byte ad end with a checksum and an end byte
+                    var bytesToSend = ([ergometer.csafe.defs.FRAME_START_BYTE].concat(byteArray)).concat([checksum, ergometer.csafe.defs.FRAME_END_BYTE]);
+                    //send in packages of max 20 bytes (ble.PACKET_SIZE)
+                    var sendBytesIndex = 0;
+                    //continue while not all bytes are send
+                    while (sendBytesIndex < bytesToSend.length) {
                         //prepare a buffer with the data which can be send in one packet
                         var bufferLength = Math.min(ergometer.ble.PACKET_SIZE, bytesToSend.length - sendBytesIndex);
                         var buffer = new ArrayBuffer(bufferLength); //start and end and
@@ -2201,19 +2283,19 @@ var ergometer;
                             sendBytesIndex++;
                             bufferIndex++;
                         }
-                        this.traceInfo("send csafe: " + ergometer.utils.typedArrayToHexString(buffer));
-                        this.writeCharacteristic(ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.TRANSMIT_TO_PM_CHARACTERISIC, dataView, function () {
+                        _this.traceInfo("send csafe: " + ergometer.utils.typedArrayToHexString(buffer));
+                        _this.driver.writeCharacteristic(ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.TRANSMIT_TO_PM_CHARACTERISIC, dataView)
+                            .then(function () {
                             _this.traceInfo("csafe command send");
-                            if (send)
-                                send();
-                            // this.singleRead(receive )
-                        }, this.getErrorHandlerFunc(""));
-                    }
-                    catch (e) {
-                        this.handleError(e, error);
+                            if (sendBytesIndex >= bytesToSend.length)
+                                resolve();
+                        })
+                            .catch(function (e) { reject(e); });
                     }
                 }
-            }
+                else
+                    resolve();
+            });
         };
         PerformanceMonitor.prototype.receivedCSaveCommand = function (parsed) {
             //check on all the commands which where send and
@@ -2241,7 +2323,7 @@ var ergometer;
             var detailCommand = 0;
             var calcCheck = 0;
             this.traceInfo("enable notifications csafe");
-            this.enableNotification(ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.RECEIVE_FROM_PM_CHARACTERISIC, function (data) {
+            this.driver.enableNotification(ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.RECEIVE_FROM_PM_CHARACTERISIC, function (data) {
                 var dataView = new DataView(data);
                 //skipp empty 0 ble blocks
                 if (dataView.byteLength != 1 || dataView.getUint8(0) != 0) {
@@ -2346,7 +2428,7 @@ var ergometer;
                         _this.handleError("wrong csafe frame ending.");
                     }
                 }
-            }, function () { }, this.getErrorHandlerFunc(""));
+            }).catch(this.getErrorHandlerFunc(""));
         };
         Object.defineProperty(PerformanceMonitor.prototype, "csafeBuffer", {
             get: function () {
@@ -2360,7 +2442,7 @@ var ergometer;
                             return _this.csafeBuffer;
                         },
                         send: function (sucess, error) {
-                            return _this.sendCSafeBuffer(sucess, error);
+                            return _this.sendCSafeBuffer().then(sucess, error);
                         },
                         addRawCommand: function (info) {
                             _this.csafeBuffer.rawCommands.push(info);
