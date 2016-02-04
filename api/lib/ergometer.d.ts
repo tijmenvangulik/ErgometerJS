@@ -74,8 +74,8 @@ declare module ergometer.ble {
         disconnect(): any;
         writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
         readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
-        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<any>;
-        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<any>;
+        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
+        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
     }
 }
 /**
@@ -88,13 +88,13 @@ declare module ergometer.ble {
         private getCharacteristic(serviceUid, characteristicUid);
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
         disconnect(): Promise<void>;
-        init(): Promise<any>;
+        init(): Promise<void>;
         startScan(foundFn?: IFoundFunc): Promise<void>;
         stopScan(): Promise<void>;
         writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
         readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
-        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<any>;
-        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<any>;
+        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
+        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
     }
 }
 /**
@@ -1401,7 +1401,7 @@ declare module ergometer {
          *
          * @param success
          * @param error
-         * @returns {Promise<any>|Promise} use promis instead of success and error function
+         * @returns {Promise<void>|Promise} use promis instead of success and error function
          */
         sendCSafeBuffer(): Promise<void>;
         protected sendCsafeCommands(byteArray: number[]): Promise<void>;

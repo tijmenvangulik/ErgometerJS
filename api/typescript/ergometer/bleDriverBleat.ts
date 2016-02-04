@@ -44,7 +44,7 @@ module ergometer.ble {
                 }
             })
         }
-        public init(): Promise<any> {
+        public init(): Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 try {
                     if (this._initialized)
@@ -123,7 +123,7 @@ module ergometer.ble {
             })
         }
 
-        public enableNotification(serviceUIID : string,characteristicUUID:string, receive:(data:ArrayBuffer) =>void) : Promise<any> {
+        public enableNotification(serviceUIID : string,characteristicUUID:string, receive:(data:ArrayBuffer) =>void) : Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 try {
                     this.getCharacteristic(serviceUIID, characteristicUUID).enableNotify(receive, resolve, reject);
@@ -135,7 +135,7 @@ module ergometer.ble {
             })
         }
 
-        public disableNotification(serviceUIID : string,characteristicUUID:string) : Promise<any> {
+        public disableNotification(serviceUIID : string,characteristicUUID:string) : Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 try {
                     this.getCharacteristic(serviceUIID, characteristicUUID).disableNotify(resolve, reject);

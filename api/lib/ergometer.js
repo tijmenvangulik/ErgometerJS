@@ -2209,7 +2209,7 @@ var ergometer;
          *
          * @param success
          * @param error
-         * @returns {Promise<any>|Promise} use promis instead of success and error function
+         * @returns {Promise<void>|Promise} use promis instead of success and error function
          */
         PerformanceMonitor.prototype.sendCSafeBuffer = function () {
             var _this = this;
