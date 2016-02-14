@@ -78,8 +78,7 @@ Components
 
 # Todo
 
-* Make a better conversions of some of the values which the ergometer returns. 
-* Test the android version on a real phone (First need a phone for this!)
+* Add more commands
 * Write a demo of an app which can really be used. (now it)
 
 #Known problems
