@@ -6,6 +6,10 @@ var ergometer;
 (function (ergometer) {
     var utils;
     (function (utils) {
+        function getByte(value, byteIndex) {
+            return (value >> (byteIndex * 8)) & 255;
+        }
+        utils.getByte = getByte;
         /**
         * Interpret byte buffer as unsigned little endian 32 bit integer.
         * Returns converted number.
@@ -656,6 +660,49 @@ var ergometer;
         })();
         csafe.CommandManagager = CommandManagager;
         csafe.commandManager = new CommandManagager();
+        function registerStandardSet(functionName, command, setParams) {
+            csafe.commandManager.register(function (buffer, monitor) {
+                buffer[functionName] = function (params) {
+                    buffer.addRawCommand({
+                        waitForResponse: false,
+                        command: command,
+                        data: setParams(params),
+                        onError: params.onError
+                    });
+                    return buffer;
+                };
+            });
+        }
+        csafe.registerStandardSet = registerStandardSet;
+        function registerStandardSetConfig(functionName, command, setParams) {
+            csafe.commandManager.register(function (buffer, monitor) {
+                buffer[functionName] = function (params) {
+                    buffer.addRawCommand({
+                        waitForResponse: false,
+                        command: 26 /* SETUSERCFG1_CMD */,
+                        detailCommand: command,
+                        data: setParams(params),
+                        onError: params.onError
+                    });
+                    return buffer;
+                };
+            });
+        }
+        csafe.registerStandardSetConfig = registerStandardSetConfig;
+        function registerStandardShortGet(functionName, command, converter) {
+            csafe.commandManager.register(function (buffer, monitor) {
+                buffer[functionName] = function (params) {
+                    buffer.addRawCommand({
+                        waitForResponse: true,
+                        command: command,
+                        onDataReceived: function (data) { params.received(converter(data)); },
+                        onError: params.onError
+                    });
+                    return buffer;
+                };
+            });
+        }
+        csafe.registerStandardShortGet = registerStandardShortGet;
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -721,17 +768,14 @@ var ergometer;
                 return buffer;
             };
         });
-        csafe.commandManager.register(function (buffer, monitor) {
-            buffer.setProgram = function (params) {
-                buffer.addRawCommand({
-                    waitForResponse: false,
-                    command: 36 /* SETPROGRAM_CMD */,
-                    data: [params.program, 0],
-                    onError: params.onError
-                });
-                return buffer;
-            };
-        });
+        csafe.registerStandardSet("setProgram", 36 /* SETPROGRAM_CMD */, function (params) { return [ergometer.utils.getByte(params.value, 0), 0]; });
+        csafe.registerStandardSet("setTime", 17 /* SETTIME_CMD */, function (params) { return [params.hour, params.minute, params.second]; });
+        csafe.registerStandardSet("setDate", 18 /* SETDATE_CMD */, function (params) { return [ergometer.utils.getByte(params.year, 0), params.month, params.day]; });
+        csafe.registerStandardSet("setTimeout", 19 /* SETTIMEOUT_CMD */, function (params) { return [params.value]; });
+        csafe.registerStandardSet("setWork", 32 /* SETTWORK_CMD */, function (params) { return [params.hour, params.minute, params.second]; });
+        csafe.registerStandardSet("setDistance", 33 /* SETHORIZONTAL_CMD */, function (params) { return [ergometer.utils.getByte(params.value, 0), ergometer.utils.getByte(params.value, 1), params.unit]; });
+        csafe.registerStandardSet("setTotalCalories", 35 /* SETCALORIES_CMD */, function (params) { return [ergometer.utils.getByte(params.value, 0), ergometer.utils.getByte(params.value, 1)]; });
+        csafe.registerStandardSet("setPower", 52 /* SETPOWER_CMD */, function (params) { return [ergometer.utils.getByte(params.value, 0), ergometer.utils.getByte(params.value, 1), params.unit]; });
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -764,6 +808,17 @@ var ergometer;
                 return buffer;
             };
         });
+        csafe.registerStandardShortGet("getDistance", 161 /* GETHORIZONTAL_CMD */, function (data) { return { value: data.getUint16(0, true), unit: data.getUint8(2) }; });
+    })(csafe = ergometer.csafe || (ergometer.csafe = {}));
+})(ergometer || (ergometer = {}));
+/**
+ * Created by tijmen on 06-02-16.
+ */
+var ergometer;
+(function (ergometer) {
+    var csafe;
+    (function (csafe) {
+        csafe.registerStandardSetConfig("setWorkoutType", 1 /* PM_SET_WORKOUTTYPE */, function (params) { return [params.value]; });
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -2321,6 +2376,7 @@ var ergometer;
             var frameState = 0 /* initial */;
             var nextDataLength = 0;
             var detailCommand = 0;
+            var skippByte = 0;
             var calcCheck = 0;
             this.traceInfo("enable notifications csafe");
             this.driver.enableNotification(ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.RECEIVE_FROM_PM_CHARACTERISIC, function (data) {
@@ -2348,14 +2404,18 @@ var ergometer;
                                 //expect a start frame
                                 if (currentByte != ergometer.csafe.defs.FRAME_START_BYTE) {
                                     stop = true;
+                                    if (_this.logLevel == LogLevel.trace)
+                                        _this.traceInfo("stop byte " + ergometer.utils.toHexString(currentByte, 1));
                                 }
                                 else
                                     frameState = 1 /* skippByte */;
+                                calcCheck = 0;
                                 break;
                             }
                             case 1 /* skippByte */:
                                 {
                                     frameState = 2 /* parseCommand */;
+                                    skippByte = currentByte;
                                     break;
                                 }
                             case 2 /* parseCommand */: {
@@ -2364,14 +2424,21 @@ var ergometer;
                                 break;
                             }
                             case 3 /* parseCommandLength */: {
-                                if (i == dataView.byteLength - 1 && currentByte == ergometer.csafe.defs.FRAME_END_BYTE) {
+                                //first work arround strange results where the skipp byte is the same
+                                //as the the command and the frame directly ends, What is the meaning of
+                                //this? some kind of status??
+                                if (skippByte == command && currentByte == ergometer.csafe.defs.FRAME_END_BYTE) {
+                                    command = 0; //do not check checksum
+                                    frameState = 0 /* initial */; //start again from te beginning
+                                }
+                                else if (i == dataView.byteLength - 1 && currentByte == ergometer.csafe.defs.FRAME_END_BYTE) {
                                     var checksum = command;
                                     //remove the last 2 bytes from the checksum which was added too much
                                     calcCheck = calcCheck ^ currentByte;
                                     calcCheck = calcCheck ^ command;
                                     //check the calculated with the message checksum
                                     if (checksum != calcCheck)
-                                        _this.handleError("Wrong checksum " + checksum);
+                                        _this.handleError("Wrong checksum " + ergometer.utils.toHexString(checksum, 1) + " expected " + ergometer.utils.toHexString(calcCheck, 1) + " ");
                                     command = 0; //do not check checksum
                                     frameState = 0 /* initial */; //start again from te beginning
                                 }
@@ -2420,9 +2487,11 @@ var ergometer;
                                 break;
                             }
                         }
+                        if (_this.logLevel == LogLevel.trace)
+                            _this.traceInfo("parse: " + i + ": " + ergometer.utils.toHexString(currentByte, 1) + " state: " + frameState + " checksum:" + ergometer.utils.toHexString(calcCheck, 1) + " ");
                         i++;
                     }
-                    //when something went wrong, the bue tooht block is endend but the frame not
+                    //when something went wrong, the bluetooth block is endend but the frame not
                     if (dataView.byteLength != ergometer.ble.PACKET_SIZE && frameState != 0 /* initial */) {
                         frameState = 0 /* initial */;
                         _this.handleError("wrong csafe frame ending.");

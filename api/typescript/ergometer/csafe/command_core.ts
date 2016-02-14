@@ -8,6 +8,10 @@
  */
 module ergometer.csafe {
 
+    export interface ICommandParamsBase {
+        onError? : ErrorHandler;
+        received? : (data : any)=>void;
+    }
     export interface IRawCommand {
         waitForResponse : boolean;
         command : number;
@@ -42,4 +46,51 @@ module ergometer.csafe {
     }
     export var commandManager = new CommandManagager();
 
+    //----------------  standard value wrapper for shorter syntax----------
+
+    export interface ICommandSetStandardValue extends ICommandParamsBase {
+        value : number; //program or pre stored work out
+    }
+
+    export function registerStandardSet<T extends ICommandParamsBase>(functionName :string , command : number, setParams : (params : T)=> number[]) {
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitor) =>{
+            buffer[functionName]= function (params : T) : IBuffer {
+                buffer.addRawCommand({
+                    waitForResponse:false,
+                    command : command,
+                    data: setParams(params),
+                    onError:params.onError
+                });
+                return buffer;
+            }
+        })
+    }
+    export function registerStandardSetConfig<T extends ICommandParamsBase>(functionName :string , command : number, setParams : (params : T)=> number[]) {
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitor) =>{
+            buffer[functionName]= function (params : T) : IBuffer {
+                buffer.addRawCommand({
+                    waitForResponse:false,
+                    command : csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD ,
+                    detailCommand: command,
+                    data: setParams(params),
+                    onError:params.onError
+                });
+                return buffer;
+            }
+        })
+    }
+
+    export function registerStandardShortGet<T extends ICommandParamsBase,U>(functionName :string , command : number,converter : (data : DataView)=> U) {
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitor) =>{
+            buffer[functionName]= function (params : T) : IBuffer {
+                buffer.addRawCommand({
+                    waitForResponse:true,
+                    command : command,
+                    onDataReceived : (data : DataView)=>{params.received(<U>converter(data)) }  ,
+                    onError:params.onError
+                });
+                return buffer;
+            }
+        })
+    }
 }

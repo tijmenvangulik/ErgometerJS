@@ -1666,7 +1666,7 @@ module ergometer {
             var frameState = FrameState.initial;
             var nextDataLength = 0;
             var detailCommand =0;
-
+            var skippByte = 0;
             var calcCheck=0;
             this.traceInfo("enable notifications csafe");
             this.driver.enableNotification(ble.PMCONTROL_SERVICE,ble.RECEIVE_FROM_PM_CHARACTERISIC,
@@ -1697,16 +1697,18 @@ module ergometer {
                                     //expect a start frame
                                     if (currentByte!=csafe.defs.FRAME_START_BYTE) {
                                         stop=true ;
+                                        if (this.logLevel==LogLevel.trace)
+                                            this.traceInfo("stop byte "+utils.toHexString(currentByte,1))
                                     }
                                     else frameState=FrameState.skippByte;
-
+                                    calcCheck=0;
 
                                     break;
                                 }
                                 case FrameState.skippByte :
                                 {   //skipp this one
                                     frameState= FrameState.parseCommand;
-
+                                    skippByte=currentByte;
                                     break;
                                 }
 
@@ -1719,13 +1721,20 @@ module ergometer {
                                     break;
                                 }
                                 case FrameState.parseCommandLength : {
-                                    if (i==dataView.byteLength-1 && currentByte==csafe.defs.FRAME_END_BYTE ) {
+                                    //first work arround strange results where the skipp byte is the same
+                                    //as the the command and the frame directly ends, What is the meaning of
+                                    //this? some kind of status??
+                                    if (skippByte==command && currentByte==csafe.defs.FRAME_END_BYTE) {
+                                        command=0; //do not check checksum
+                                        frameState=FrameState.initial; //start again from te beginning
+                                    }
+                                    else if (i==dataView.byteLength-1 && currentByte==csafe.defs.FRAME_END_BYTE ) {
                                         var checksum=command;
                                         //remove the last 2 bytes from the checksum which was added too much
                                         calcCheck=calcCheck ^ currentByte;
                                         calcCheck=calcCheck ^ command;
                                         //check the calculated with the message checksum
-                                        if (checksum!=calcCheck) this.handleError(`Wrong checksum ${checksum}`);
+                                        if (checksum!=calcCheck) this.handleError(`Wrong checksum ${utils.toHexString(checksum,1)} expected ${utils.toHexString(calcCheck,1) } `);
                                         command=0; //do not check checksum
                                         frameState=FrameState.initial; //start again from te beginning
                                     }
@@ -1777,9 +1786,11 @@ module ergometer {
                                 }
 
                             }
+                            if (this.logLevel==LogLevel.trace)
+                                this.traceInfo(`parse: ${i}: ${utils.toHexString(currentByte,1)} state: ${frameState} checksum:${utils.toHexString(calcCheck,1)} `);
                             i++;
                         }
-                        //when something went wrong, the bue tooht block is endend but the frame not
+                        //when something went wrong, the bluetooth block is endend but the frame not
                         if (dataView.byteLength!=ble.PACKET_SIZE && frameState!=FrameState.initial) {
                             frameState=FrameState.initial;
                             this.handleError("wrong csafe frame ending.");

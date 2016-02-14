@@ -143,11 +143,11 @@ class Demo {
                         this.showData(`Version hardware ${version.HardwareVersion} software:${version.FirmwareVersion}`);
                     }
                 })
-                .setProgram({program:2})
+                .setProgram({value:ergometer.Program.StandardList1})
                 .send()
                 .then(()=>{  //send returns a promise
                     console.log("send done, you can send th next")
-            }   );
+                }   );
         }
     }
     protected onPowerCurve(curve : number[]) {

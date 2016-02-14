@@ -26,6 +26,7 @@
     "typescript/ergometer/csafe/command_core.ts",
     "typescript/ergometer/csafe/long_commands.ts",
     "typescript/ergometer/csafe/short_commands.ts",
+    "typescript/ergometer/csafe/push_config_commands.ts",
     "typescript/ergometer/performancemonitor.ts"
   ]
 }

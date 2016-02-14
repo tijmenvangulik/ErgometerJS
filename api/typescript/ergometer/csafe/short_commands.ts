@@ -6,11 +6,7 @@
  */
 module ergometer.csafe {
 
-/*  ************************************************************
- *
- *             get the version info
- *
- ************************************************************ */
+    //----------------------------- get the version info ------------------------------------
 
     export interface IVersion {
         ManufacturerId : number;
@@ -19,9 +15,8 @@ module ergometer.csafe {
         HardwareVersion : number;
         FirmwareVersion : number;
     }
-    export interface ICommandGetVersion  {
+    export interface ICommandGetVersion  extends ICommandParamsBase {
         received : (version :IVersion )=>void;
-        onError? : ErrorHandler;
     }
     export interface IBuffer {
         getVersion(params : ICommandGetVersion) : IBuffer;
@@ -48,5 +43,23 @@ module ergometer.csafe {
             return buffer;
         }
     })
+
+    //----------------------------- set horizontal distance ------------------------------------
+
+    export interface IDistance {
+        value : number
+        unit: Unit;
+    }
+
+    export interface ICommandGetDistance  extends ICommandParamsBase {
+        received : (version :IDistance )=>void;
+    }
+    export interface IBuffer {
+        getDistance(params : ICommandParamsBase) : IBuffer;
+    }
+
+    registerStandardShortGet<ICommandGetDistance,IDistance>("getDistance",
+        csafe.defs.SHORT_DATA_CMDS.GETHORIZONTAL_CMD,
+        (data : DataView)=>{return {value: data.getUint16(0,true),unit:data.getUint8(2)};});
 
 }

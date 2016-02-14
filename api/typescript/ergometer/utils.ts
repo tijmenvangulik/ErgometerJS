@@ -4,7 +4,9 @@
  /** @internal */
 module ergometer.utils {
 
-
+    export function getByte(value : number,byteIndex : number) : number {
+        return (value>>(byteIndex*8) ) & 255;
+    }
      /**
      * Interpret byte buffer as unsigned little endian 32 bit integer.
      * Returns converted number.
@@ -73,4 +75,5 @@ module ergometer.utils {
          }
          return str;
      }
+
 }

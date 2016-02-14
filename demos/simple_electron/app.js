@@ -139,7 +139,7 @@ var Demo = (function () {
                     _this.showData("Version hardware " + version.HardwareVersion + " software:" + version.FirmwareVersion);
                 }
             })
-                .setProgram({ program: 2 })
+                .setProgram({ value: 1 /* StandardList1 */ })
                 .send()
                 .then(function () {
                 console.log("send done, you can send th next");

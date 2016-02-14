@@ -125,19 +125,18 @@ declare module ergometer {
         num = 129,
     }
     const enum WorkoutType {
-        justrowNoAplits = 0,
-        justrowAplits = 1,
-        fixeddistNoAplits = 2,
-        fixeddistAplits = 3,
-        fixedtimeNoAplits = 4,
-        fixedtimeAplits = 5,
-        fixedtimeInterval = 6,
-        fixeddistInterval = 7,
+        justRowNoSplits = 0,
+        justRowSplits = 1,
+        fixedDistanceNoAplits = 2,
+        fixedDistanceSplits = 3,
+        fixedTimeNoAplits = 4,
+        fixedTimeAplits = 5,
+        fixedTimeInterval = 6,
+        fixedDistanceInterval = 7,
         variableInterval = 8,
         variableUndefinedRestInterval = 9,
         fixedCalorie = 10,
         fixedWattMinutes = 11,
-        num = 12,
     }
     const enum IntervalType {
         time = 0,
@@ -190,6 +189,79 @@ declare module ergometer {
         rate500ms = 1,
         rate250ms = 2,
         rate100ms = 3,
+    }
+    const enum Program {
+        Programmed = 0,
+        StandardList1 = 1,
+        StandardList2 = 2,
+        StandardList3 = 3,
+        StandardList4 = 4,
+        StandardList5 = 5,
+        CustomList1 = 6,
+        CustomList2 = 7,
+        CustomList3 = 8,
+        CustomList4 = 9,
+        CustomList5 = 10,
+        FavoritesList1 = 11,
+        FavoritesList2 = 12,
+        FavoritesList3 = 13,
+        FavoritesList4 = 14,
+        FavoritesList5 = 15,
+    }
+    const enum Unit {
+        distanceMile = 1,
+        distanceMile1 = 2,
+        distanceMile2 = 3,
+        distanceMile3 = 4,
+        distanceFeet = 5,
+        distanceInch = 6,
+        weightLbs = 7,
+        weightLbs1 = 8,
+        distanceFeet10 = 10,
+        speedMilePerHour = 16,
+        speedMilePerHour1 = 17,
+        speedMilePerHour2 = 18,
+        speedFeetPerMinute = 19,
+        distanceKm = 33,
+        distanceKm1 = 34,
+        distanceKm2 = 35,
+        distanceMeter = 36,
+        distanceMeter1 = 37,
+        distance_cm = 38,
+        weightKg = 39,
+        weightKg1 = 40,
+        speedKmPerHour = 48,
+        speedKmPerHour1 = 49,
+        speedKmPerHour2 = 50,
+        speedMeterPerMinute = 51,
+        paceMinutePermile = 55,
+        paceMinutePerkm = 56,
+        paceSecondsPerkm = 57,
+        paceSecondsPermile = 58,
+        distanceFloors = 65,
+        distanceFloors1 = 66,
+        distanceSteps = 67,
+        distanceRevs = 68,
+        distanceStrides = 69,
+        distanceStrokes = 70,
+        miscBeats = 71,
+        energyCalories = 72,
+        gradePercent = 74,
+        gradePercent2 = 75,
+        gradePercent1 = 76,
+        cadenceFloorsPerMinute1 = 79,
+        cadenceFloorsPerMinute = 80,
+        cadenceStepsPerMinute = 81,
+        cadenceRevsPerMinute = 82,
+        cadenceStridesPerMinute = 83,
+        cadenceStrokesPerMinute = 84,
+        miscBeatsPerMinute = 85,
+        burnCaloriesPerMinute = 86,
+        burnCaloriesPerHour = 87,
+        powerWatts = 88,
+        energyInchlb = 90,
+        energyFootlb = 91,
+        energyNm = 92,
     }
     interface RowingGeneralStatus {
         elapsedTime: number;
@@ -784,6 +856,10 @@ declare module ergometer.csafe.defs {
  *
  */
 declare module ergometer.csafe {
+    interface ICommandParamsBase {
+        onError?: ErrorHandler;
+        received?: (data: any) => void;
+    }
     interface IRawCommand {
         waitForResponse: boolean;
         command: number;
@@ -808,6 +884,12 @@ declare module ergometer.csafe {
         apply(buffer: IBuffer, monitor: PerformanceMonitor): void;
     }
     var commandManager: CommandManagager;
+    interface ICommandSetStandardValue extends ICommandParamsBase {
+        value: number;
+    }
+    function registerStandardSet<T extends ICommandParamsBase>(functionName: string, command: number, setParams: (params: T) => number[]): void;
+    function registerStandardSetConfig<T extends ICommandParamsBase>(functionName: string, command: number, setParams: (params: T) => number[]): void;
+    function registerStandardShortGet<T extends ICommandParamsBase, U>(functionName: string, command: number, converter: (data: DataView) => U): void;
 }
 /**
  * Created by tijmen on 19-01-16.
@@ -816,9 +898,8 @@ declare module ergometer.csafe {
  *
  */
 declare module ergometer.csafe {
-    interface ICommandStrokeState {
+    interface ICommandStrokeState extends ICommandParamsBase {
         received: (state: StrokeState) => void;
-        onError?: ErrorHandler;
     }
     interface IBuffer {
         getStrokeState(params: ICommandStrokeState): IBuffer;
@@ -830,12 +911,48 @@ declare module ergometer.csafe {
     interface IBuffer {
         getPowerCurve(params: ICommandPowerCurve): IBuffer;
     }
-    interface ICommandSetProgam {
-        program: number;
-        onError?: ErrorHandler;
+    interface ICommandProgramParams {
+        value: Program;
     }
     interface IBuffer {
-        setProgram(params: ICommandSetProgam): IBuffer;
+        setProgram(params: ICommandProgramParams): IBuffer;
+    }
+    interface ICommandTimeParams {
+        hour: number;
+        minute: number;
+        second: number;
+    }
+    interface IBuffer {
+        setTime(params: ICommandTimeParams): IBuffer;
+    }
+    interface ICommandDateParams {
+        year: number;
+        month: number;
+        day: number;
+    }
+    interface IBuffer {
+        setDate(params: ICommandDateParams): IBuffer;
+    }
+    interface IBuffer {
+        setTimeout(params: ICommandSetStandardValue): IBuffer;
+    }
+    interface IBuffer {
+        setWork(params: ICommandTimeParams): IBuffer;
+    }
+    interface ICommandDistanceParams extends ICommandSetStandardValue {
+        unit: Unit;
+    }
+    interface IBuffer {
+        setDistance(params: ICommandDistanceParams): IBuffer;
+    }
+    interface IBuffer {
+        setTotalCalories(params: ICommandSetStandardValue): IBuffer;
+    }
+    interface ICommandPowerParams extends ICommandSetStandardValue {
+        unit: Unit;
+    }
+    interface IBuffer {
+        setPower(params: ICommandPowerParams): IBuffer;
     }
 }
 /**
@@ -852,12 +969,32 @@ declare module ergometer.csafe {
         HardwareVersion: number;
         FirmwareVersion: number;
     }
-    interface ICommandGetVersion {
+    interface ICommandGetVersion extends ICommandParamsBase {
         received: (version: IVersion) => void;
-        onError?: ErrorHandler;
     }
     interface IBuffer {
         getVersion(params: ICommandGetVersion): IBuffer;
+    }
+    interface IDistance {
+        value: number;
+        unit: Unit;
+    }
+    interface ICommandGetDistance extends ICommandParamsBase {
+        received: (version: IDistance) => void;
+    }
+    interface IBuffer {
+        getDistance(params: ICommandParamsBase): IBuffer;
+    }
+}
+/**
+ * Created by tijmen on 06-02-16.
+ */
+declare module ergometer.csafe {
+    interface ICommandSetWorkOutType extends ICommandParamsBase {
+        value: WorkoutType;
+    }
+    interface IBuffer {
+        setWorkoutType(params: ICommandSetWorkOutType): IBuffer;
     }
 }
 /**

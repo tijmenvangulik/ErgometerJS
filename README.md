@@ -50,7 +50,12 @@ You only need to change the javascript included file
      * Refactored all internal error handling to make use of Promises
      * Made internal driver layer based on Promises which gives some more protection and 
        will make recording easier in the future.
-       
+- 0.0.7
+     * More commands
+     * Skipp some strange return values which look like corrupted or undocumented return values
+     * Short hand notation for some simple get and set commands
+     * Program command , the value now a correct type and the property program is now named value
+     
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
@@ -76,9 +81,6 @@ Components
 * Make a better conversions of some of the values which the ergometer returns. 
 * Test the android version on a real phone (First need a phone for this!)
 * Write a demo of an app which can really be used. (now it)
-* reduce the ammount of code needed for registering simple commands. 
-* Add more csafe commands
-* use promises instead of success and error parameters
 
 #Known problems
                   
