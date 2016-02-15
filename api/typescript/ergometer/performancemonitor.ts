@@ -767,7 +767,7 @@ module ergometer {
                     this.csafeBuffer
                         .clear()
                         .getPowerCurve({
-                            received: (curve : number[]) =>{
+                            onDataReceived: (curve : number[]) =>{
                                 this.powerCurveEvent.pub(curve);
                                 this.powerCurve=curve;
                             }

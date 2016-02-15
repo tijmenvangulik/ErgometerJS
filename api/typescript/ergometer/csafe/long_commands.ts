@@ -11,7 +11,7 @@ module ergometer.csafe {
     //----------------------------- get the stoke state ------------------------------------
 
     export interface ICommandStrokeState  extends ICommandParamsBase {
-        received : (state : StrokeState )=>void;
+        onDataReceived : (state : StrokeState )=>void;
     }
     export interface IBuffer {
         getStrokeState(params : ICommandStrokeState) : IBuffer;
@@ -24,7 +24,7 @@ module ergometer.csafe {
                 command : csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
                 detailCommand: csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_STROKESTATE,
                 onDataReceived : (data : DataView)=>{
-                    if (params.received) params.received(data.getUint8(0))
+                    if (params.onDataReceived) params.onDataReceived(data.getUint8(0))
                 },
                 onError:params.onError
             });
@@ -35,7 +35,7 @@ module ergometer.csafe {
     //----------------------------- get power curve ------------------------------------
 
     export interface ICommandPowerCurve  {
-        received : (curve : number[] )=>void;
+        onDataReceived : (curve : number[] )=>void;
         onError? : ErrorHandler;
     }
     export interface IBuffer {
@@ -54,7 +54,7 @@ module ergometer.csafe {
                 data: [20],
                 onError:params.onError,
                 onDataReceived : (data : DataView)=>{
-                    if (params.received)  {
+                    if (params.onDataReceived)  {
 
                         var bytesReturned = data.getUint8(0); //first byte
                         monitor.traceInfo(`received power curve count ${bytesReturned}`);
@@ -67,15 +67,15 @@ module ergometer.csafe {
                             monitor.traceInfo("received part :"+JSON.stringify(receivePowerCurvePart));
 
                             //try to get another one till it is empty and there is nothing more
-                            buffer.clear().getPowerCurve({received:params.received}).send();
+                            buffer.clear().getPowerCurve({onDataReceived:params.onDataReceived}).send();
                         }
                         else {
                             if (receivePowerCurvePart.length>0) {
                                 currentPowerCurve=receivePowerCurvePart;
                                 receivePowerCurvePart=[];
                                 monitor.traceInfo("Curve:"+JSON.stringify(currentPowerCurve));
-                                if (params.received && currentPowerCurve.length>0)
-                                    params.received(currentPowerCurve);
+                                if (params.onDataReceived && currentPowerCurve.length>0)
+                                    params.onDataReceived(currentPowerCurve);
                             }
                         }
                     }

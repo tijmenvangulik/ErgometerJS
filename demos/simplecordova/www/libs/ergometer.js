@@ -695,7 +695,7 @@ var ergometer;
                     buffer.addRawCommand({
                         waitForResponse: true,
                         command: command,
-                        onDataReceived: function (data) { params.received(converter(data)); },
+                        onDataReceived: function (data) { params.onDataReceived(converter(data)); },
                         onError: params.onError
                     });
                     return buffer;
@@ -722,8 +722,8 @@ var ergometer;
                     command: 26 /* SETUSERCFG1_CMD */,
                     detailCommand: 191 /* PM_GET_STROKESTATE */,
                     onDataReceived: function (data) {
-                        if (params.received)
-                            params.received(data.getUint8(0));
+                        if (params.onDataReceived)
+                            params.onDataReceived(data.getUint8(0));
                     },
                     onError: params.onError
                 });
@@ -741,7 +741,7 @@ var ergometer;
                     data: [20],
                     onError: params.onError,
                     onDataReceived: function (data) {
-                        if (params.received) {
+                        if (params.onDataReceived) {
                             var bytesReturned = data.getUint8(0); //first byte
                             monitor.traceInfo("received power curve count " + bytesReturned);
                             if (bytesReturned > 0) {
@@ -751,15 +751,15 @@ var ergometer;
                                 }
                                 monitor.traceInfo("received part :" + JSON.stringify(receivePowerCurvePart));
                                 //try to get another one till it is empty and there is nothing more
-                                buffer.clear().getPowerCurve({ received: params.received }).send();
+                                buffer.clear().getPowerCurve({ onDataReceived: params.onDataReceived }).send();
                             }
                             else {
                                 if (receivePowerCurvePart.length > 0) {
                                     currentPowerCurve = receivePowerCurvePart;
                                     receivePowerCurvePart = [];
                                     monitor.traceInfo("Curve:" + JSON.stringify(currentPowerCurve));
-                                    if (params.received && currentPowerCurve.length > 0)
-                                        params.received(currentPowerCurve);
+                                    if (params.onDataReceived && currentPowerCurve.length > 0)
+                                        params.onDataReceived(currentPowerCurve);
                                 }
                             }
                         }
@@ -794,8 +794,8 @@ var ergometer;
                     waitForResponse: true,
                     command: 145 /* GETVERSION_CMD */,
                     onDataReceived: function (data) {
-                        if (params.received)
-                            params.received({
+                        if (params.onDataReceived)
+                            params.onDataReceived({
                                 ManufacturerId: data.getUint8(0),
                                 CID: data.getUint8(1),
                                 Model: data.getUint8(2),
@@ -1584,7 +1584,7 @@ var ergometer;
                     this.csafeBuffer
                         .clear()
                         .getPowerCurve({
-                        received: function (curve) {
+                        onDataReceived: function (curve) {
                             _this.powerCurveEvent.pub(curve);
                             _this.powerCurve = curve;
                         }

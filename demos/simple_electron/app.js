@@ -130,12 +130,12 @@ var Demo = (function () {
             this.performanceMonitor.csafeBuffer
                 .clear()
                 .getStrokeState({
-                received: function (strokeState) {
+                onDataReceived: function (strokeState) {
                     _this.showData("stroke state: " + strokeState);
                 }
             })
                 .getVersion({
-                received: function (version) {
+                onDataReceived: function (version) {
                     _this.showData("Version hardware " + version.HardwareVersion + " software:" + version.FirmwareVersion);
                 }
             })

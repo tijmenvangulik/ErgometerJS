@@ -858,7 +858,7 @@ declare module ergometer.csafe.defs {
 declare module ergometer.csafe {
     interface ICommandParamsBase {
         onError?: ErrorHandler;
-        received?: (data: any) => void;
+        onDataReceived?: (data: any) => void;
     }
     interface IRawCommand {
         waitForResponse: boolean;
@@ -899,13 +899,13 @@ declare module ergometer.csafe {
  */
 declare module ergometer.csafe {
     interface ICommandStrokeState extends ICommandParamsBase {
-        received: (state: StrokeState) => void;
+        onDataReceived: (state: StrokeState) => void;
     }
     interface IBuffer {
         getStrokeState(params: ICommandStrokeState): IBuffer;
     }
     interface ICommandPowerCurve {
-        received: (curve: number[]) => void;
+        onDataReceived: (curve: number[]) => void;
         onError?: ErrorHandler;
     }
     interface IBuffer {
@@ -970,7 +970,7 @@ declare module ergometer.csafe {
         FirmwareVersion: number;
     }
     interface ICommandGetVersion extends ICommandParamsBase {
-        received: (version: IVersion) => void;
+        onDataReceived: (version: IVersion) => void;
     }
     interface IBuffer {
         getVersion(params: ICommandGetVersion): IBuffer;
@@ -980,7 +980,7 @@ declare module ergometer.csafe {
         unit: Unit;
     }
     interface ICommandGetDistance extends ICommandParamsBase {
-        received: (version: IDistance) => void;
+        onDataReceived: (version: IDistance) => void;
     }
     interface IBuffer {
         getDistance(params: ICommandParamsBase): IBuffer;

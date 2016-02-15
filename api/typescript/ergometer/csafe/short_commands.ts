@@ -16,7 +16,7 @@ module ergometer.csafe {
         FirmwareVersion : number;
     }
     export interface ICommandGetVersion  extends ICommandParamsBase {
-        received : (version :IVersion )=>void;
+        onDataReceived : (version :IVersion )=>void;
     }
     export interface IBuffer {
         getVersion(params : ICommandGetVersion) : IBuffer;
@@ -29,7 +29,7 @@ module ergometer.csafe {
                 waitForResponse:true,
                 command : defs.SHORT_STATUS_CMDS.GETVERSION_CMD,
                 onDataReceived : (data : DataView)=>{
-                    if (params.received) params.received ({
+                    if (params.onDataReceived) params.onDataReceived ({
                         ManufacturerId: data.getUint8(0),
                         CID : data.getUint8(1),
                         Model: data.getUint8(2),
@@ -52,7 +52,7 @@ module ergometer.csafe {
     }
 
     export interface ICommandGetDistance  extends ICommandParamsBase {
-        received : (version :IDistance )=>void;
+        onDataReceived : (version :IDistance )=>void;
     }
     export interface IBuffer {
         getDistance(params : ICommandParamsBase) : IBuffer;

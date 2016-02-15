@@ -134,12 +134,12 @@ class Demo {
             this.performanceMonitor.csafeBuffer
                 .clear()
                 .getStrokeState({
-                    received: (strokeState : ergometer.StrokeState) =>{
+                    onDataReceived: (strokeState : ergometer.StrokeState) =>{
                         this.showData(`stroke state: ${strokeState}`);
                     }
                 })
                 .getVersion({
-                    received: (version : ergometer.csafe.IVersion)=> {
+                    onDataReceived: (version : ergometer.csafe.IVersion)=> {
                         this.showData(`Version hardware ${version.HardwareVersion} software:${version.FirmwareVersion}`);
                     }
                 })

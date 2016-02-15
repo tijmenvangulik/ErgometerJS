@@ -10,7 +10,7 @@ module ergometer.csafe {
 
     export interface ICommandParamsBase {
         onError? : ErrorHandler;
-        received? : (data : any)=>void;
+        onDataReceived? : (data : any)=>void;
     }
     export interface IRawCommand {
         waitForResponse : boolean;
@@ -86,7 +86,7 @@ module ergometer.csafe {
                 buffer.addRawCommand({
                     waitForResponse:true,
                     command : command,
-                    onDataReceived : (data : DataView)=>{params.received(<U>converter(data)) }  ,
+                    onDataReceived : (data : DataView)=>{params.onDataReceived(<U>converter(data)) }  ,
                     onError:params.onError
                 });
                 return buffer;
