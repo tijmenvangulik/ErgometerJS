@@ -129,7 +129,10 @@ module ergometer {
      *
      */
     export class PerformanceMonitor {
+
         private _driver: ble.IDriver;
+        private _recordingDriver : ble.RecordingDriver;
+        private _replayDriver : ble.ReplayDriver;
         private _connectionState : MonitorConnectionState = MonitorConnectionState.inactive;
 
         //events
@@ -175,8 +178,49 @@ module ergometer {
         private _waitResponseCommands : csafe.IRawCommand[] = [];
         private _generalStatusEventAttachedByPowerCurve =false;
 
+        private _recording : boolean =false;
+
+        protected get recordingDriver():ergometer.ble.RecordingDriver {
+            if (!this._recordingDriver) {
+                this._recordingDriver= new ble.RecordingDriver(this,this._driver)
+            }
+            return this._recordingDriver;
+        }
+
+        public get recording():boolean {
+            return this._recording;
+        }
+
+        public set recording(value:boolean) {
+            this._recording = value;
+            if (value) this.recordingDriver.startRecording();
+        }
+        get replayDriver():ble.ReplayDriver {
+            if (!this._replayDriver)
+                this._replayDriver = new ble.ReplayDriver(this,this._driver);
+            return this._replayDriver;
+        }
+        get replaying():boolean {
+            return this.replayDriver.playing;
+        }
+
+        public replay(events : ble.IRecordingItem[]) {
+            this.replayDriver.replay(events);
+        }
+        set replaying(value:boolean) {
+            this.replayDriver.playing=value;
+        }
+
+        public get recordingEvents() : ble.IRecordingItem[] {
+            return this.recordingDriver.events;
+        }
         protected get driver():ergometer.ble.IDriver {
-            return this._driver;
+            if (this.recording) {
+                return this.recordingDriver;
+            }
+            else if (this.replaying)
+                return this.replayDriver
+            else return this._driver;
         }
 
         /**
@@ -499,9 +543,9 @@ module ergometer {
         /**
          * disconnect the current connected device
          */
-        protected disconnect() {
+        public disconnect() {
             if (this.connectionState>=MonitorConnectionState.deviceReady)  {
-                this.driver.disconnect().catch(this.getErrorHandlerFunc("Can not disconnect"));
+                this.driver.disconnect();
                 this.connectionState=MonitorConnectionState.deviceReady
             }
         }
@@ -930,7 +974,7 @@ module ergometer {
         /**
          *
          */
-        protected stopScan() {
+        public stopScan() {
             if (this.connectionState==MonitorConnectionState.scanning) {
                 this.driver.stopScan();            }
 
@@ -1522,7 +1566,7 @@ module ergometer {
         protected removeOldSendCommands() {
             for (var i=this._waitResponseCommands.length-1;i>=0;i--) {
                 var command : IRawCommand = this._waitResponseCommands[i];
-                var currentTime= new Date().getTime();
+                var currentTime= utils.getTime();
                 //more than 20 seconds in the buffer
                 if (currentTime-command._timestamp>20000 ) {
                     if (command.onError) {

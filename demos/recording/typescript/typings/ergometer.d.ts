@@ -85,7 +85,6 @@ declare module ergometer.ble {
     class DriverBleat implements IDriver {
         private _device;
         private _initialized;
-        performanceMonitor: PerformanceMonitor;
         private getCharacteristic(serviceUid, characteristicUid);
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
         disconnect(): void;
@@ -136,10 +135,9 @@ declare module ergometer.ble {
         private _realDriver;
         private _startTime;
         private _events;
-        _performanceMonitor: PerformanceMonitor;
-        constructor(performanceMonitor: PerformanceMonitor, realDriver: IDriver);
+        constructor(realDriver: IDriver);
         protected getRelativeTime(): number;
-        addRecording(eventType: RecordingEventType, data?: IRecordCharacteristic | IRecordDevice): IRecordingItem;
+        protected addRecording(eventType: RecordingEventType, data?: IRecordCharacteristic | IRecordDevice): IRecordingItem;
         events: ergometer.ble.IRecordingItem[];
         clear(): void;
         startRecording(): void;
@@ -173,9 +171,8 @@ declare module ergometer.ble {
         private _eventIndex;
         private _startTime;
         private _checkQueueTimerId;
-        private _performanceMonitor;
         protected getRelativeTime(): number;
-        constructor(performanceMonitor: PerformanceMonitor, realDriver: IDriver);
+        constructor(realDriver: IDriver);
         events: ergometer.ble.IRecordingItem[];
         protected isCallBack(eventType: RecordingEventType): boolean;
         protected isSameEvent(event1: IRecordingItem, event2: IRecordingItem): boolean;
@@ -1267,6 +1264,7 @@ declare module ergometer {
         private _waitResponseCommands;
         private _generalStatusEventAttachedByPowerCurve;
         private _recording;
+        private _replaying;
         protected recordingDriver: ergometer.ble.RecordingDriver;
         recording: boolean;
         replayDriver: ble.ReplayDriver;

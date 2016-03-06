@@ -224,7 +224,7 @@
 	};
 
 	/**
-	 * Disconnect and close all connected BLE devices.
+	 * disconnect and close all connected BLE devices.
 	 * @example
 	 *   evothings.easyble.closeConnectedDevices();
 	 */

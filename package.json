@@ -18,7 +18,8 @@
     "build:copy_api":"npm run build:copy_api_electron && npm run build:copy_api_electron_ts && npm run build:copy_api_cordova && npm run build:copy_api_cordova_ts",
     "build:simplecordova":"node_modules/.bin/tsc -p demos/simplecordova ",
     "build:simple_electron":"node_modules/.bin/tsc -p demos/simple_electron ",
-    "build":"npm run build:api && npm run build:copy_api && npm run build:simplecordova && npm run build:simple_electron"
+    "build:recording":"node_modules/.bin/tsc -p demos/recording ",
+    "build":"npm run build:api && npm run build:copy_api && npm run build:simplecordova && npm run build:simple_electron  && npm run build:recording"
   },
   "repository" :
   { "type" : "git"

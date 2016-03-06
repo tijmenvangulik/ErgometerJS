@@ -204,7 +204,7 @@
             readDescriptor: function(descriptor, completeFn, errorFn) {
                 this.descriptorHandles[descriptor._handle].readValue(checkForError(errorFn, function(data) {
                     var arrayBuffer = new Uint8Array(data).buffer;
-                    completeFn(arrayBuffer);
+                    completeFn(arrayBuffer);                    
                 }));
             },
             writeDescriptor: function(descriptor, bufferView, completeFn, errorFn) {

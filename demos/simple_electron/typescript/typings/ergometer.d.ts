@@ -69,9 +69,9 @@ declare module ergometer.ble {
     }
     interface IDriver {
         startScan(foundFn?: IFoundFunc): Promise<void>;
-        stopScan(): any;
+        stopScan(): void;
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
-        disconnect(): any;
+        disconnect(): void;
         writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
         readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
         enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
@@ -85,9 +85,10 @@ declare module ergometer.ble {
     class DriverBleat implements IDriver {
         private _device;
         private _initialized;
+        performanceMonitor: PerformanceMonitor;
         private getCharacteristic(serviceUid, characteristicUid);
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
-        disconnect(): Promise<void>;
+        disconnect(): void;
         init(): Promise<void>;
         startScan(foundFn?: IFoundFunc): Promise<void>;
         stopScan(): Promise<void>;
@@ -98,289 +99,103 @@ declare module ergometer.ble {
     }
 }
 /**
- * Created by tijmen on 28-12-15.
+ * Created by tijmen on 16-02-16.
  */
-declare module ergometer {
-    const enum RowingSampleRate {
-        rate1sec = 0,
-        rate500ms = 1,
-        rate250ms = 2,
-        rate100ms = 3,
+declare module ergometer.ble {
+    interface IRecordDevice {
+        address: string;
+        name: string;
+        rssi: number;
     }
-    const enum ErgmachineType {
-        staticD = 0,
-        staticC = 1,
-        staticA = 2,
-        staticB = 3,
-        staticE = 5,
-        staticDynamic = 8,
-        slidesA = 16,
-        slidesB = 17,
-        slidesC = 18,
-        slidesD = 19,
-        slidesE = 20,
-        slidesDynamic = 32,
-        staticDyno = 64,
-        staticSki = 128,
-        num = 129,
+    interface IRecordCharacteristic {
+        serviceUIID: string;
+        characteristicUUID: string;
+        data?: string;
     }
-    const enum WorkoutType {
-        justRowNoSplits = 0,
-        justRowSplits = 1,
-        fixedDistanceNoAplits = 2,
-        fixedDistanceSplits = 3,
-        fixedTimeNoAplits = 4,
-        fixedTimeAplits = 5,
-        fixedTimeInterval = 6,
-        fixedDistanceInterval = 7,
-        variableInterval = 8,
-        variableUndefinedRestInterval = 9,
-        fixedCalorie = 10,
-        fixedWattMinutes = 11,
+    enum RecordingEventType {
+        startScan = 0,
+        scanFoundFn = 1,
+        stopScan = 2,
+        connect = 3,
+        disconnectFn = 4,
+        disconnect = 5,
+        writeCharacteristic = 6,
+        readCharacteristic = 7,
+        enableNotification = 8,
+        notificationReceived = 9,
+        disableNotification = 10,
     }
-    const enum IntervalType {
-        time = 0,
-        dist = 1,
-        rest = 2,
-        timertUndefined = 3,
-        distanceRestUndefined = 4,
-        restUndefined = 5,
-        cal = 6,
-        calRestUndefined = 7,
-        wattMinute = 8,
-        wattMinuteRestUndefined = 9,
-        none = 255,
+    interface IRecordingItem {
+        timeStamp: number;
+        eventType: string;
+        timeStampReturn?: number;
+        data?: IRecordCharacteristic | IRecordDevice;
+        error?: any;
     }
-    const enum WorkoutState {
-        waitToBegin = 0,
-        workoutRow = 1,
-        countDownPause = 2,
-        intervalRest = 3,
-        intervalWorktime = 4,
-        intervalWorkDistance = 5,
-        intervalRestEndToWorkTime = 6,
-        intervalRestEndToWorkDistance = 7,
-        intervalWorktimeTorest = 8,
-        intervalWorkDistanceToEest = 9,
-        workoutEnd = 10,
-        terminate = 11,
-        workoutLogged = 12,
-        rearm = 13,
+    class RecordingDriver implements IDriver {
+        private _realDriver;
+        private _startTime;
+        private _events;
+        _performanceMonitor: PerformanceMonitor;
+        constructor(performanceMonitor: PerformanceMonitor, realDriver: IDriver);
+        protected getRelativeTime(): number;
+        addRecording(eventType: RecordingEventType, data?: IRecordCharacteristic | IRecordDevice): IRecordingItem;
+        events: ergometer.ble.IRecordingItem[];
+        clear(): void;
+        startRecording(): void;
+        protected recordResolveFunc(resolve: () => void, rec: IRecordingItem): () => void;
+        protected recordResolveBufferFunc(resolve: (data: ArrayBuffer) => void, rec: IRecordingItem): (data: ArrayBuffer) => void;
+        protected recordErrorFunc(reject: (e) => void, rec: IRecordingItem): (e) => void;
+        startScan(foundFn?: IFoundFunc): Promise<void>;
+        stopScan(): void;
+        connect(device: IDevice, disconnectFn: () => void): Promise<void>;
+        disconnect(): void;
+        writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
+        readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
+        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
+        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
     }
-    const enum RowingState {
-        inactive = 0,
-        active = 1,
+}
+/**
+ * Created by tijmen on 18-02-16.
+ */
+declare module ergometer.ble {
+    interface CallBackEvent extends IRecordingItem {
+        resolve?: (e?: any) => void;
+        reject?: (e: any) => void;
     }
-    const enum StrokeState {
-        waitingForWheelToReachMinSpeedState = 0,
-        waitingForWheelToAccelerateState = 1,
-        drivingState = 2,
-        dwellingAfterDriveState = 3,
-        recoveryState = 4,
-    }
-    const enum WorkoutDurationType {
-        timeDuration = 0,
-        caloriesDuration = 64,
-        distanceDuration = 128,
-        wattsDuration = 192,
-    }
-    const enum SampleRate {
-        rate1sec = 0,
-        rate500ms = 1,
-        rate250ms = 2,
-        rate100ms = 3,
-    }
-    const enum Program {
-        Programmed = 0,
-        StandardList1 = 1,
-        StandardList2 = 2,
-        StandardList3 = 3,
-        StandardList4 = 4,
-        StandardList5 = 5,
-        CustomList1 = 6,
-        CustomList2 = 7,
-        CustomList3 = 8,
-        CustomList4 = 9,
-        CustomList5 = 10,
-        FavoritesList1 = 11,
-        FavoritesList2 = 12,
-        FavoritesList3 = 13,
-        FavoritesList4 = 14,
-        FavoritesList5 = 15,
-    }
-    const enum Unit {
-        distanceMile = 1,
-        distanceMile1 = 2,
-        distanceMile2 = 3,
-        distanceMile3 = 4,
-        distanceFeet = 5,
-        distanceInch = 6,
-        weightLbs = 7,
-        weightLbs1 = 8,
-        distanceFeet10 = 10,
-        speedMilePerHour = 16,
-        speedMilePerHour1 = 17,
-        speedMilePerHour2 = 18,
-        speedFeetPerMinute = 19,
-        distanceKm = 33,
-        distanceKm1 = 34,
-        distanceKm2 = 35,
-        distanceMeter = 36,
-        distanceMeter1 = 37,
-        distance_cm = 38,
-        weightKg = 39,
-        weightKg1 = 40,
-        speedKmPerHour = 48,
-        speedKmPerHour1 = 49,
-        speedKmPerHour2 = 50,
-        speedMeterPerMinute = 51,
-        paceMinutePermile = 55,
-        paceMinutePerkm = 56,
-        paceSecondsPerkm = 57,
-        paceSecondsPermile = 58,
-        distanceFloors = 65,
-        distanceFloors1 = 66,
-        distanceSteps = 67,
-        distanceRevs = 68,
-        distanceStrides = 69,
-        distanceStrokes = 70,
-        miscBeats = 71,
-        energyCalories = 72,
-        gradePercent = 74,
-        gradePercent2 = 75,
-        gradePercent1 = 76,
-        cadenceFloorsPerMinute1 = 79,
-        cadenceFloorsPerMinute = 80,
-        cadenceStepsPerMinute = 81,
-        cadenceRevsPerMinute = 82,
-        cadenceStridesPerMinute = 83,
-        cadenceStrokesPerMinute = 84,
-        miscBeatsPerMinute = 85,
-        burnCaloriesPerMinute = 86,
-        burnCaloriesPerHour = 87,
-        powerWatts = 88,
-        energyInchlb = 90,
-        energyFootlb = 91,
-        energyNm = 92,
-    }
-    interface RowingGeneralStatus {
-        elapsedTime: number;
-        distance: number;
-        workoutType: WorkoutType;
-        intervalType: IntervalType;
-        workoutState: WorkoutState;
-        rowingState: RowingState;
-        strokeState: StrokeState;
-        totalWorkDistance: number;
-        workoutDuration: number;
-        workoutDurationType: WorkoutDurationType;
-        dragFactor: number;
-    }
-    interface RowingAdditionalStatus1 {
-        elapsedTime: number;
-        speed: number;
-        strokeRate: number;
-        heartRate: number;
-        currentPace: number;
-        averagePace: number;
-        restDistance: number;
-        restTime: number;
-        averagePower: number;
-    }
-    interface RowingAdditionalStatus2 {
-        elapsedTime: number;
-        intervalCount: number;
-        averagePower: number;
-        totalCalories: number;
-        splitAveragePace: number;
-        splitAveragePower: number;
-        splitAverageCalories: number;
-        lastSplitTime: number;
-        lastSplitDistance: number;
-    }
-    interface RowingStrokeData {
-        elapsedTime: number;
-        distance: number;
-        driveLength: number;
-        driveTime: number;
-        strokeRecoveryTime: number;
-        strokeDistance: number;
-        peakDriveForce: number;
-        averageDriveForce: number;
-        workPerStroke: number;
-        strokeCount: number;
-    }
-    interface RowingAdditionalStrokeData {
-        elapsedTime: number;
-        strokePower: number;
-        strokeCalories: number;
-        strokeCount: number;
-        projectedWorkTime: number;
-        projectedWorkDistance: number;
-        workPerStroke: number;
-    }
-    interface RowingSplitIntervalData {
-        elapsedTime: number;
-        distance: number;
-        intervalTime: number;
-        intervalDistance: number;
-        intervalRestTime: number;
-        intervalRestDistance: number;
-        intervalType: IntervalType;
-        intervalNumber: number;
-    }
-    interface RowingAdditionalSplitIntervalData {
-        elapsedTime: number;
-        intervalAverageStrokeRate: number;
-        intervalWorkHeartrate: number;
-        intervalRestHeartrate: number;
-        intervalAveragePace: number;
-        intervalTotalCalories: number;
-        intervalAverageCalories: number;
-        intervalSpeed: number;
-        intervalPower: number;
-        splitAverageDragFactor: number;
-        intervalNumber: number;
-    }
-    interface WorkoutSummaryData {
-        logEntryDate: number;
-        logEntryTime: number;
-        elapsedTime: number;
-        distance: number;
-        averageStrokeRate: number;
-        endingHeartrate: number;
-        averageHeartrate: number;
-        minHeartrate: number;
-        maxHeartrate: number;
-        dragFactorAverage: number;
-        recoveryHeartRate: number;
-        workoutType: WorkoutType;
-        averagePace: number;
-    }
-    interface AdditionalWorkoutSummaryData {
-        logEntryDate: number;
-        logEntryTime: number;
-        intervalType: IntervalType;
-        intervalSize: number;
-        intervalCount: number;
-        totalCalories: number;
-        watts: number;
-        totalRestDistance: number;
-        intervalRestTime: number;
-        averageCalories: number;
-    }
-    interface AdditionalWorkoutSummaryData2 {
-        logEntryDate: number;
-        logEntryTime: number;
-        averagePace: number;
-        gameIdentifier: number;
-        gameScore: number;
-        ergMachineType: ErgmachineType;
-    }
-    interface HeartRateBeltInformation {
-        manufacturerId: number;
-        deviceType: number;
-        beltId: number;
+    class ReplayDriver implements IDriver {
+        private _realDriver;
+        private _events;
+        private _eventCallBackMethods;
+        private _eventCallbacks;
+        private _playing;
+        private _eventIndex;
+        private _startTime;
+        private _checkQueueTimerId;
+        private _performanceMonitor;
+        protected getRelativeTime(): number;
+        constructor(performanceMonitor: PerformanceMonitor, realDriver: IDriver);
+        events: ergometer.ble.IRecordingItem[];
+        protected isCallBack(eventType: RecordingEventType): boolean;
+        protected isSameEvent(event1: IRecordingItem, event2: IRecordingItem): boolean;
+        protected runEvent(event: IRecordingItem, queuedEvent: CallBackEvent): void;
+        protected runTimedEvent(event: IRecordingItem, queuedEvent: CallBackEvent): void;
+        protected removeEvent(i: number): void;
+        protected checkQueue(): void;
+        protected checkAllEventsProcessd(): boolean;
+        protected timeNextCheck(timeStamp?: number): void;
+        protected addEvent(eventType: RecordingEventType, isMethod: boolean, resolve?: (e?: any) => void, reject?: (e: any) => void, serviceUIID?: string, characteristicUUID?: string): void;
+        replay(events: IRecordingItem[]): void;
+        playing: boolean;
+        startScan(foundFn?: IFoundFunc): Promise<void>;
+        stopScan(): void;
+        connect(device: IDevice, disconnectFn: () => void): Promise<void>;
+        disconnect(): void;
+        writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
+        readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
+        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
+        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
     }
 }
 /**
@@ -998,6 +813,292 @@ declare module ergometer.csafe {
     }
 }
 /**
+ * Created by tijmen on 28-12-15.
+ */
+declare module ergometer {
+    const enum RowingSampleRate {
+        rate1sec = 0,
+        rate500ms = 1,
+        rate250ms = 2,
+        rate100ms = 3,
+    }
+    const enum ErgmachineType {
+        staticD = 0,
+        staticC = 1,
+        staticA = 2,
+        staticB = 3,
+        staticE = 5,
+        staticDynamic = 8,
+        slidesA = 16,
+        slidesB = 17,
+        slidesC = 18,
+        slidesD = 19,
+        slidesE = 20,
+        slidesDynamic = 32,
+        staticDyno = 64,
+        staticSki = 128,
+        num = 129,
+    }
+    const enum WorkoutType {
+        justRowNoSplits = 0,
+        justRowSplits = 1,
+        fixedDistanceNoAplits = 2,
+        fixedDistanceSplits = 3,
+        fixedTimeNoAplits = 4,
+        fixedTimeAplits = 5,
+        fixedTimeInterval = 6,
+        fixedDistanceInterval = 7,
+        variableInterval = 8,
+        variableUndefinedRestInterval = 9,
+        fixedCalorie = 10,
+        fixedWattMinutes = 11,
+    }
+    const enum IntervalType {
+        time = 0,
+        dist = 1,
+        rest = 2,
+        timertUndefined = 3,
+        distanceRestUndefined = 4,
+        restUndefined = 5,
+        cal = 6,
+        calRestUndefined = 7,
+        wattMinute = 8,
+        wattMinuteRestUndefined = 9,
+        none = 255,
+    }
+    const enum WorkoutState {
+        waitToBegin = 0,
+        workoutRow = 1,
+        countDownPause = 2,
+        intervalRest = 3,
+        intervalWorktime = 4,
+        intervalWorkDistance = 5,
+        intervalRestEndToWorkTime = 6,
+        intervalRestEndToWorkDistance = 7,
+        intervalWorktimeTorest = 8,
+        intervalWorkDistanceToEest = 9,
+        workoutEnd = 10,
+        terminate = 11,
+        workoutLogged = 12,
+        rearm = 13,
+    }
+    const enum RowingState {
+        inactive = 0,
+        active = 1,
+    }
+    const enum StrokeState {
+        waitingForWheelToReachMinSpeedState = 0,
+        waitingForWheelToAccelerateState = 1,
+        drivingState = 2,
+        dwellingAfterDriveState = 3,
+        recoveryState = 4,
+    }
+    const enum WorkoutDurationType {
+        timeDuration = 0,
+        caloriesDuration = 64,
+        distanceDuration = 128,
+        wattsDuration = 192,
+    }
+    const enum SampleRate {
+        rate1sec = 0,
+        rate500ms = 1,
+        rate250ms = 2,
+        rate100ms = 3,
+    }
+    const enum Program {
+        Programmed = 0,
+        StandardList1 = 1,
+        StandardList2 = 2,
+        StandardList3 = 3,
+        StandardList4 = 4,
+        StandardList5 = 5,
+        CustomList1 = 6,
+        CustomList2 = 7,
+        CustomList3 = 8,
+        CustomList4 = 9,
+        CustomList5 = 10,
+        FavoritesList1 = 11,
+        FavoritesList2 = 12,
+        FavoritesList3 = 13,
+        FavoritesList4 = 14,
+        FavoritesList5 = 15,
+    }
+    const enum Unit {
+        distanceMile = 1,
+        distanceMile1 = 2,
+        distanceMile2 = 3,
+        distanceMile3 = 4,
+        distanceFeet = 5,
+        distanceInch = 6,
+        weightLbs = 7,
+        weightLbs1 = 8,
+        distanceFeet10 = 10,
+        speedMilePerHour = 16,
+        speedMilePerHour1 = 17,
+        speedMilePerHour2 = 18,
+        speedFeetPerMinute = 19,
+        distanceKm = 33,
+        distanceKm1 = 34,
+        distanceKm2 = 35,
+        distanceMeter = 36,
+        distanceMeter1 = 37,
+        distance_cm = 38,
+        weightKg = 39,
+        weightKg1 = 40,
+        speedKmPerHour = 48,
+        speedKmPerHour1 = 49,
+        speedKmPerHour2 = 50,
+        speedMeterPerMinute = 51,
+        paceMinutePermile = 55,
+        paceMinutePerkm = 56,
+        paceSecondsPerkm = 57,
+        paceSecondsPermile = 58,
+        distanceFloors = 65,
+        distanceFloors1 = 66,
+        distanceSteps = 67,
+        distanceRevs = 68,
+        distanceStrides = 69,
+        distanceStrokes = 70,
+        miscBeats = 71,
+        energyCalories = 72,
+        gradePercent = 74,
+        gradePercent2 = 75,
+        gradePercent1 = 76,
+        cadenceFloorsPerMinute1 = 79,
+        cadenceFloorsPerMinute = 80,
+        cadenceStepsPerMinute = 81,
+        cadenceRevsPerMinute = 82,
+        cadenceStridesPerMinute = 83,
+        cadenceStrokesPerMinute = 84,
+        miscBeatsPerMinute = 85,
+        burnCaloriesPerMinute = 86,
+        burnCaloriesPerHour = 87,
+        powerWatts = 88,
+        energyInchlb = 90,
+        energyFootlb = 91,
+        energyNm = 92,
+    }
+    interface RowingGeneralStatus {
+        elapsedTime: number;
+        distance: number;
+        workoutType: WorkoutType;
+        intervalType: IntervalType;
+        workoutState: WorkoutState;
+        rowingState: RowingState;
+        strokeState: StrokeState;
+        totalWorkDistance: number;
+        workoutDuration: number;
+        workoutDurationType: WorkoutDurationType;
+        dragFactor: number;
+    }
+    interface RowingAdditionalStatus1 {
+        elapsedTime: number;
+        speed: number;
+        strokeRate: number;
+        heartRate: number;
+        currentPace: number;
+        averagePace: number;
+        restDistance: number;
+        restTime: number;
+        averagePower: number;
+    }
+    interface RowingAdditionalStatus2 {
+        elapsedTime: number;
+        intervalCount: number;
+        averagePower: number;
+        totalCalories: number;
+        splitAveragePace: number;
+        splitAveragePower: number;
+        splitAverageCalories: number;
+        lastSplitTime: number;
+        lastSplitDistance: number;
+    }
+    interface RowingStrokeData {
+        elapsedTime: number;
+        distance: number;
+        driveLength: number;
+        driveTime: number;
+        strokeRecoveryTime: number;
+        strokeDistance: number;
+        peakDriveForce: number;
+        averageDriveForce: number;
+        workPerStroke: number;
+        strokeCount: number;
+    }
+    interface RowingAdditionalStrokeData {
+        elapsedTime: number;
+        strokePower: number;
+        strokeCalories: number;
+        strokeCount: number;
+        projectedWorkTime: number;
+        projectedWorkDistance: number;
+        workPerStroke: number;
+    }
+    interface RowingSplitIntervalData {
+        elapsedTime: number;
+        distance: number;
+        intervalTime: number;
+        intervalDistance: number;
+        intervalRestTime: number;
+        intervalRestDistance: number;
+        intervalType: IntervalType;
+        intervalNumber: number;
+    }
+    interface RowingAdditionalSplitIntervalData {
+        elapsedTime: number;
+        intervalAverageStrokeRate: number;
+        intervalWorkHeartrate: number;
+        intervalRestHeartrate: number;
+        intervalAveragePace: number;
+        intervalTotalCalories: number;
+        intervalAverageCalories: number;
+        intervalSpeed: number;
+        intervalPower: number;
+        splitAverageDragFactor: number;
+        intervalNumber: number;
+    }
+    interface WorkoutSummaryData {
+        logEntryDate: number;
+        logEntryTime: number;
+        elapsedTime: number;
+        distance: number;
+        averageStrokeRate: number;
+        endingHeartrate: number;
+        averageHeartrate: number;
+        minHeartrate: number;
+        maxHeartrate: number;
+        dragFactorAverage: number;
+        recoveryHeartRate: number;
+        workoutType: WorkoutType;
+        averagePace: number;
+    }
+    interface AdditionalWorkoutSummaryData {
+        logEntryDate: number;
+        logEntryTime: number;
+        intervalType: IntervalType;
+        intervalSize: number;
+        intervalCount: number;
+        totalCalories: number;
+        watts: number;
+        totalRestDistance: number;
+        intervalRestTime: number;
+        averageCalories: number;
+    }
+    interface AdditionalWorkoutSummaryData2 {
+        logEntryDate: number;
+        logEntryTime: number;
+        averagePace: number;
+        gameIdentifier: number;
+        gameScore: number;
+        ergMachineType: ErgmachineType;
+    }
+    interface HeartRateBeltInformation {
+        manufacturerId: number;
+        deviceType: number;
+        beltId: number;
+    }
+}
+/**
  * Concept 2 ergometer Performance Monitor api for Cordova
  *
  * This will will work with the PM5
@@ -1126,6 +1227,8 @@ declare module ergometer {
      */
     class PerformanceMonitor {
         private _driver;
+        private _recordingDriver;
+        private _replayDriver;
         private _connectionState;
         private _logEvent;
         private _connectionStateChangedEvent;
@@ -1163,6 +1266,13 @@ declare module ergometer {
         private _csafeBuffer;
         private _waitResponseCommands;
         private _generalStatusEventAttachedByPowerCurve;
+        private _recording;
+        protected recordingDriver: ergometer.ble.RecordingDriver;
+        recording: boolean;
+        replayDriver: ble.ReplayDriver;
+        replaying: boolean;
+        replay(events: ble.IRecordingItem[]): void;
+        recordingEvents: ble.IRecordingItem[];
         protected driver: ergometer.ble.IDriver;
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
@@ -1357,7 +1467,7 @@ declare module ergometer {
         /**
          * disconnect the current connected device
          */
-        protected disconnect(): void;
+        disconnect(): void;
         /**
          * read the current connection state
          * @returns {MonitorConnectionState}
@@ -1437,7 +1547,7 @@ declare module ergometer {
         /**
          *
          */
-        protected stopScan(): void;
+        stopScan(): void;
         /**
          * Scan for device use the deviceFound to connect .
          * @param deviceFound

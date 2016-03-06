@@ -55,6 +55,14 @@ You only need to change the javascript included file
      * Skipp some strange return values which look like corrupted or undocumented return values
      * Short hand notation for some simple get and set commands
      * Program command , the value now a correct type and the property program is now named value
+
+- 0.0.8 
+     * Record and replay events. This is use full for:
+        - Writing code without the constant need of an ergometer 
+        - You can test code in an phone emulator (emulators do not have access to blue tooth hardware)
+        - Writing unit tests
+        - Record issues and send them to some one else to fix.
+     * added a demo project for record and replay
      
 # Project features
 
@@ -324,4 +332,58 @@ Debugging electron
 
 I found that WebStorm-EAP was a nice environment for debugging and developing electron applications.
 
+# Record an replay
  
+Recording records all low level communication between the blue tooth driver and the ergometer monitor. You will see
+in the log a lot of events which are normally skipped because the are duplicate.
+
+For replaying you should record the the initial connection sequence other wise the ergometer montior will not get into
+connected state. After this you can replay any other recording
+
+Because the recordings are done on the driver level and listening to blue tooth events is also record you will allways need 
+to do a full run of the connection and the part which you want to replay. So you can not record the connection separate from a 100 meter
+run these must be recorded in one go.
+
+to start recording use
+
+    performanceMonitor.recording=true;
+    //then directly start the scan to connect
+    performanceMonitor.startScan((device : ergometer.DeviceInfo) => {
+                return true;
+            });
+    
+To stop it use:
+    
+    performanceMonitor.recording=false;
+    
+To get the recording and convert it to json:
+
+     console.log(JSON.stringify(this.performanceMonitor.recordingEvents, null, '\t')  );
+
+     
+To replay. (you could also load it from an json file, but you need json.parse to convert it to javascript)
+
+module ergometer.recording {
+
+    export const connection =
+        [
+            {
+                "timeStamp": 841,
+                "eventType": "startScan",
+                "timeStampReturn": 847
+            },
+            {
+                "timeStamp": 1204,
+                "eventType": "scanFoundFn",
+                "data": {
+                    "address": "d2:c7:83:ad:5a:ae",
+                    "name": "PM5 430070439",
+                    "rssi": -56
+                }
+            },
+        ]
+    this.performanceMonitor.replay(ergometer.recording.connection);
+    //then start the scan which will connect using the dummy data of the connection
+     performanceMonitor.startScan((device : ergometer.DeviceInfo) => {
+                     return true;
+                 });

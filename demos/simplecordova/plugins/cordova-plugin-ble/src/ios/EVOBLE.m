@@ -907,7 +907,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 	EVOPeripheral* myPeripheral = [self getPeripheralFromCommand: command];
 	if (nil == myPeripheral) return; // Error.
 
-	// Disconnect the CBPeripheral.
+	// disconnect the CBPeripheral.
 	[self freePeripheral: myPeripheral.peripheral disconnect: YES];
 }
 
@@ -1213,7 +1213,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 
 - (void) reset: (CDVInvokedUrlCommand*)command
 {
-	// Disconnect and deallocate all connected peripherals.
+	// disconnect and deallocate all connected peripherals.
 	[self freePeripherals];
 
 	// Just call the success callback for now.
@@ -1396,7 +1396,7 @@ static int EVOPerhiperalAssociatedObjectKey = 42;
 /****************************************************************/
 
 /**
- * Free data associated with a periperal. Disconnect the
+ * Free data associated with a periperal. disconnect the
  * peripheral if the flag shouldDisconnect is true.
  */
 - (void) freePeripheral: (CBPeripheral *)peripheral

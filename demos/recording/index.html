@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Hello World2!</title>
+  </head>
+  <body>
+    <h1>Ergometer recording example</h1>
+    We are using node <script>document.write(process.versions.node)</script>,
+    Chrome <script>document.write(process.versions.chrome)</script>,
+    and Electron <script>document.write(process.versions.electron)</script>.
+    <select id="devices">
+    </select><br>
+    <br>
+    To run a pre recorded 100 meter without the need of an ergometer or blue tooth hardware:<br>
+
+    <button id="replay100meter">Replay 100 meter</button><br>
+    To record a ergometer session <br>
+    <button id="startRecording">Start recording and connect</button><br>
+
+    <button id="stopRecording">disconnect and stop recording</button><br>
+    <h2>Info</h2>
+
+    <p id="data">
+      Extra info
+    </p>
+  </body>
+  <script>
+    //var bleat=window.bleat;
+    window.$ = window.jQuery = require('./libs/jquery/jquery');
+    var bleat = require('./libs/bleat/index');
+  </script>
+  <script src="app.js"></script>
+</html>

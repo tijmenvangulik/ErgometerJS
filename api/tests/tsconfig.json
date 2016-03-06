@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "module": "system",
+    "target": "es5",
+    "sourceMap": true,
+    "outFile": "tests.js",
+    "declaration": true,
+    "stripInternal": true,
+    "noResolve":true
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "filesGlob": [
+  ],
+  "files": [
+    "../typescript/typings/es6-promise.d.ts",
+    "../typescript/typings/bleat.d.ts",
+    "../typescript/ergometer/utils.ts",
+    "../typescript/ergometer/pubsub.ts",
+    "../typescript/ergometer/bleDriver.ts",
+    "../typescript/ergometer/bleDriverBleat.ts",
+    "../typescript/ergometer/typedefinitions.ts",
+    "../typescript/ergometer/typedefinitions_ble.ts",
+    "../typescript/ergometer/csafe/typedefinitions.ts",
+    "../typescript/ergometer/csafe/command_core.ts",
+    "../typescript/ergometer/csafe/long_commands.ts",
+    "../typescript/ergometer/csafe/short_commands.ts",
+    "../typescript/ergometer/csafe/push_config_commands.ts",
+    "../typescript/ergometer/performancemonitor.ts"
+  ]
+}

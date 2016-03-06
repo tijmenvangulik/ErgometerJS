@@ -10,6 +10,12 @@ var ergometer;
             return (value >> (byteIndex * 8)) & 255;
         }
         utils.getByte = getByte;
+        function copyArrayBuffer(src) {
+            var dst = new ArrayBuffer(src.byteLength);
+            new Uint8Array(dst).set(new Uint8Array(src));
+            return dst;
+        }
+        utils.copyArrayBuffer = copyArrayBuffer;
         /**
         * Interpret byte buffer as unsigned little endian 32 bit integer.
         * Returns converted number.
@@ -35,6 +41,10 @@ var ergometer;
                 return value;
         }
         utils.valueToNullValue = valueToNullValue;
+        function isDefined(variable) {
+            return typeof variable !== 'undefined';
+        }
+        utils.isDefined = isDefined;
         /**
          * Takes a ArrayBuffer or TypedArray and returns its hexadecimal representation.
          * No spaces or linebreaks.
@@ -82,6 +92,21 @@ var ergometer;
             return str;
         }
         utils.typedArrayToHexString = typedArrayToHexString;
+        function hexStringToTypedArray(hexData) {
+            if (hexData.length % 2 != 0)
+                throw "Wrong hexData string: " + hexData;
+            var length = hexData.length / 2;
+            var result = new Uint8Array(length);
+            for (var i = 0; i < length; i++) {
+                result[i] = parseInt(hexData.substring(i * 2, i * 2 + 2), 16);
+            }
+            return result;
+        }
+        utils.hexStringToTypedArray = hexStringToTypedArray;
+        function getTime() {
+            return new Date().getTime();
+        }
+        utils.getTime = getTime;
     })(utils = ergometer.utils || (ergometer.utils = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -300,18 +325,8 @@ var ergometer;
                 });
             };
             DriverBleat.prototype.disconnect = function () {
-                var _this = this;
-                return new Promise(function (resolve, reject) {
-                    try {
-                        if (_this._device)
-                            _this._device.disconnect();
-                        else
-                            reject("Device not connected");
-                    }
-                    catch (e) {
-                        reject(e);
-                    }
-                });
+                if (this._device)
+                    this._device.disconnect();
             };
             DriverBleat.prototype.init = function () {
                 var _this = this;
@@ -413,6 +428,447 @@ var ergometer;
             return DriverBleat;
         })();
         ble.DriverBleat = DriverBleat;
+    })(ble = ergometer.ble || (ergometer.ble = {}));
+})(ergometer || (ergometer = {}));
+/**
+ * Created by tijmen on 16-02-16.
+ */
+var ergometer;
+(function (ergometer) {
+    var ble;
+    (function (ble) {
+        (function (RecordingEventType) {
+            RecordingEventType[RecordingEventType["startScan"] = 0] = "startScan";
+            RecordingEventType[RecordingEventType["scanFoundFn"] = 1] = "scanFoundFn";
+            RecordingEventType[RecordingEventType["stopScan"] = 2] = "stopScan";
+            RecordingEventType[RecordingEventType["connect"] = 3] = "connect";
+            RecordingEventType[RecordingEventType["disconnectFn"] = 4] = "disconnectFn";
+            RecordingEventType[RecordingEventType["disconnect"] = 5] = "disconnect";
+            RecordingEventType[RecordingEventType["writeCharacteristic"] = 6] = "writeCharacteristic";
+            RecordingEventType[RecordingEventType["readCharacteristic"] = 7] = "readCharacteristic";
+            RecordingEventType[RecordingEventType["enableNotification"] = 8] = "enableNotification";
+            RecordingEventType[RecordingEventType["notificationReceived"] = 9] = "notificationReceived";
+            RecordingEventType[RecordingEventType["disableNotification"] = 10] = "disableNotification";
+        })(ble.RecordingEventType || (ble.RecordingEventType = {}));
+        var RecordingEventType = ble.RecordingEventType;
+        var RecordingDriver = (function () {
+            function RecordingDriver(performanceMonitor, realDriver) {
+                this._events = [];
+                this._performanceMonitor = performanceMonitor;
+                this._realDriver = realDriver;
+            }
+            RecordingDriver.prototype.getRelativeTime = function () {
+                return ergometer.utils.getTime() - this._startTime;
+            };
+            RecordingDriver.prototype.addRecording = function (eventType, data) {
+                var newRec = {
+                    timeStamp: this.getRelativeTime(),
+                    eventType: RecordingEventType[eventType]
+                };
+                if (data) {
+                    newRec.data = data;
+                }
+                this._events.push(newRec);
+                return newRec;
+            };
+            Object.defineProperty(RecordingDriver.prototype, "events", {
+                get: function () {
+                    return this._events;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            RecordingDriver.prototype.clear = function () {
+                this._events = [];
+            };
+            RecordingDriver.prototype.startRecording = function () {
+                this.clear();
+                this._startTime = ergometer.utils.getTime();
+            };
+            RecordingDriver.prototype.recordResolveFunc = function (resolve, rec) {
+                var _this = this;
+                return function () {
+                    rec.timeStampReturn = _this.getRelativeTime();
+                    resolve();
+                };
+            };
+            RecordingDriver.prototype.recordResolveBufferFunc = function (resolve, rec) {
+                var _this = this;
+                return function (data) {
+                    rec.timeStampReturn = _this.getRelativeTime();
+                    rec.data.data = ergometer.utils.typedArrayToHexString(data);
+                    resolve(data);
+                };
+            };
+            RecordingDriver.prototype.recordErrorFunc = function (reject, rec) {
+                var _this = this;
+                return function (e) {
+                    rec.timeStampReturn = _this.getRelativeTime();
+                    rec.error = e;
+                    reject(e);
+                };
+            };
+            RecordingDriver.prototype.startScan = function (foundFn) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    var rec = _this.addRecording(RecordingEventType.startScan);
+                    _this._realDriver.startScan(function (device) {
+                        _this.addRecording(RecordingEventType.scanFoundFn, {
+                            address: device.address,
+                            name: device.name,
+                            rssi: device.rssi
+                        });
+                        foundFn(device);
+                    })
+                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
+                });
+            };
+            RecordingDriver.prototype.stopScan = function () {
+                this.addRecording(RecordingEventType.stopScan);
+                this._realDriver.stopScan();
+            };
+            RecordingDriver.prototype.connect = function (device, disconnectFn) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    var rec = _this.addRecording(RecordingEventType.connect);
+                    _this._realDriver.connect(device, function () {
+                        _this.addRecording(RecordingEventType.disconnectFn);
+                        disconnectFn();
+                    }).then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
+                });
+            };
+            RecordingDriver.prototype.disconnect = function () {
+                this.addRecording(RecordingEventType.disconnect);
+                this._realDriver.disconnect();
+            };
+            RecordingDriver.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    var rec = _this.addRecording(RecordingEventType.writeCharacteristic, {
+                        serviceUIID: serviceUIID,
+                        characteristicUUID: characteristicUUID,
+                        data: ergometer.utils.typedArrayToHexString(data.buffer)
+                    });
+                    _this._realDriver.writeCharacteristic(serviceUIID, characteristicUUID, data)
+                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
+                });
+            };
+            RecordingDriver.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    var rec = _this.addRecording(RecordingEventType.readCharacteristic, {
+                        serviceUIID: serviceUIID,
+                        characteristicUUID: characteristicUUID
+                    });
+                    _this._realDriver.readCharacteristic(serviceUIID, characteristicUUID)
+                        .then(_this.recordResolveBufferFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
+                });
+            };
+            RecordingDriver.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+                /*
+                //make a wrapper for each call otherwise it returns the
+                class ReturnWrapper {
+    
+                    constructor (private serviceUIID,private characteristicUUID,private receive,private driver)  {
+    
+                    }
+                    public getReturnFunc() {
+                        return (data:ArrayBuffer) => {
+                        this.driver.addRecording(RecordingEventType.notificationReceived,{
+                            serviceUIID:this.serviceUIID,
+                            characteristicUUID:this.characteristicUUID,
+                            data:utils.typedArrayToHexString(data)});
+                        this.receive(data);
+                    }
+                }
+                }
+                var receivedWrapper = new ReturnWrapper(serviceUIID,characteristicUUID,receive,this);
+                */
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    var rec = _this.addRecording(RecordingEventType.enableNotification, {
+                        serviceUIID: serviceUIID,
+                        characteristicUUID: characteristicUUID
+                    });
+                    _this._realDriver.enableNotification(serviceUIID, characteristicUUID, function (data) {
+                        _this.addRecording(RecordingEventType.notificationReceived, {
+                            serviceUIID: serviceUIID,
+                            characteristicUUID: characteristicUUID,
+                            data: ergometer.utils.typedArrayToHexString(data) });
+                        receive(data);
+                    })
+                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
+                });
+            };
+            RecordingDriver.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    var rec = _this.addRecording(RecordingEventType.disableNotification, {
+                        serviceUIID: serviceUIID,
+                        characteristicUUID: characteristicUUID
+                    });
+                    _this._realDriver.disableNotification(serviceUIID, characteristicUUID)
+                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
+                });
+            };
+            return RecordingDriver;
+        })();
+        ble.RecordingDriver = RecordingDriver;
+    })(ble = ergometer.ble || (ergometer.ble = {}));
+})(ergometer || (ergometer = {}));
+/**
+ * Created by tijmen on 18-02-16.
+ */
+var ergometer;
+(function (ergometer) {
+    var ble;
+    (function (ble) {
+        var ReplayDriver = (function () {
+            function ReplayDriver(performanceMonitor, realDriver) {
+                this._events = [];
+                this._eventCallBackMethods = [];
+                this._eventCallbacks = [];
+                this._playing = false;
+                this._eventIndex = 0;
+                this._checkQueueTimerId = null;
+                this._performanceMonitor = performanceMonitor;
+                this._realDriver = realDriver;
+            }
+            ReplayDriver.prototype.getRelativeTime = function () {
+                return ergometer.utils.getTime() - this._startTime;
+            };
+            Object.defineProperty(ReplayDriver.prototype, "events", {
+                get: function () {
+                    return this._events;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            ReplayDriver.prototype.isCallBack = function (eventType) {
+                return (eventType == ble.RecordingEventType.scanFoundFn ||
+                    eventType == ble.RecordingEventType.disconnectFn ||
+                    eventType == ble.RecordingEventType.notificationReceived);
+            };
+            ReplayDriver.prototype.isSameEvent = function (event1, event2) {
+                var result = event1.eventType == event2.eventType;
+                if (result && ergometer.utils.isDefined(event1.data) && ergometer.utils.isDefined(event2.data) && event1.data && event2.data) {
+                    var data1 = event1.data;
+                    var data2 = event2.data;
+                    if (result && (ergometer.utils.isDefined(data1.serviceUIID) || ergometer.utils.isDefined(data2.serviceUIID)))
+                        result = data1.serviceUIID == data2.serviceUIID;
+                    if (result && (ergometer.utils.isDefined(data1.characteristicUUID) || ergometer.utils.isDefined(data2.characteristicUUID)))
+                        result = data1.characteristicUUID == data2.characteristicUUID;
+                }
+                return result;
+            };
+            ReplayDriver.prototype.runEvent = function (event, queuedEvent) {
+                if (this._performanceMonitor.logLevel >= ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("run event:" + JSON.stringify(event));
+                if (event.error) {
+                    queuedEvent.reject(event.error);
+                }
+                else {
+                    var data = null;
+                    if (event.data) {
+                        data = event.data;
+                        var eventType = ble.RecordingEventType[event.eventType];
+                        if (eventType == ble.RecordingEventType.readCharacteristic ||
+                            eventType == ble.RecordingEventType.notificationReceived) {
+                            data = ergometer.utils.hexStringToTypedArray(data.data).buffer;
+                        }
+                    }
+                    if (queuedEvent.resolve) {
+                        try {
+                            if (data)
+                                queuedEvent.resolve(data);
+                            else
+                                queuedEvent.resolve();
+                        }
+                        catch (e) {
+                            //do not let it stop on replay errors, just continue and log
+                            this._performanceMonitor.handleError("Error: while replaying event" + e);
+                        }
+                    }
+                }
+            };
+            ReplayDriver.prototype.runTimedEvent = function (event, queuedEvent) {
+                var _this = this;
+                setTimeout(function () {
+                    _this.runEvent(event, queuedEvent);
+                }, queuedEvent.timeStamp - event.timeStamp);
+            };
+            ReplayDriver.prototype.removeEvent = function (i) {
+                this._events.splice(i, 1);
+            };
+            ReplayDriver.prototype.checkQueue = function () {
+                var _this = this;
+                var keepChecking = true;
+                while (keepChecking && this._events.length > 0 && this._events[0].timeStamp <= this.getRelativeTime()) {
+                    keepChecking = false; //by default do not keep on checking
+                    var event = this._events[0];
+                    if (this.isCallBack(ble.RecordingEventType[event.eventType])) {
+                        //run call backs directly on the given time
+                        if (event.timeStamp <= this.getRelativeTime()) {
+                            var found = false;
+                            this._eventCallbacks.forEach(function (callbackEvent) {
+                                if (_this.isSameEvent(event, callbackEvent)) {
+                                    _this.runEvent(event, callbackEvent);
+                                    keepChecking = true;
+                                    found = true;
+                                }
+                            });
+                            if (found)
+                                this.removeEvent(0);
+                        }
+                    }
+                    else {
+                        if (this._eventCallBackMethods.length > 0) {
+                            for (var i = 0; i < this._eventCallBackMethods.length; i++) {
+                                var eventQueued = this._eventCallBackMethods[i];
+                                if (this.isSameEvent(eventQueued, event)) {
+                                    this._eventCallBackMethods.splice(i, 1);
+                                    this.removeEvent(0);
+                                    keepChecking = true;
+                                    if (event.timeStamp <= eventQueued.timeStamp)
+                                        this.runEvent(event, eventQueued);
+                                    else
+                                        this.runTimedEvent(event, eventQueued);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (this._events.length > 0) {
+                    var event_1 = this._events[0];
+                    this.timeNextCheck(event_1.timeStamp);
+                }
+                this.checkAllEventsProcessd();
+            };
+            ReplayDriver.prototype.checkAllEventsProcessd = function () {
+                var allDone = (this.events.length == 0) && (this._eventCallBackMethods.length == 0);
+                if (allDone && this.playing) {
+                    this.playing = false;
+                }
+                return allDone;
+            };
+            ReplayDriver.prototype.timeNextCheck = function (timeStamp) {
+                var _this = this;
+                if (this._checkQueueTimerId) {
+                    window.clearTimeout(this._checkQueueTimerId);
+                    this._checkQueueTimerId = null;
+                }
+                var duration = 0;
+                if (timeStamp) {
+                    duration = this.getRelativeTime() - timeStamp;
+                    if (duration == 0)
+                        duration = 100;
+                }
+                this._checkQueueTimerId = setTimeout(function () {
+                    _this.checkQueue();
+                }, duration);
+            };
+            ReplayDriver.prototype.addEvent = function (eventType, isMethod, resolve, reject, serviceUIID, characteristicUUID) {
+                var event = {
+                    timeStamp: this.getRelativeTime(),
+                    eventType: ble.RecordingEventType[eventType]
+                };
+                if (resolve)
+                    event.resolve = resolve;
+                if (reject)
+                    event.reject = reject;
+                if (serviceUIID || characteristicUUID) {
+                    var data = {
+                        serviceUIID: serviceUIID,
+                        characteristicUUID: characteristicUUID
+                    };
+                    event.data = data;
+                }
+                if (isMethod) {
+                    this._eventCallBackMethods.push(event);
+                }
+                else {
+                    this._eventCallbacks.push(event);
+                    this.timeNextCheck();
+                }
+            };
+            ReplayDriver.prototype.replay = function (events) {
+                this._playing = true;
+                this._startTime = ergometer.utils.getTime();
+                this._events = events;
+                this._eventIndex = 0;
+                this.playing = true;
+            };
+            Object.defineProperty(ReplayDriver.prototype, "playing", {
+                get: function () {
+                    return this._playing;
+                },
+                set: function (value) {
+                    if (this._playing != value) {
+                        this._playing = value;
+                        if (!value) {
+                            this._eventCallBackMethods = [];
+                            this._eventCallbacks = [];
+                        }
+                    }
+                },
+                enumerable: true,
+                configurable: true
+            });
+            /*protected  playEvent(event : IRecordingItem) : Promise<void> {
+    
+                    var timeDiff = event.timeStamp-event.timeStampReturn;
+                    if (event.error)  setTimeout(reject, timeDiff)
+                    else setTimeout(resolve, timeDiff);
+            }  */
+            ReplayDriver.prototype.startScan = function (foundFn) {
+                var _this = this;
+                this.addEvent(ble.RecordingEventType.scanFoundFn, false, foundFn);
+                return new Promise(function (resolve, reject) {
+                    _this.addEvent(ble.RecordingEventType.startScan, true, resolve, reject);
+                });
+            };
+            ReplayDriver.prototype.stopScan = function () {
+                this.addEvent(ble.RecordingEventType.stopScan, true);
+            };
+            ReplayDriver.prototype.connect = function (device, disconnectFn) {
+                var _this = this;
+                this.addEvent(ble.RecordingEventType.disconnectFn, false, disconnectFn);
+                return new Promise(function (resolve, reject) {
+                    _this.addEvent(ble.RecordingEventType.connect, true, resolve, reject);
+                });
+            };
+            ReplayDriver.prototype.disconnect = function () {
+                this.addEvent(ble.RecordingEventType.disconnect, true);
+            };
+            ReplayDriver.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    _this.addEvent(ble.RecordingEventType.writeCharacteristic, true, resolve, reject, serviceUIID, characteristicUUID);
+                });
+            };
+            ReplayDriver.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    _this.addEvent(ble.RecordingEventType.readCharacteristic, true, resolve, reject, serviceUIID, characteristicUUID);
+                });
+            };
+            ReplayDriver.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+                var _this = this;
+                this.addEvent(ble.RecordingEventType.notificationReceived, false, receive, null, serviceUIID, characteristicUUID);
+                return new Promise(function (resolve, reject) {
+                    _this.addEvent(ble.RecordingEventType.enableNotification, true, resolve, reject, serviceUIID, characteristicUUID);
+                });
+            };
+            ReplayDriver.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    _this.addEvent(ble.RecordingEventType.disableNotification, true, resolve, reject, serviceUIID, characteristicUUID);
+                });
+            };
+            return ReplayDriver;
+        })();
+        ble.ReplayDriver = ReplayDriver;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -909,11 +1365,69 @@ var ergometer;
             this._csafeBuffer = null;
             this._waitResponseCommands = [];
             this._generalStatusEventAttachedByPowerCurve = false;
+            this._recording = false;
             this.initialize();
         }
+        Object.defineProperty(PerformanceMonitor.prototype, "recordingDriver", {
+            get: function () {
+                if (!this._recordingDriver) {
+                    this._recordingDriver = new ergometer.ble.RecordingDriver(this, this._driver);
+                }
+                return this._recordingDriver;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(PerformanceMonitor.prototype, "recording", {
+            get: function () {
+                return this._recording;
+            },
+            set: function (value) {
+                this._recording = value;
+                if (value)
+                    this.recordingDriver.startRecording();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(PerformanceMonitor.prototype, "replayDriver", {
+            get: function () {
+                if (!this._replayDriver)
+                    this._replayDriver = new ergometer.ble.ReplayDriver(this, this._driver);
+                return this._replayDriver;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(PerformanceMonitor.prototype, "replaying", {
+            get: function () {
+                return this.replayDriver.playing;
+            },
+            set: function (value) {
+                this.replayDriver.playing = value;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        PerformanceMonitor.prototype.replay = function (events) {
+            this.replayDriver.replay(events);
+        };
+        Object.defineProperty(PerformanceMonitor.prototype, "recordingEvents", {
+            get: function () {
+                return this.recordingDriver.events;
+            },
+            enumerable: true,
+            configurable: true
+        });
         Object.defineProperty(PerformanceMonitor.prototype, "driver", {
             get: function () {
-                return this._driver;
+                if (this.recording) {
+                    return this.recordingDriver;
+                }
+                else if (this.replaying)
+                    return this.replayDriver;
+                else
+                    return this._driver;
             },
             enumerable: true,
             configurable: true
@@ -1329,7 +1843,7 @@ var ergometer;
          */
         PerformanceMonitor.prototype.disconnect = function () {
             if (this.connectionState >= MonitorConnectionState.deviceReady) {
-                this.driver.disconnect().catch(this.getErrorHandlerFunc("Can not disconnect"));
+                this.driver.disconnect();
                 this.connectionState = MonitorConnectionState.deviceReady;
             }
         };
@@ -2245,7 +2759,7 @@ var ergometer;
         PerformanceMonitor.prototype.removeOldSendCommands = function () {
             for (var i = this._waitResponseCommands.length - 1; i >= 0; i--) {
                 var command = this._waitResponseCommands[i];
-                var currentTime = new Date().getTime();
+                var currentTime = ergometer.utils.getTime();
                 //more than 20 seconds in the buffer
                 if (currentTime - command._timestamp > 20000) {
                     if (command.onError) {

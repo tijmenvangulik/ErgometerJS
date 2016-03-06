@@ -14,9 +14,9 @@ module ergometer.ble {
     }
     export interface IDriver {
         startScan( foundFn? :  IFoundFunc) : Promise<void>;
-        stopScan();
+        stopScan() :void;
         connect(device : IDevice,disconnectFn : ()=>void) : Promise<void>;
-        disconnect();
+        disconnect():void;
         writeCharacteristic(serviceUIID : string,characteristicUUID:string, data:ArrayBufferView) : Promise<void>;
         readCharacteristic(serviceUIID : string,characteristicUUID:string) : Promise<ArrayBuffer>
         enableNotification(serviceUIID : string,characteristicUUID:string, receive:(data:ArrayBuffer) =>void) : Promise<void>;

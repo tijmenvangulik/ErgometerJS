@@ -7,6 +7,11 @@ module ergometer.utils {
     export function getByte(value : number,byteIndex : number) : number {
         return (value>>(byteIndex*8) ) & 255;
     }
+    export function copyArrayBuffer(src : ArrayBuffer) : ArrayBuffer  {
+        var dst = new ArrayBuffer(src.byteLength);
+        new Uint8Array(dst).set(new Uint8Array(src));
+        return dst;
+    }
      /**
      * Interpret byte buffer as unsigned little endian 32 bit integer.
      * Returns converted number.
@@ -27,6 +32,9 @@ module ergometer.utils {
     export function valueToNullValue(value : number,nullValue : number) : number {
         if (value==nullValue) return null;
         else return value;
+    }
+    export function isDefined(variable : any)  : boolean{
+        return typeof variable !== 'undefined'
     }
      /**
       * Takes a ArrayBuffer or TypedArray and returns its hexadecimal representation.
@@ -75,5 +83,16 @@ module ergometer.utils {
          }
          return str;
      }
-
+     export function hexStringToTypedArray(hexData : string) : Uint8Array {
+         if (hexData.length % 2 !=0 ) throw "Wrong hexData string: "+hexData;
+         var length= hexData.length / 2;
+         var result = new Uint8Array(length);
+         for (var i=0;i<length;i++) {
+             result[i]=parseInt(hexData.substring(i*2,i*2+2),16 );
+         }
+         return result;
+     }
+      export function getTime() : number {
+            return new Date().getTime();
+      }
 }
