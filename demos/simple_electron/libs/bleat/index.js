@@ -1,6 +1,13 @@
-var bleat = require('./dist/bleat.core');
-require('./dist/bleat.chromeos');
-require('./dist/bleat.evothings');
-require('./dist/bleat.noble');
-
-module.exports = bleat;
+module.exports = {
+    helpers: require('./dist/bluetooth.helpers'),
+    get classic() {
+        var bluetooth = require('./dist/api.classic');
+        require('./dist/adapter.noble')(bluetooth);
+        return bluetooth;
+    },
+    get webbluetooth() {
+        var bluetooth = require('./dist/api.web-bluetooth');
+        require('./dist/adapter.noble')(bluetooth);
+        return bluetooth;
+    }
+};

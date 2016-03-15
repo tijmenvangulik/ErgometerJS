@@ -15,7 +15,7 @@
   ],
   "files": [
     "typescript/typings/es6-promise.d.ts",
-    "typescript/typings/bleat.d.ts",
+    "typescript/typings/bleat.classic.d.ts",
     "typescript/ergometer/utils.ts",
     "typescript/ergometer/pubsub.ts",
     "typescript/ergometer/ble/Driver.ts",

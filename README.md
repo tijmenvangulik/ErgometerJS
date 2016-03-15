@@ -63,7 +63,16 @@ You only need to change the javascript included file
         - Writing unit tests
         - Record issues and send them to some one else to fix.
      * added a demo project for record and replay
-     
+-0.0.9
+     * Upgraded bleat 0.1.0 
+        - The bleat bug fixes are not needed any more. 
+        - Still use the bleat classic interface
+        - The ergometer api is not changed but you will need to include other bleat javascript libraries in your html/javascript.
+          See the demo's for the details
+     * Upgraded to typescript 1.8.2
+     * Made a start with implementing Web-bluetooth. In the future this allows you to run the app from a normal browser. 
+       This is still work in progress
+        
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 

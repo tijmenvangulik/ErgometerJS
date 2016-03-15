@@ -6,8 +6,7 @@ module ergometer.ble {
     export class DriverBleat implements IDriver {
 
         private _device:bleat.Device;
-        private _initialized = false;
-        
+
         public performanceMonitor : PerformanceMonitor;
         
         //simple wrapper for bleat characteristic functions
@@ -20,6 +19,7 @@ module ergometer.ble {
             }
             else throw `service ${serviceUid} not found`
         }
+
         public connect(device : IDevice,disconnectFn : ()=>void) : Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 try {
@@ -38,55 +38,35 @@ module ergometer.ble {
         public disconnect() {
             if (this._device) this._device.disconnect();
         }
-        public init(): Promise<void> {
-            return new Promise<void>((resolve, reject) => {
+
+        public startScan( foundFn? : IFoundFunc ) : Promise<void> {
+            return  new Promise<void>((resolve, reject) => {
                 try {
-                    if (this._initialized)
-                        resolve();
-                    else {
-                        bleat.init(()=>{
-                            resolve();
-                            this._initialized=true
-                        }, reject)
-                    }
+                    bleat.startScan((device)=> {
+                        foundFn({
+                            address: device.address,
+                            name: device.name,
+                            rssi: device.adData.rssi,
+                            _internalDevice: device
+                        })
+                    }, reject);
+                    resolve();
                 }
                 catch (e) {
                     reject(e);
                 }
-            })
-
-        }
-        public startScan( foundFn? : IFoundFunc ) : Promise<void> {
-           return this.init()
-                .then(()=>{
-                return  new Promise<void>((resolve, reject) => {
-                    try {
-                        bleat.startScan((device)=> {
-                            foundFn({
-                                address: device.address,
-                                name: device.name,
-                                rssi: device.rssi,
-                                _internalDevice: device
-                            })
-                        }, reject);
-                        resolve();
-                    }
-                    catch (e) {
-                        reject(e);
-                    }
-                })
-            })
+            });
 
         }
         public stopScan() : Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 try {
-                    if (this._initialized)
-                        bleat.stopScan(reject);
+                    bleat.stopScan(reject);
                     resolve();
+
                 }
                 catch (e) {
-                        reject(e);
+                    reject(e);
                 }
 
             })
@@ -94,7 +74,8 @@ module ergometer.ble {
         public writeCharacteristic(serviceUIID : string,characteristicUUID:string, data:ArrayBufferView) : Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 try {
-                    this.getCharacteristic(serviceUIID,characteristicUUID).write(data,resolve,reject);
+                    var dataView = new DataView(data.buffer);
+                    this.getCharacteristic(serviceUIID,characteristicUUID).write(dataView,resolve,reject);
                     resolve();
                 }
                 catch (e) {
@@ -108,7 +89,8 @@ module ergometer.ble {
         public readCharacteristic(serviceUIID : string,characteristicUUID:string) : Promise<ArrayBuffer> {
             return new Promise<ArrayBuffer>((resolve, reject) => {
                 try {
-                    this.getCharacteristic(serviceUIID, characteristicUUID).read(resolve, reject);
+                    this.getCharacteristic(serviceUIID, characteristicUUID).read(
+                        (data : DataView)=>{ resolve(data.buffer); }, reject);
 
                 }
                 catch (e) {
@@ -120,7 +102,8 @@ module ergometer.ble {
         public enableNotification(serviceUIID : string,characteristicUUID:string, receive:(data:ArrayBuffer) =>void) : Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 try {
-                    this.getCharacteristic(serviceUIID, characteristicUUID).enableNotify(receive, resolve, reject);
+                    this.getCharacteristic(serviceUIID, characteristicUUID).enableNotify(
+                        (data : DataView)=>{ receive(data.buffer) }, resolve, reject);
 
                 }
                 catch (e) {

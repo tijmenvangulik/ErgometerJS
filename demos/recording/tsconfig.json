@@ -12,7 +12,7 @@
   ],
   "files": [
     "../../api/typescript/typings/es6-promise.d.ts",
-    "../../api/typescript/typings/bleat.d.ts",
+    "../../api/typescript/typings/bleat.classic.d.ts",
     "../../api/typescript/ergometer/utils.ts",
     "../../api/typescript/ergometer/pubsub.ts",
     "../../api/typescript/ergometer/ble/Driver.ts",

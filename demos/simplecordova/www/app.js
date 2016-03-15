@@ -185,7 +185,7 @@ var Demo = (function () {
         this.startScan();
     };
     return Demo;
-})();
+}());
 /**
  * Demo of Concept 2 ergometer Performance Monitor for Cordova
  *
@@ -241,6 +241,6 @@ var App = (function () {
         this.demo.pageLoaded();
     };
     return App;
-})();
+}());
 var app = new App();
 //# sourceMappingURL=app.js.map

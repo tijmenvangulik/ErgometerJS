@@ -185,7 +185,7 @@ var Demo = (function () {
         this.startScan();
     };
     return Demo;
-})();
+}());
 /**
  * Demo of Concept 2 ergometer Performance Monitor for electron
  *
@@ -226,6 +226,6 @@ var App = (function () {
         configurable: true
     });
     return App;
-})();
+}());
 var app = new App();
 //# sourceMappingURL=app.js.map

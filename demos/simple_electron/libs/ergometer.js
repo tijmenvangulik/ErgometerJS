@@ -199,7 +199,7 @@ var ergometer;
                     return 0;
             };
             return PubSub;
-        })();
+        }());
         pubSub.PubSub = PubSub;
         //new style event using generics
         var Event = (function () {
@@ -281,7 +281,7 @@ var ergometer;
                 this._subScriptionChangedEvent = func;
             };
             return Event;
-        })();
+        }());
         pubSub.Event = Event;
     })(pubSub = ergometer.pubSub || (ergometer.pubSub = {}));
 })(ergometer || (ergometer = {}));
@@ -294,7 +294,6 @@ var ergometer;
     (function (ble) {
         var DriverBleat = (function () {
             function DriverBleat() {
-                this._initialized = false;
             }
             //simple wrapper for bleat characteristic functions
             DriverBleat.prototype.getCharacteristic = function (serviceUid, characteristicUid) {
@@ -328,51 +327,28 @@ var ergometer;
                 if (this._device)
                     this._device.disconnect();
             };
-            DriverBleat.prototype.init = function () {
-                var _this = this;
+            DriverBleat.prototype.startScan = function (foundFn) {
                 return new Promise(function (resolve, reject) {
                     try {
-                        if (_this._initialized)
-                            resolve();
-                        else {
-                            bleat.init(function () {
-                                resolve();
-                                _this._initialized = true;
-                            }, reject);
-                        }
+                        bleat.startScan(function (device) {
+                            foundFn({
+                                address: device.address,
+                                name: device.name,
+                                rssi: device.adData.rssi,
+                                _internalDevice: device
+                            });
+                        }, reject);
+                        resolve();
                     }
                     catch (e) {
                         reject(e);
                     }
                 });
             };
-            DriverBleat.prototype.startScan = function (foundFn) {
-                return this.init()
-                    .then(function () {
-                    return new Promise(function (resolve, reject) {
-                        try {
-                            bleat.startScan(function (device) {
-                                foundFn({
-                                    address: device.address,
-                                    name: device.name,
-                                    rssi: device.rssi,
-                                    _internalDevice: device
-                                });
-                            }, reject);
-                            resolve();
-                        }
-                        catch (e) {
-                            reject(e);
-                        }
-                    });
-                });
-            };
             DriverBleat.prototype.stopScan = function () {
-                var _this = this;
                 return new Promise(function (resolve, reject) {
                     try {
-                        if (_this._initialized)
-                            bleat.stopScan(reject);
+                        bleat.stopScan(reject);
                         resolve();
                     }
                     catch (e) {
@@ -384,7 +360,8 @@ var ergometer;
                 var _this = this;
                 return new Promise(function (resolve, reject) {
                     try {
-                        _this.getCharacteristic(serviceUIID, characteristicUUID).write(data, resolve, reject);
+                        var dataView = new DataView(data.buffer);
+                        _this.getCharacteristic(serviceUIID, characteristicUUID).write(dataView, resolve, reject);
                         resolve();
                     }
                     catch (e) {
@@ -396,7 +373,7 @@ var ergometer;
                 var _this = this;
                 return new Promise(function (resolve, reject) {
                     try {
-                        _this.getCharacteristic(serviceUIID, characteristicUUID).read(resolve, reject);
+                        _this.getCharacteristic(serviceUIID, characteristicUUID).read(function (data) { resolve(data.buffer); }, reject);
                     }
                     catch (e) {
                         reject(e);
@@ -407,7 +384,7 @@ var ergometer;
                 var _this = this;
                 return new Promise(function (resolve, reject) {
                     try {
-                        _this.getCharacteristic(serviceUIID, characteristicUUID).enableNotify(receive, resolve, reject);
+                        _this.getCharacteristic(serviceUIID, characteristicUUID).enableNotify(function (data) { receive(data.buffer); }, resolve, reject);
                     }
                     catch (e) {
                         reject(e);
@@ -426,7 +403,7 @@ var ergometer;
                 });
             };
             return DriverBleat;
-        })();
+        }());
         ble.DriverBleat = DriverBleat;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
@@ -612,7 +589,7 @@ var ergometer;
                 });
             };
             return RecordingDriver;
-        })();
+        }());
         ble.RecordingDriver = RecordingDriver;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
@@ -867,7 +844,7 @@ var ergometer;
                 });
             };
             return ReplayDriver;
-        })();
+        }());
         ble.ReplayDriver = ReplayDriver;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
@@ -1113,7 +1090,7 @@ var ergometer;
                 });
             };
             return CommandManagager;
-        })();
+        }());
         csafe.CommandManagager = CommandManagager;
         csafe.commandManager = new CommandManagager();
         function registerStandardSet(functionName, command, setParams) {
@@ -3040,7 +3017,7 @@ var ergometer;
             configurable: true
         });
         return PerformanceMonitor;
-    })();
+    }());
     ergometer.PerformanceMonitor = PerformanceMonitor;
 })(ergometer || (ergometer = {}));
 //# sourceMappingURL=ergometer.js.map

@@ -84,12 +84,10 @@ declare module ergometer.ble {
 declare module ergometer.ble {
     class DriverBleat implements IDriver {
         private _device;
-        private _initialized;
         performanceMonitor: PerformanceMonitor;
         private getCharacteristic(serviceUid, characteristicUid);
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
         disconnect(): void;
-        init(): Promise<void>;
         startScan(foundFn?: IFoundFunc): Promise<void>;
         stopScan(): Promise<void>;
         writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
