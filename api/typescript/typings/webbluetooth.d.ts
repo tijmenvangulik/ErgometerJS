@@ -2,7 +2,8 @@
  * Created by tijmen on 13-03-16.
  */
 
- declare module webbluetooth {
+declare module webbluetooth {
+
     export type UUID= string
     export type DOMString= UUID
     export type BluetoothServiceUUID = DOMString | number
@@ -15,14 +16,14 @@
     export type EventHandler = (ev: Event) => any
 
     export interface BluetoothScanFilter {
-        services : BluetoothServiceUUID[];
+        services?: BluetoothServiceUUID[];
         name? : DOMString;
         namePrefix? : DOMString;
     }
 
     export interface RequestDeviceOptions {
 
-        filters : BluetoothScanFilter[];
+        filters: BluetoothScanFilter[];
         optionalServices? : BluetoothServiceUUID[];
         //bleat addition
         deviceFound? : ( device : BluetoothDevice)=>void;
@@ -52,6 +53,8 @@
         productVersion? : UnsignedLong;
         gatt : BluetoothRemoteGATTServer;
         uuids : UUID[];
+        //this seems to be a chrome specification not in the standard
+        connectGATT() : Promise<BluetoothRemoteGATTServer>;
     }
 
     export interface BluetoothManufacturerDataMap {
@@ -152,4 +155,6 @@ declare module BluetoothUUID {
     export function getDescriptor(name : webbluetooth.DOMString | webbluetooth.UnsignedLong) : webbluetooth.UUID;
     export function canonicalUUID(  alias : webbluetooth.UnsignedLong) : webbluetooth.UUID;
 }
-declare var bluetooth : webbluetooth.Bluetooth;
+interface Navigator {
+    bluetooth : webbluetooth.Bluetooth;
+}
