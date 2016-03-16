@@ -63,6 +63,7 @@ You only need to change the javascript included file
         - Writing unit tests
         - Record issues and send them to some one else to fix.
      * added a demo project for record and replay
+
 -0.0.9
      * Upgraded bleat 0.1.0 
         - The bleat bug fixes are not needed any more. 
