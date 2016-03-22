@@ -96,10 +96,11 @@ Components
 
 # Todo
 
+* get it working in a normal browser  ( chrome using web bluetooth https://webbluetoothcg.github.io/web-bluetooth/  )
+* Write a demo of an app which can really be used.
 * Add more commands
-* Write a demo of an app which can really be used. (now it)
 
-#Known problems
+# Known problems
                   
 * There are problems in the PM5 BLE firmware. Some csafe commands give back invalid responses. 
 I hope they fix it soon. See
