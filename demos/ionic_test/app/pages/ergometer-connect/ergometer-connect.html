@@ -1,0 +1,30 @@
+
+<ion-navbar *navbar>
+  <button menuToggle>
+    <ion-icon name="menu"></ion-icon>
+  </button>
+  <ion-title>Log</ion-title>
+</ion-navbar>
+
+
+<ion-content padding class="getting-started">
+
+  <ion-list>
+    <ion-item>
+      <ion-label>Connections</ion-label>
+      <ion-select [(ngModel)]="selectedDeviceName"   >
+        <ion-option value="{{deviceName}}" *ngFor="#deviceName of deviceNames">{{deviceName}}</ion-option>
+      </ion-select>
+    </ion-item>
+  </ion-list>
+
+        <ion-card >
+
+          <ion-card-content>
+            <pre>{{ ergometerService.log }} </pre>
+          </ion-card-content>
+
+        </ion-card>
+
+
+</ion-content>

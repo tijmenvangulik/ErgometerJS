@@ -73,6 +73,9 @@ You only need to change the javascript included file
      * Upgraded to typescript 1.8.2
      * Made a start with implementing Web-bluetooth. In the future this allows you to run the app from a normal browser. 
        This is still work in progress
+- 0.0.10
+     * ionic 2 example
+     * moved readme's
         
 # Project features
 
@@ -147,37 +150,6 @@ To use the library you need all the files in the lib directory and include it in
 	<script src="libs/evothings/evothings.js"></script>
 	<script src="libs/evothings/easyble/easyble.js"></script>
 
-
-Demo Simple Cordova
-
-first install Cordova
-
-    npm install -g cordova
-    (or the same as I used: npm install -g cordova@5.4.1 )
-
-in the command line go to dir demos\simplecodova
-
-add one ore more platforms which you want to test (only ios, android and windows (8.1) are possible)
-
-    cordova platform add ios
-    cordova platform add android
-    cordova platform add windows
-    
-optional: update ble plugin to get the latest
-
-    cordova plugin rm cordova-plugin-ble
-    cordova plugin add cordova-plugin-ble
-
-To build and run in the emulator 
-
-    cordova run ios
-
-Blue tooth will not work in an emulator so it is better to test directly on your device:
-
-    cordova --device run ios
-
-Check the console for the ergometer data. (you can read the log by starting a browser and debug the cordova app.
-GabDebug is a handy tool for is. For debugging you should enable debug mode in the build properties the platform project)
 
 #Evothings
 
@@ -322,79 +294,22 @@ allways send raw commands. For example
         .then(()=>{  //send returns a promise
            console.log("send done, you can send th next")
          }); 
+
+# Examples
                   
-# Electron
+## Simple Cordova
 
-go to the directory demos\simple_electron
+[demos/simplecordova/README.md](info)                 
 
-install electron pre build including noble for the blue tooth 
+## Electron
 
-    npm install
+[demos/simple_electron/README.md](info)                 
 
-run the demo
 
-    npm start
-    
-Optional: You can rebuild the javascipt from the type script by typing in the main folder.
-
-    npm run build:simple_electron
-    
-Debugging electron
-
-I found that WebStorm-EAP was a nice environment for debugging and developing electron applications.
-
-# Record an replay
+## Record an replay
  
-Recording records all low level communication between the blue tooth driver and the ergometer monitor. You will see
-in the log a lot of events which are normally skipped because the are duplicate.
+[demos/recording/README.md](info)                 
+                 
+## ionic 2
 
-For replaying you should record the the initial connection sequence other wise the ergometer montior will not get into
-connected state. After this you can replay any other recording
-
-Because the recordings are done on the driver level and listening to blue tooth events is also record you will allways need 
-to do a full run of the connection and the part which you want to replay. So you can not record the connection separate from a 100 meter
-run these must be recorded in one go.
-
-to start recording use
-
-    performanceMonitor.recording=true;
-    //then directly start the scan to connect
-    performanceMonitor.startScan((device : ergometer.DeviceInfo) => {
-                return true;
-            });
-    
-To stop it use:
-    
-    performanceMonitor.recording=false;
-    
-To get the recording and convert it to json:
-
-     console.log(JSON.stringify(this.performanceMonitor.recordingEvents, null, '\t')  );
-
-     
-To replay. (you could also load it from an json file, but you need json.parse to convert it to javascript)
-
-module ergometer.recording {
-
-    export const connection =
-        [
-            {
-                "timeStamp": 841,
-                "eventType": "startScan",
-                "timeStampReturn": 847
-            },
-            {
-                "timeStamp": 1204,
-                "eventType": "scanFoundFn",
-                "data": {
-                    "address": "d2:c7:83:ad:5a:ae",
-                    "name": "PM5 430070439",
-                    "rssi": -56
-                }
-            },
-        ]
-    this.performanceMonitor.replay(ergometer.recording.connection);
-    //then start the scan which will connect using the dummy data of the connection
-     performanceMonitor.startScan((device : ergometer.DeviceInfo) => {
-                     return true;
-                 });
+[demos/ionic_test/README.md](info)
