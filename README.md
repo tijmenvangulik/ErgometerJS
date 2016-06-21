@@ -299,7 +299,7 @@ allways send raw commands. For example
                   
 ## Simple Cordova
 
-[demos/simplecordova](demos/simplecordova/README.md])                 
+[demos/simplecordova](demos/simplecordova/README.md)                 
 
 ## Electron
 
