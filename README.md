@@ -299,17 +299,22 @@ allways send raw commands. For example
                   
 ## Simple Cordova
 
-[demos/simplecordova/README.md](info)                 
+[demos/simplecordova](demos/simplecordova/README.md])                 
 
 ## Electron
 
-[demos/simple_electron/README.md](info)                 
+[demos/simple_electron](demos/simple_electron/README.md)                 
 
 
 ## Record an replay
  
-[demos/recording/README.md](info)                 
+[demos/recording](demos/recording/README.md)                 
                  
-## ionic 2
+## Ionic 2
 
-[demos/ionic_test/README.md](info)
+[demos/ionic_test](demos/ionic_test/README.md)
+
+## React native
+
+[demos/react_native](demos/react_native/README.md)
+

@@ -8,13 +8,15 @@
   "exclude": [
     "node_modules"
   ],
-  "filesGlob": [
-  ],
+  "filesGlob": [],
   "files": [
-    "typescript/typings/ergometer.d.ts",
-    "typescript/typings/jquery.d.ts",
-    "typescript/typings/es6-promise.d.ts",
+    "typescript/app.ts",
     "typescript/demo.ts",
-    "typescript/app.ts"
-  ]
+    "typescript/typings/ergometer.d.ts",
+    "typescript/typings/es6-promise.d.ts",
+    "typescript/typings/jquery.d.ts"
+  ],
+  "atom": {
+    "rewriteTsconfig": true
+  }
 }
