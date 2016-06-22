@@ -30,7 +30,8 @@ class ErgometerReactNative extends Component {
    onRowingGeneralStatus(data) {
      this.setState({distance:data.distance})
    }
-   onStateChange(state) {
+
+   onNobleStateChange(state) {
       if (state === 'poweredOn') {
         this.performanceMonitor.startScan((device) => {
           if ( device.name.startsWith("PM5") ) {
@@ -50,8 +51,7 @@ class ErgometerReactNative extends Component {
     this.performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
 
     noble.on('stateChange', (state)=>{
-      alert(state);
-      this.onStateChange(state);
+      this.onNobleStateChange(state);
     } );
   }
 
