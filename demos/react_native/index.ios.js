@@ -13,12 +13,9 @@ import {
 } from 'react-native';
 
 var noble = require('noble');
-
 var bleat = require('./libs/bleat/index').classic;
 var ergometer= require('./libs/ergometer.js').ergometer(bleat);
-//alert(ergometerLib);
 
-//var ergometer = ergometerLib.lib.ergometer;
 class ErgometerReactNative extends Component {
    performanceMonitor =  new ergometer.PerformanceMonitor();
 
@@ -34,8 +31,6 @@ class ErgometerReactNative extends Component {
      this.setState({distance:data.distance})
    }
    onStateChange(state) {
-      this.performanceMonitor.connectionStateChangedEvent.sub(this,this.onConnectionStateChanged);
-      this.performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
       if (state === 'poweredOn') {
         this.performanceMonitor.startScan((device) => {
           if ( device.name.startsWith("PM5") ) {
@@ -51,12 +46,21 @@ class ErgometerReactNative extends Component {
     }
 
   componentWillMount() {
+    this.performanceMonitor.connectionStateChangedEvent.sub(this,this.onConnectionStateChanged);
+    this.performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
 
     noble.on('stateChange', (state)=>{
       alert(state);
       this.onStateChange(state);
     } );
   }
+
+  componentWillUnmount() {
+    this.performanceMonitor.connectionStateChangedEvent.unsub(this.onConnectionStateChanged);
+    this.performanceMonitor.rowingGeneralStatusEvent.unsub(this.onRowingGeneralStatus);
+
+  }
+
   render() {
     return (
       <View style={styles.container}>
