@@ -314,7 +314,8 @@ Use this when you want tow write a desktop app using html 5
 ## Record an replay
 
 Record and replay the blue tooth communication. Handy for debuging without
- having to row on an ergometer.
+ having to row on an ergometer. This demo is written using electron, this makes it ideal for
+ debugging the communication because you can do not need to place it on a phone to make it worrk.
  
 [demos/recording](demos/recording/README.md)                 
                  
