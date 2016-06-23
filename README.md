@@ -299,22 +299,35 @@ allways send raw commands. For example
                   
 ## Simple Cordova
 
+Use cordova when you want to write a mobile app using html5.
+
 [demos/simplecordova](demos/simplecordova/README.md)                 
 
+
 ## Electron
+
+Use this when you want tow write a desktop app using html 5
 
 [demos/simple_electron](demos/simple_electron/README.md)                 
 
 
 ## Record an replay
+
+Record and replay the blue tooth communication. Handy for debuging without
+ having to row on an ergometer.
  
 [demos/recording](demos/recording/README.md)                 
                  
 ## Ionic 2
 
+Popular GUI frame work for writing hml5 apps for mobile apps. Since it is html 5
+the app is re-usable in web or electron.
+
 [demos/ionic_test](demos/ionic_test/README.md)
 
 ## React native
+
+Write mobile apps using native components in react using javascript.
 
 [demos/react_native](demos/react_native/README.md)
 
