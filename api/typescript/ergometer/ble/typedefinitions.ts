@@ -8,7 +8,7 @@ module ergometer.ble {
     export const  PMDEVICE =                             "ce060000-43e5-11e4-916c-0800200c9a66";
 
 // Service UUIDs
-    export const  PMDEVICE_INFOS_ERVICE =                  "ce060010-43e5-11e4-916c-0800200c9a66";
+    export const  PMDEVICE_INFO_SERVICE =                  "ce060010-43e5-11e4-916c-0800200c9a66";
     export const  PMCONTROL_SERVICE =                     "ce060020-43e5-11e4-916c-0800200c9a66";
     export const  PMROWING_SERVICE =                      "ce060030-43e5-11e4-916c-0800200c9a66";
 

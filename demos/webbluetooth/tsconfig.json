@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "module": "system",
+    "target": "es5",
+    "sourceMap": true,
+    "outFile": "app.js"
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "filesGlob": [
+  ],
+  "files": [
+    "typescript/typings/ergometer.d.ts",
+    "typescript/typings/jquery.d.ts",
+    "typescript/typings/es6-promise.d.ts",
+    "typescript/demo.ts",
+    "typescript/app.ts"
+  ]
+}

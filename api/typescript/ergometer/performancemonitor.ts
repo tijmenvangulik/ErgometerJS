@@ -24,6 +24,7 @@
 module ergometer {
 
     import IRawCommand = ergometer.csafe.IRawCommand;
+    import hasWebBlueTooth = ergometer.ble.hasWebBlueTooth;
     export interface RowingGeneralStatusEvent extends pubSub.ISubscription {
         (data : RowingGeneralStatus) : void;
     }
@@ -832,7 +833,9 @@ module ergometer {
                      evothings.scriptsLoaded(()=>{
                          this.onDeviceReady();})},
                 false);   */
-            this._driver = new ble.DriverBleat();
+            if ((typeof bleat !== 'undefined' ) && bleat) this._driver = new ble.DriverBleat();
+            else if (ble.hasWebBlueTooth()) this._driver= new ble.DriverWebBlueTooth();
+            else this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.") ;
 
             var enableDisableFunc = ()=>{this.enableDisableNotification()};
             this._rowingGeneralStatusEvent = new pubSub.Event<RowingGeneralStatusEvent>();
@@ -1118,19 +1121,19 @@ module ergometer {
             return new Promise<void>((resolve, reject) => {
                 Promise.all([
 
-                    this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE, ble.SERIALNUMBER_CHARACTERISTIC)
+                    this.readStringCharacteristic(ble.PMDEVICE_INFO_SERVICE, ble.SERIALNUMBER_CHARACTERISTIC)
                         .then((value:string)=> {
                             this._deviceInfo.serial = value;
                         }),
-                    this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE, ble.HWREVISION_CHARACTERISIC)
+                    this.readStringCharacteristic(ble.PMDEVICE_INFO_SERVICE, ble.HWREVISION_CHARACTERISIC)
                         .then((value:string)=> {
                             this._deviceInfo.hardwareRevision = value;
                         }),
-                    this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE, ble.FWREVISION_CHARACTERISIC)
+                    this.readStringCharacteristic(ble.PMDEVICE_INFO_SERVICE, ble.FWREVISION_CHARACTERISIC)
                         .then((value:string)=> {
                             this._deviceInfo.firmwareRevision = value;
                         }),
-                    this.readStringCharacteristic(ble.PMDEVICE_INFOS_ERVICE, ble.MANUFNAME_CHARACTERISIC)
+                    this.readStringCharacteristic(ble.PMDEVICE_INFO_SERVICE, ble.MANUFNAME_CHARACTERISIC)
                         .then((value:string)=> {
                             this._deviceInfo.manufacturer = value;
                             this._deviceInfo.connected = true;

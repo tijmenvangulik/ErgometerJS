@@ -463,7 +463,7 @@ var ergometer;
                             _this._disconnectFn = disconnectFn;
                             newDevice.addEventListener('ongattserverdisconnected', _this.onDisconnected.bind(_this));
                             resolve();
-                        }, reject);
+                        });
                     }
                     catch (e) {
                         reject(e);

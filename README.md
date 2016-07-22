@@ -59,7 +59,7 @@ You only need to change the javascript included file
 - 0.0.8 
      * Record and replay events. This is use full for:
         - Writing code without the constant need of an ergometer 
-        - You can test code in an phone emulator (emulators do not have access to blue tooth hardware)
+        - You can test code in an phone emulator (emulators do not have access to bluetooth hardware)
         - Writing unit tests
         - Record issues and send them to some one else to fix.
      * added a demo project for record and replay
@@ -76,14 +76,24 @@ You only need to change the javascript included file
 - 0.0.10
      * ionic 2 example
      * moved readme's
-        
+- 0.0.11
+    * added web bluetooth support
+
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
-* Uses low power blue tooth (BLE) connection.
+* Uses low power bluetooth (BLE) connection.
 * Written in typescript which is compiled to javascript. You can use the driver without typescript.
-* Platform independent (cordova/ phonegap /ionic)
-* For now the internal ble driver works with ios, android and windows 8.1.  
+* Platform independent (mobile / desktop / web ) I have not yet been able to test all platforms but it should work on:
+  
+  * Mobile using cordova: iOS,android, Windows 
+  * Mobile react native: iOS,android   
+  * Desktop using Electron  MacOS X, Windows, Linux
+  * Server using Node MacOS X, Windows, Linux (inc Raspberry PI)
+  * Web: chrome canary (still beta) 
+
+Basically ErgometerJS needs javascript and a blue tooth driver which can be (noble,cordova-plugin-ble or web bluetooth)
+
 * API definitions can be found in a separate typescript definition file (ergometer.d.ts).  
 
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
@@ -93,13 +103,11 @@ You only need to change the javascript included file
 Components
 
 - The project : Apache license 2.
-- Evothings : Apache 2 license.
 - Bleat : Mit license
 - Electron: Mit license
 
 # Todo
 
-* get it working in a normal browser  ( chrome using web bluetooth https://webbluetoothcg.github.io/web-bluetooth/  )
 * Write a demo of an app which can really be used.
 * Add more commands
 
@@ -124,7 +132,7 @@ To make it work you need:
 * An android or iphone with BLE capability.
 * npm which can be downloaded from https://www.npmjs.com
 
-Do a download or checkout from github (https://github.com/tijmenvangulik/MobileErgometer)
+Do a download or checkout from github (https://github.com/tijmenvangulik/ErgometerJS)
 
 
 open a command prompt on the downloaded directory and type
@@ -147,16 +155,7 @@ To use the library you need all the files in the lib directory and include it in
 
 	<script src="libs/ergometer.js"></script>
 	<script src="libs/jquery/jquery.js"></script>
-	<script src="libs/evothings/evothings.js"></script>
-	<script src="libs/evothings/easyble/easyble.js"></script>
 
-
-#Evothings
-
-The blue tooth drivers are from evo things. Evothings has also an nice feature that you can run an debug phone applications
-on your phone without having to install an application. Go to evothings website if you want to know more about this.
-
-    http://evothings.com
 
 #Usage                                                                                                             
                                                                                                                  
@@ -313,7 +312,7 @@ Use this when you want tow write a desktop app using html 5
 
 ## Record an replay
 
-Record and replay the blue tooth communication. Handy for debuging without
+Record and replay the bluetooth communication. Handy for debuging without
  having to row on an ergometer. This demo is written using electron, this makes it ideal for
  debugging the communication because you can do not need to place it on a phone to make it worrk.
  
@@ -332,3 +331,8 @@ Write mobile apps using native components in react using javascript.
 
 [demos/react_native](demos/react_native/README.md)
 
+## Web bluetooth
+This is for web application. Directy access the ergometer from the webbrowser. This feature
+is at the point of writing still in beta and limted to chrome canary.
+
+[demos/webbluetooth](demos/webbluetooth/README.md)

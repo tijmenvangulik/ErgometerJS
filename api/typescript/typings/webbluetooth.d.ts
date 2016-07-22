@@ -14,6 +14,7 @@ declare module webbluetooth {
     export type Byte = number
     export type BufferSource = ArrayBufferView | ArrayBuffer
     export type EventHandler = (ev: Event) => any
+    export type CharacteristicsValueChangedEventHandler = (ev: CharacteristicsValueChangedEvent) => any
 
     export interface BluetoothScanFilter {
         services?: BluetoothServiceUUID[];
@@ -53,10 +54,14 @@ declare module webbluetooth {
         productVersion? : UnsignedLong;
         gatt : BluetoothRemoteGATTServer;
         uuids : UUID[];
-        //this seems to be a chrome specification not in the standard
+        //this seems to be a chrome specification not in the standard, it is only temorary
+        //instead use gatt.connect()in the chrome canary
         connectGATT() : Promise<BluetoothRemoteGATTServer>;
     }
 
+    export interface CharacteristicsValueChangedEvent extends Event {
+        target  : BluetoothRemoteGATTCharacteristic
+    }
     export interface BluetoothManufacturerDataMap {
         [id: number] : DataView
     }
@@ -132,7 +137,7 @@ declare module webbluetooth {
 
 
     export interface CharacteristicEventHandlers {
-        oncharacteristicvaluechanged : ( characteristic : BluetoothRemoteGATTCharacteristic)=>void;
+        oncharacteristicvaluechanged : CharacteristicsValueChangedEventHandler;
     }
 
 

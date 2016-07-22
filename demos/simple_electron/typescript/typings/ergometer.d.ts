@@ -97,6 +97,34 @@ declare module ergometer.ble {
     }
 }
 /**
+ * Created by tijmen on 17-07-16.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ */
+declare module ergometer.ble {
+    function hasWebBlueTooth(): boolean;
+    class DriverWebBlueTooth implements IDriver {
+        private _device;
+        private _server;
+        private _disconnectFn;
+        private _listerMap;
+        performanceMonitor: PerformanceMonitor;
+        private getCharacteristic(serviceUid, characteristicUid);
+        private onDisconnected(event);
+        private clearConnectionVars();
+        connect(device: IDevice, disconnectFn: () => void): Promise<void>;
+        disconnect(): void;
+        startScan(foundFn?: IFoundFunc): Promise<void>;
+        stopScan(): Promise<void>;
+        writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
+        readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
+        private onCharacteristicValueChanged(event);
+        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
+        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
+    }
+}
+/**
  * Created by tijmen on 16-02-16.
  */
 declare module ergometer.ble {

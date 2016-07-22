@@ -408,6 +408,190 @@ var ergometer;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
+ * Created by tijmen on 17-07-16.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ */
+var ergometer;
+(function (ergometer) {
+    var ble;
+    (function (ble) {
+        function hasWebBlueTooth() {
+            return (navigator && typeof navigator.bluetooth !== 'undefined');
+        }
+        ble.hasWebBlueTooth = hasWebBlueTooth;
+        var DriverWebBlueTooth = (function () {
+            function DriverWebBlueTooth() {
+                this._listerMap = {};
+            }
+            //simple wrapper for bleat characteristic functions
+            DriverWebBlueTooth.prototype.getCharacteristic = function (serviceUid, characteristicUid) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    if (!_this._server || !_this._server.connected)
+                        reject("server not connected");
+                    else
+                        _this._server.getPrimaryService(serviceUid)
+                            .then(function (service) {
+                            return service.getCharacteristic(characteristicUid);
+                        })
+                            .then(resolve, reject);
+                });
+            };
+            DriverWebBlueTooth.prototype.onDisconnected = function (event) {
+                if (this._disconnectFn)
+                    this._disconnectFn();
+                this.clearConnectionVars();
+            };
+            DriverWebBlueTooth.prototype.clearConnectionVars = function () {
+                if (this._device)
+                    this._device.removeEventListener('ongattserverdisconnected', this.onDisconnected);
+                this._device = null;
+                this._server = null;
+                this._disconnectFn = null;
+                this._listerMap = {};
+            };
+            DriverWebBlueTooth.prototype.connect = function (device, disconnectFn) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        var newDevice = device._internalDevice;
+                        newDevice.gatt.connect().then(function (server) {
+                            _this._device = newDevice;
+                            _this._server = server;
+                            _this._disconnectFn = disconnectFn;
+                            newDevice.addEventListener('ongattserverdisconnected', _this.onDisconnected.bind(_this));
+                            resolve();
+                        }).reject(reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverWebBlueTooth.prototype.disconnect = function () {
+                if (this._server && this._server.connected)
+                    this._server.disconnect();
+                else
+                    this.clearConnectionVars();
+            };
+            DriverWebBlueTooth.prototype.startScan = function (foundFn) {
+                return new Promise(function (resolve, reject) {
+                    try {
+                        navigator.bluetooth.requestDevice({
+                            filters: [
+                                { services: [ble.PMDEVICE]
+                                }
+                            ],
+                            optionalServices: [ble.PMDEVICE_INFO_SERVICE, ble.PMCONTROL_SERVICE, ble.PMROWING_SERVICE]
+                        }).then(function (device) {
+                            foundFn({
+                                address: device.id,
+                                name: device.name,
+                                rssi: ((typeof device.adData !== 'undefined') && device.adData.rssi) ? device.adData.rssi : 0,
+                                _internalDevice: device
+                            });
+                        }).then(resolve, reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverWebBlueTooth.prototype.stopScan = function () {
+                if (typeof navigator.bluetooth.cancelRequest !== 'undefined')
+                    return navigator.bluetooth.cancelRequest();
+                else
+                    return new Promise(function (resolve, reject) {
+                        resolve();
+                    });
+            };
+            DriverWebBlueTooth.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        _this.getCharacteristic(serviceUIID, characteristicUUID)
+                            .then(function (characteristic) {
+                            return characteristic.writeValue(data.buffer);
+                        })
+                            .then(resolve, reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverWebBlueTooth.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        _this.getCharacteristic(serviceUIID, characteristicUUID)
+                            .then(function (characteristic) {
+                            return characteristic.readValue();
+                        })
+                            .then(function (data) { resolve(data.buffer); }, reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverWebBlueTooth.prototype.onCharacteristicValueChanged = function (event) {
+                try {
+                    var func = this._listerMap[event.target.uuid];
+                    if (func)
+                        func(event.target.value.buffer);
+                }
+                catch (e) {
+                    if (this.performanceMonitor)
+                        this.performanceMonitor.handleError(e.toString());
+                    else
+                        throw e;
+                }
+            };
+            DriverWebBlueTooth.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        _this.getCharacteristic(serviceUIID, characteristicUUID)
+                            .then(function (characteristic) {
+                            return characteristic.startNotifications().then(function (_) {
+                                _this._listerMap[characteristicUUID] = receive;
+                                characteristic.addEventListener('characteristicvaluechanged', _this.onCharacteristicValueChanged.bind(_this));
+                                resolve();
+                            }, reject);
+                        }).then(resolve, reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            DriverWebBlueTooth.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        _this.getCharacteristic(serviceUIID, characteristicUUID)
+                            .then(function (characteristic) {
+                            characteristic.stopNotifications().then(function () {
+                                _this._listerMap[characteristic.uuid] = null;
+                                characteristic.removeEventListener('characteristicvaluechanged', _this.onCharacteristicValueChanged);
+                                resolve();
+                            }, reject);
+                        });
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            return DriverWebBlueTooth;
+        }());
+        ble.DriverWebBlueTooth = DriverWebBlueTooth;
+    })(ble = ergometer.ble || (ergometer.ble = {}));
+})(ergometer || (ergometer = {}));
+/**
  * Created by tijmen on 16-02-16.
  */
 var ergometer;
@@ -859,7 +1043,7 @@ var ergometer;
         /** @internal */
         ble.PMDEVICE = "ce060000-43e5-11e4-916c-0800200c9a66";
         // Service UUIDs
-        ble.PMDEVICE_INFOS_ERVICE = "ce060010-43e5-11e4-916c-0800200c9a66";
+        ble.PMDEVICE_INFO_SERVICE = "ce060010-43e5-11e4-916c-0800200c9a66";
         ble.PMCONTROL_SERVICE = "ce060020-43e5-11e4-916c-0800200c9a66";
         ble.PMROWING_SERVICE = "ce060030-43e5-11e4-916c-0800200c9a66";
         // Characteristic UUIDs for PM device info service
@@ -2095,7 +2279,12 @@ var ergometer;
                      evothings.scriptsLoaded(()=>{
                          this.onDeviceReady();})},
                 false);   */
-            this._driver = new ergometer.ble.DriverBleat();
+            if ((typeof bleat !== 'undefined') && bleat)
+                this._driver = new ergometer.ble.DriverBleat();
+            else if (ergometer.ble.hasWebBlueTooth())
+                this._driver = new ergometer.ble.DriverWebBlueTooth();
+            else
+                this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.");
             var enableDisableFunc = function () { _this.enableDisableNotification(); };
             this._rowingGeneralStatusEvent = new ergometer.pubSub.Event();
             this.rowingGeneralStatusEvent.registerChangedEvent(enableDisableFunc);
@@ -2331,19 +2520,19 @@ var ergometer;
             var _this = this;
             return new Promise(function (resolve, reject) {
                 Promise.all([
-                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.SERIALNUMBER_CHARACTERISTIC)
+                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFO_SERVICE, ergometer.ble.SERIALNUMBER_CHARACTERISTIC)
                         .then(function (value) {
                         _this._deviceInfo.serial = value;
                     }),
-                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.HWREVISION_CHARACTERISIC)
+                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFO_SERVICE, ergometer.ble.HWREVISION_CHARACTERISIC)
                         .then(function (value) {
                         _this._deviceInfo.hardwareRevision = value;
                     }),
-                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.FWREVISION_CHARACTERISIC)
+                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFO_SERVICE, ergometer.ble.FWREVISION_CHARACTERISIC)
                         .then(function (value) {
                         _this._deviceInfo.firmwareRevision = value;
                     }),
-                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFOS_ERVICE, ergometer.ble.MANUFNAME_CHARACTERISIC)
+                    _this.readStringCharacteristic(ergometer.ble.PMDEVICE_INFO_SERVICE, ergometer.ble.MANUFNAME_CHARACTERISIC)
                         .then(function (value) {
                         _this._deviceInfo.manufacturer = value;
                         _this._deviceInfo.connected = true;
