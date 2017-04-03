@@ -186,23 +186,28 @@ module ergometer.ble {
     }
 
     public disableNotification(serviceUIID : string,characteristicUUID:string) : Promise<void> {
-      return new Promise<void>((resolve, reject) => {
-        try {
-            this.getCharacteristic(serviceUIID,characteristicUUID)
-              .then(( characteristic : webbluetooth.BluetoothRemoteGATTCharacteristic) => {
-                 characteristic.stopNotifications().then(()=>{
-                   this._listerMap[characteristic.uuid]=null;
-                   characteristic.removeEventListener('characteristicvaluechanged',this.onCharacteristicValueChanged);
-                   resolve();
-                 },reject);
-              });
+      //only disable when receive is
+        return new Promise<void>((resolve, reject) => {
+          try {
+            if (typeof this._listerMap[characteristicUUID]!== 'undefined' && this._listerMap[characteristicUUID]) {
 
-        }
-        catch (e) {
-          reject(e);
-        }
-      })
-    }
+              this.getCharacteristic(serviceUIID, characteristicUUID)
+                  .then((characteristic: webbluetooth.BluetoothRemoteGATTCharacteristic) => {
+                    characteristic.stopNotifications().then(() => {
+                      this._listerMap[characteristic.uuid] = null;
+                      characteristic.removeEventListener('characteristicvaluechanged', this.onCharacteristicValueChanged);
+                      resolve();
+                    }, reject);
+                  });
+            }
+            else resolve();//just resolve nothing to do
+          }
+          catch (e) {
+            reject(e);
+          }
+        })
+      }
+
 
   }
 }

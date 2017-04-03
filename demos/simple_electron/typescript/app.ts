@@ -26,7 +26,7 @@
 
 class App {
 
-    private _demo : Demo = new Demo();
+    private _demo : Demo ;
 
     public get demo():Demo {
         return this._demo;
@@ -34,6 +34,7 @@ class App {
 
     constructor() {
         $().ready(()=>{
+            this._demo = new Demo();
             this.demo.pageLoaded();
         })
 

@@ -17,10 +17,12 @@
     "typescript/typings/es6-promise.d.ts",
     "typescript/typings/bleat.classic.d.ts",
     "typescript/typings/webbluetooth.d.ts",
+    "typescript/typings/simpleBLE.d.ts",
     "typescript/ergometer/utils.ts",
     "typescript/ergometer/pubsub.ts",
     "typescript/ergometer/ble/Driver.ts",
     "typescript/ergometer/ble/DriverBleat.ts",
+    "typescript/ergometer/ble/DriverSimpleBLE.ts",
     "typescript/ergometer/ble/DriverWebBlueTooth.ts",
     "typescript/ergometer/ble/RecordingDriver.ts",
     "typescript/ergometer/ble/ReplayDriver.ts",
@@ -32,5 +34,6 @@
     "typescript/ergometer/csafe/push_config_commands.ts",
     "typescript/ergometer/typedefinitions.ts",
     "typescript/ergometer/performancemonitor.ts"
+
   ]
 }

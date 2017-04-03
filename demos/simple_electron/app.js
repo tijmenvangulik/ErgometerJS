@@ -25,8 +25,8 @@
 var App = (function () {
     function App() {
         var _this = this;
-        this._demo = new Demo();
         $().ready(function () {
+            _this._demo = new Demo();
             _this.demo.pageLoaded();
         });
     }

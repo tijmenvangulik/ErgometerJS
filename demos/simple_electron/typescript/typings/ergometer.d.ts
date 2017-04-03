@@ -1607,6 +1607,7 @@ declare module ergometer {
          * @param data
          */
         protected handleRowingGeneralStatus(data: DataView): void;
+        protected calcPace(lowByte: any, highByte: number): number;
         /**
          *
          * @param data

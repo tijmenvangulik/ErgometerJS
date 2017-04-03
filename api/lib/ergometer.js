@@ -570,16 +570,21 @@ var ergometer;
             };
             DriverWebBlueTooth.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
                 var _this = this;
+                //only disable when receive is
                 return new Promise(function (resolve, reject) {
                     try {
-                        _this.getCharacteristic(serviceUIID, characteristicUUID)
-                            .then(function (characteristic) {
-                            characteristic.stopNotifications().then(function () {
-                                _this._listerMap[characteristic.uuid] = null;
-                                characteristic.removeEventListener('characteristicvaluechanged', _this.onCharacteristicValueChanged);
-                                resolve();
-                            }, reject);
-                        });
+                        if (typeof _this._listerMap[characteristicUUID] !== 'undefined' && _this._listerMap[characteristicUUID]) {
+                            _this.getCharacteristic(serviceUIID, characteristicUUID)
+                                .then(function (characteristic) {
+                                characteristic.stopNotifications().then(function () {
+                                    _this._listerMap[characteristic.uuid] = null;
+                                    characteristic.removeEventListener('characteristicvaluechanged', _this.onCharacteristicValueChanged);
+                                    resolve();
+                                }, reject);
+                            });
+                        }
+                        else
+                            resolve(); //just resolve nothing to do
                     }
                     catch (e) {
                         reject(e);
@@ -954,7 +959,7 @@ var ergometer;
                 }
             };
             ReplayDriver.prototype.replay = function (events) {
-                this._playing = true;
+                this._playing = false;
                 this._startTime = ergometer.utils.getTime();
                 this._events = events;
                 this._eventIndex = 0;
@@ -2281,6 +2286,8 @@ var ergometer;
                 false);   */
             if ((typeof bleat !== 'undefined') && bleat)
                 this._driver = new ergometer.ble.DriverBleat();
+            else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
+                this._driver = new ergometer.ble.DriverSimpleBLE();
             else if (ergometer.ble.hasWebBlueTooth())
                 this._driver = new ergometer.ble.DriverWebBlueTooth();
             else
@@ -2566,6 +2573,9 @@ var ergometer;
                 this._rowingGeneralStatus = parsed;
             }
         };
+        PerformanceMonitor.prototype.calcPace = function (lowByte, highByte) {
+            return (lowByte + highByte * 256) * 10;
+        };
         /**
          *
          * @param data
@@ -2576,8 +2586,8 @@ var ergometer;
                 speed: data.getUint16(3 /* SPEED_LO */) / 1000,
                 strokeRate: data.getUint8(5 /* STROKE_RATE */),
                 heartRate: ergometer.utils.valueToNullValue(data.getUint8(6 /* HEARTRATE */), 255),
-                currentPace: data.getUint16(7 /* CURRENT_PACE_LO */) / 100,
-                averagePace: data.getUint16(9 /* AVG_PACE_LO */) / 100,
+                currentPace: this.calcPace(data.getUint8(7 /* CURRENT_PACE_LO */), data.getUint8(8 /* CURRENT_PACE_HI */)),
+                averagePace: this.calcPace(data.getUint8(9 /* AVG_PACE_LO */), data.getUint8(10 /* AVG_PACE_HI */)),
                 restDistance: data.getUint16(11 /* REST_DISTANCE_LO */),
                 restTime: ergometer.utils.getUint24(data, 13 /* REST_TIME_LO */) * 10,
                 averagePower: null
@@ -2601,7 +2611,7 @@ var ergometer;
                     intervalCount: data.getUint8(3 /* INTERVAL_COUNT */),
                     averagePower: data.getUint16(4 /* AVG_POWER_LO */),
                     totalCalories: data.getUint16(6 /* TOTAL_CALORIES_LO */),
-                    splitAveragePace: data.getUint16(8 /* SPLIT_INTERVAL_AVG_PACE_LO */) * 10,
+                    splitAveragePace: this.calcPace(data.getUint8(8 /* SPLIT_INTERVAL_AVG_PACE_LO */), data.getUint8(9 /* SPLIT_INTERVAL_AVG_PACE_HI */)),
                     splitAveragePower: data.getUint16(10 /* SPLIT_INTERVAL_AVG_POWER_LO */),
                     splitAverageCalories: data.getUint16(12 /* SPLIT_INTERVAL_AVG_CALORIES_LO */),
                     lastSplitTime: data.getUint16(14 /* LAST_SPLIT_TIME_LO */) * 100,
@@ -2614,7 +2624,7 @@ var ergometer;
                     intervalCount: data.getUint8(3 /* INTERVAL_COUNT */),
                     averagePower: null,
                     totalCalories: data.getUint16(4 /* TOTAL_CALORIES_LO */),
-                    splitAveragePace: data.getUint16(6 /* SPLIT_INTERVAL_AVG_PACE_LO */) * 10,
+                    splitAveragePace: this.calcPace(data.getUint8(6 /* SPLIT_INTERVAL_AVG_PACE_LO */), data.getUint8(7 /* SPLIT_INTERVAL_AVG_PACE_HI */)),
                     splitAveragePower: data.getUint16(8 /* SPLIT_INTERVAL_AVG_POWER_LO */),
                     splitAverageCalories: data.getUint16(10 /* SPLIT_INTERVAL_AVG_CALORIES_LO */),
                     lastSplitTime: data.getUint16(12 /* LAST_SPLIT_TIME_LO */) * 100,
@@ -3208,5 +3218,60 @@ var ergometer;
         return PerformanceMonitor;
     }());
     ergometer.PerformanceMonitor = PerformanceMonitor;
+})(ergometer || (ergometer = {}));
+/**
+ * Created by tijmen on 03/04/2017.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ *
+ * see simpleBLE.d.ts for the definitions of the simpleBLE
+ * It assumes that there simple ble is already imported as a var named simpleBLE
+ *
+ */
+var ergometer;
+(function (ergometer) {
+    var ble;
+    (function (ble) {
+        var DriverSimpleBLE = (function () {
+            function DriverSimpleBLE() {
+            }
+            DriverSimpleBLE.prototype.connect = function (device, disconnectFn) {
+                return new Promise(function (resolve, reject) {
+                    //  simpleBLE.connect("");
+                });
+            };
+            DriverSimpleBLE.prototype.disconnect = function () {
+                simpleBLE.disconnect();
+            };
+            DriverSimpleBLE.prototype.startScan = function (foundFn) {
+                return new Promise(function (resolve, reject) {
+                    //  simpleBLE.scan();
+                });
+            };
+            DriverSimpleBLE.prototype.stopScan = function () {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            return DriverSimpleBLE;
+        }());
+        ble.DriverSimpleBLE = DriverSimpleBLE;
+    })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 //# sourceMappingURL=ergometer.js.map

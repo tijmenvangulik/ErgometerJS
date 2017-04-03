@@ -196,7 +196,7 @@ module ergometer.ble {
         }
      
         public replay(events : IRecordingItem[]) {
-            this._playing=true;
+            this._playing=false;
             this._startTime=utils.getTime();
             this._events=events;
             this._eventIndex=0;

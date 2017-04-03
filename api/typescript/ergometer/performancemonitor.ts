@@ -834,6 +834,7 @@ module ergometer {
                          this.onDeviceReady();})},
                 false);   */
             if ((typeof bleat !== 'undefined' ) && bleat) this._driver = new ble.DriverBleat();
+            else if ((typeof simpleBLE !== 'undefined' ) && simpleBLE ) this._driver = new ble.DriverSimpleBLE();
             else if (ble.hasWebBlueTooth()) this._driver= new ble.DriverWebBlueTooth();
             else this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.") ;
 
@@ -1179,6 +1180,10 @@ module ergometer {
 
         }
 
+        protected calcPace(lowByte,highByte : number) {
+           return (lowByte +  highByte*256)*10;
+
+        }
         /**
          *
          * @param data
@@ -1189,8 +1194,8 @@ module ergometer {
                 speed : data.getUint16(ble.PM_Extra_Status1_BLE_Payload.SPEED_LO)/1000,  // m/s
                 strokeRate : data.getUint8(ble.PM_Extra_Status1_BLE_Payload.STROKE_RATE),
                 heartRate : utils.valueToNullValue(data.getUint8(ble.PM_Extra_Status1_BLE_Payload.HEARTRATE),255),
-                currentPace : data.getUint16(ble.PM_Extra_Status1_BLE_Payload.CURRENT_PACE_LO)/100,
-                averagePace : data.getUint16(ble.PM_Extra_Status1_BLE_Payload.AVG_PACE_LO)/100,
+                currentPace : this.calcPace(data.getUint8(ble.PM_Extra_Status1_BLE_Payload.CURRENT_PACE_LO),data.getUint8(ble.PM_Extra_Status1_BLE_Payload.CURRENT_PACE_HI)),
+                averagePace : this.calcPace(data.getUint8(ble.PM_Extra_Status1_BLE_Payload.AVG_PACE_LO),data.getUint8(ble.PM_Extra_Status1_BLE_Payload.AVG_PACE_HI)),
                 restDistance : data.getUint16(ble.PM_Extra_Status1_BLE_Payload.REST_DISTANCE_LO),
                 restTime : utils.getUint24(data,ble.PM_Extra_Status1_BLE_Payload.REST_TIME_LO)*10, //mili seconds
                 averagePower : null
@@ -1216,7 +1221,7 @@ module ergometer {
                     intervalCount: data.getUint8(ble.PM_Extra_Status2_BLE_Payload.INTERVAL_COUNT),
                     averagePower: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.AVG_POWER_LO),
                     totalCalories: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.TOTAL_CALORIES_LO),
-                    splitAveragePace: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO) * 10,// ms,
+                    splitAveragePace: this.calcPace(data.getUint8(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO),data.getUint8(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_HI)),// ms,
                     splitAveragePower: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO),//watt
                     splitAverageCalories: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO), // cal/hour
                     lastSplitTime: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO) *100, //the doc 0.1 factor is this right?
@@ -1229,7 +1234,7 @@ module ergometer {
                     intervalCount: data.getUint8(ble.PM_Mux_Extra_Status2_BLE_Payload.INTERVAL_COUNT),
                     averagePower: null,
                     totalCalories: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.TOTAL_CALORIES_LO),
-                    splitAveragePace: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO)* 10, //ms,
+                    splitAveragePace: this.calcPace(data.getUint8(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO),data.getUint8(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_HI)), //ms,
                     splitAveragePower: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO),//watt
                     splitAverageCalories: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO), // cal/hour
                     lastSplitTime: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO) *100, //the doc 0.1 factor is this right?
