@@ -3,15 +3,19 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "node node_modules/react-native/local-cli/cli.js start"
+    "start": "node node_modules/react-native/local-cli/cli.js start",
+    "test": "jest"
   },
   "dependencies": {
-    "react": "^15.1.0",
-    "react-native": "0.27.2",
-    "react-native-ble": "^1.0.3"
+    "react": "16.0.0-alpha.6",
+    "react-native": "0.43.3",
+    "react-native-ble": "1.0.8"
   },
   "devDependencies": {
-    "flow-bin": "^0.27.0"
+    "babel-jest": "19.0.0",
+    "babel-preset-react-native": "1.9.1",
+    "jest": "19.0.2",
+    "react-test-renderer": "16.0.0-alpha.6"
   },
   "browser": {
     "noble": "react-native-ble"

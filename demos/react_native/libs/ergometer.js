@@ -3227,7 +3227,7 @@ module.exports = {
        ergometer.PerformanceMonitor = PerformanceMonitor;
      })(ergometer || (ergometer = {}));
 //# sourceMappingURL=ergometer.js.map
-
-
+      return ergometer;
    }
+
 }
