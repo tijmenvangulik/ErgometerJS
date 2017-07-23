@@ -79,6 +79,9 @@ You only need to change the javascript included file
 - 0.0.11
     * added web bluetooth support
 
+- 0.0.12
+    * Web bluetooth Fix: web blue tooth messages stop after some time.
+     
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
@@ -123,6 +126,11 @@ The library uses ES6-Promises. I assume that the library is uses in modern brows
 not the case you need to include a poly fill javascript library:
 
  https://github.com/lahmatiy/es6-promise-polyfill
+
+* React native: the used blue tooth library does not (yet?) support direct reading and writing to characteristics.
+due to this the csafe commands and the power curve do not work.
+
+* Web bluetooth is not yet supported by all browsers 
 
 # Installation
 
@@ -329,10 +337,13 @@ the app is re-usable in web or electron.
 
 Write mobile apps using native components in react using javascript.
 
+Know problem: the used blue tooth library does not (yet?) support direct reading and writing to characteristics.
+due to this the csafe commands and the power curve do not work.
+
 [demos/react_native](demos/react_native/README.md)
 
 ## Web bluetooth
 This is for web application. Directy access the ergometer from the webbrowser. This feature
-is at the point of writing still in beta and limted to chrome canary.
+is at the point of writing only works in the latest chrome on a mac and linux.
 
 [demos/webbluetooth](demos/webbluetooth/README.md)
