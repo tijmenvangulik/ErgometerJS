@@ -19,6 +19,7 @@
     "typescript/typings/webbluetooth.d.ts",
     "typescript/typings/simpleBLE.d.ts",
     "typescript/ergometer/utils.ts",
+    "typescript/ergometer/functionQueue.ts",
     "typescript/ergometer/pubsub.ts",
     "typescript/ergometer/ble/Driver.ts",
     "typescript/ergometer/ble/DriverBleat.ts",

@@ -1,4 +1,83 @@
 /**
+ * Created by tijmen on 04/07/2017.
+ *
+ * queue function calls which returns a promise, converted to typescript
+ * needed as work around for web blue tooth, this ensures that only one call is processed at at time
+ *
+ *
+ */
+declare module ergometer.utils {
+    /**
+     * @return {Object}
+     */
+    /**
+     * It limits concurrently executed promises
+     *
+     * @param {Number} [maxPendingPromises=Infinity] max number of concurrently executed promises
+     * @param {Number} [maxQueuedPromises=Infinity]  max number of queued promises
+     * @constructor
+     *
+     * @example
+     *
+     * var queue = new Queue(1);
+     *
+     * queue.add(function () {
+       *     // resolve of this promise will resume next request
+       *     return downloadTarballFromGithub(url, file);
+       * })
+     * .then(function (file) {
+       *     doStuffWith(file);
+       * });
+     *
+     * queue.add(function () {
+       *     return downloadTarballFromGithub(url, file);
+       * })
+     * // This request will be paused
+     * .then(function (file) {
+       *     doStuffWith(file);
+       * });
+     */
+    interface IPromiseFunction {
+        (...args: any[]): Promise<any | void>;
+    }
+    class FunctionQueue {
+        /**
+         * @param {*} value
+         * @returns {LocalPromise}
+         */
+        private resolveWith(value);
+        private maxPendingPromises;
+        private maxQueuedPromises;
+        private pendingPromises;
+        private queue;
+        constructor(maxPendingPromises?: number, maxQueuedPromises?: number);
+        /**
+         * @param {promiseGenerator}  a function which returns a promise
+         * @param {context} the object which is the context where the function is called in
+         * @param  {params} array of parameters for the function
+         * @return {Promise} promise which is resolved when the function is acually called
+         */
+        add(promiseGenerator: IPromiseFunction, context: any, ...params: any[]): Promise<any | void>;
+        /**
+         * Number of simultaneously running promises (which are resolving)
+         *
+         * @return {number}
+         */
+        getPendingLength(): number;
+        /**
+         * Number of queued promises (which are waiting)
+         *
+         * @return {number}
+         */
+        getQueueLength(): number;
+        /**
+         * @returns {boolean} true if first item removed from queue
+         * @private
+         */
+        private _dequeue();
+    }
+}
+/**
  *
  * Created by tijmen on 01-06-15.
  *
@@ -97,6 +176,29 @@ declare module ergometer.ble {
     }
 }
 /**
+ * Created by tijmen on 03/04/2017.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ *
+ * see simpleBLE.d.ts for the definitions of the simpleBLE
+ * It assumes that there simple ble is already imported as a var named simpleBLE
+ *
+ */
+declare module ergometer.ble {
+    class DriverSimpleBLE implements IDriver {
+        performanceMonitor: PerformanceMonitor;
+        connect(device: IDevice, disconnectFn: () => void): Promise<void>;
+        disconnect(): void;
+        startScan(foundFn?: IFoundFunc): Promise<void>;
+        stopScan(): Promise<void>;
+        writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
+        readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
+        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
+        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
+    }
+}
+/**
  * Created by tijmen on 17-07-16.
  */
 /**
@@ -108,8 +210,10 @@ declare module ergometer.ble {
         private _device;
         private _server;
         private _disconnectFn;
-        private _listerMap;
-        performanceMonitor: PerformanceMonitor;
+        private _listenerMap;
+        private _listerCharacteristicMap;
+        private _performanceMonitor;
+        constructor(performanceMonitor: PerformanceMonitor);
         private getCharacteristic(serviceUid, characteristicUid);
         private onDisconnected(event);
         private clearConnectionVars();
@@ -1682,28 +1786,5 @@ declare module ergometer {
         receivedCSaveCommand(parsed: ParsedCSafeCommand): void;
         handleCSafeNotifications(): void;
         csafeBuffer: ergometer.csafe.IBuffer;
-    }
-}
-/**
- * Created by tijmen on 03/04/2017.
- */
-/**
- * Created by tijmen on 01-02-16.
- *
- * see simpleBLE.d.ts for the definitions of the simpleBLE
- * It assumes that there simple ble is already imported as a var named simpleBLE
- *
- */
-declare module ergometer.ble {
-    class DriverSimpleBLE implements IDriver {
-        performanceMonitor: PerformanceMonitor;
-        connect(device: IDevice, disconnectFn: () => void): Promise<void>;
-        disconnect(): void;
-        startScan(foundFn?: IFoundFunc): Promise<void>;
-        stopScan(): Promise<void>;
-        writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
-        readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
-        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
-        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
     }
 }

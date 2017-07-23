@@ -110,6 +110,131 @@ var ergometer;
     })(utils = ergometer.utils || (ergometer.utils = {}));
 })(ergometer || (ergometer = {}));
 /**
+ * Created by tijmen on 04/07/2017.
+ *
+ * queue function calls which returns a promise, converted to typescript
+ * needed as work around for web blue tooth, this ensures that only one call is processed at at time
+ *
+ *
+ */
+var ergometer;
+(function (ergometer) {
+    var utils;
+    (function (utils) {
+        var FunctionQueue = (function () {
+            function FunctionQueue(maxPendingPromises, maxQueuedPromises) {
+                this.maxPendingPromises = Infinity;
+                this.maxQueuedPromises = Infinity;
+                this.pendingPromises = 0;
+                this.queue = [];
+                this.maxPendingPromises = typeof maxPendingPromises !== 'undefined' ? maxPendingPromises : Infinity;
+                this.maxQueuedPromises = typeof maxQueuedPromises !== 'undefined' ? maxQueuedPromises : Infinity;
+            }
+            /**
+             * @param {*} value
+             * @returns {LocalPromise}
+             */
+            FunctionQueue.prototype.resolveWith = function (value) {
+                if (value && typeof value.then === 'function') {
+                    return value;
+                }
+                return new Promise(function (resolve) {
+                    resolve(value);
+                });
+            };
+            ;
+            /**
+             * @param {promiseGenerator}  a function which returns a promise
+             * @param {context} the object which is the context where the function is called in
+             * @param  {params} array of parameters for the function
+             * @return {Promise} promise which is resolved when the function is acually called
+             */
+            FunctionQueue.prototype.add = function (promiseGenerator, context) {
+                var params = [];
+                for (var _i = 2; _i < arguments.length; _i++) {
+                    params[_i - 2] = arguments[_i];
+                }
+                var self = this;
+                return new Promise(function (resolve, reject) {
+                    // Do not queue to much promises
+                    if (self.queue.length >= self.maxQueuedPromises) {
+                        reject(new Error('Queue limit reached'));
+                        return;
+                    }
+                    // Add to queue
+                    self.queue.push({
+                        promiseGenerator: promiseGenerator,
+                        context: context,
+                        params: params,
+                        resolve: resolve,
+                        reject: reject
+                    });
+                    self._dequeue();
+                });
+            };
+            ;
+            /**
+             * Number of simultaneously running promises (which are resolving)
+             *
+             * @return {number}
+             */
+            FunctionQueue.prototype.getPendingLength = function () {
+                return this.pendingPromises;
+            };
+            ;
+            /**
+             * Number of queued promises (which are waiting)
+             *
+             * @return {number}
+             */
+            FunctionQueue.prototype.getQueueLength = function () {
+                return this.queue.length;
+            };
+            ;
+            /**
+             * @returns {boolean} true if first item removed from queue
+             * @private
+             */
+            FunctionQueue.prototype._dequeue = function () {
+                var self = this;
+                if (this.pendingPromises >= this.maxPendingPromises) {
+                    return false;
+                }
+                // Remove from queue
+                var item = this.queue.shift();
+                if (!item) {
+                    return false;
+                }
+                try {
+                    this.pendingPromises++;
+                    self.resolveWith(item.promiseGenerator.apply(item.context, item.params))
+                        .then(function (value) {
+                        // It is not pending now
+                        self.pendingPromises--;
+                        // It should pass values
+                        item.resolve(value);
+                        self._dequeue();
+                    }, function (err) {
+                        // It is not pending now
+                        self.pendingPromises--;
+                        // It should not mask errors
+                        item.reject(err);
+                        self._dequeue();
+                    });
+                }
+                catch (err) {
+                    self.pendingPromises--;
+                    item.reject(err);
+                    self._dequeue();
+                }
+                return true;
+            };
+            return FunctionQueue;
+        }());
+        utils.FunctionQueue = FunctionQueue;
+    })(utils = ergometer.utils || (ergometer.utils = {}));
+})(ergometer || (ergometer = {}));
+/**
  *
  * Created by tijmen on 01-06-15.
  *
@@ -408,6 +533,61 @@ var ergometer;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
+ * Created by tijmen on 03/04/2017.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ *
+ * see simpleBLE.d.ts for the definitions of the simpleBLE
+ * It assumes that there simple ble is already imported as a var named simpleBLE
+ *
+ */
+var ergometer;
+(function (ergometer) {
+    var ble;
+    (function (ble) {
+        var DriverSimpleBLE = (function () {
+            function DriverSimpleBLE() {
+            }
+            DriverSimpleBLE.prototype.connect = function (device, disconnectFn) {
+                return new Promise(function (resolve, reject) {
+                    //  simpleBLE.connect("");
+                });
+            };
+            DriverSimpleBLE.prototype.disconnect = function () {
+                simpleBLE.disconnect();
+            };
+            DriverSimpleBLE.prototype.startScan = function (foundFn) {
+                return new Promise(function (resolve, reject) {
+                    //  simpleBLE.scan();
+                });
+            };
+            DriverSimpleBLE.prototype.stopScan = function () {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            return DriverSimpleBLE;
+        }());
+        ble.DriverSimpleBLE = DriverSimpleBLE;
+    })(ble = ergometer.ble || (ergometer.ble = {}));
+})(ergometer || (ergometer = {}));
+/**
  * Created by tijmen on 17-07-16.
  */
 /**
@@ -424,6 +604,8 @@ var ergometer;
         var DriverWebBlueTooth = (function () {
             function DriverWebBlueTooth() {
                 this._listerMap = {};
+                //should queue the read and writes, this may be the cause of the blocking issues, this is a work arround for the chrome web blue tooth problem
+                this._functionQueue = new ergometer.utils.FunctionQueue(1); //1 means one at a time
             }
             //simple wrapper for bleat characteristic functions
             DriverWebBlueTooth.prototype.getCharacteristic = function (serviceUid, characteristicUid) {
@@ -508,7 +690,14 @@ var ergometer;
                     });
             };
             DriverWebBlueTooth.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+                //run read and write one at a time , wait for the result and then call the next
+                //this is a workaround for a problem of web blue tooth
+                //not yet tested!
+                return this._functionQueue.add(this.doWriteCharacteristic, this, serviceUIID, characteristicUUID, data);
+            };
+            DriverWebBlueTooth.prototype.doWriteCharacteristic = function (serviceUIID, characteristicUUID, data) {
                 var _this = this;
+                //this should be queued
                 return new Promise(function (resolve, reject) {
                     try {
                         _this.getCharacteristic(serviceUIID, characteristicUUID)
@@ -523,7 +712,14 @@ var ergometer;
                 });
             };
             DriverWebBlueTooth.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+                //run read and write one at a time , wait for the result and then call the next
+                //this is a workaround for a problem of web blue tooth
+                //not yet tested!
+                return this._functionQueue.add(this.doReadCharacteristic, this, serviceUIID, characteristicUUID);
+            };
+            DriverWebBlueTooth.prototype.doReadCharacteristic = function (serviceUIID, characteristicUUID) {
                 var _this = this;
+                //this should be queued
                 return new Promise(function (resolve, reject) {
                     try {
                         _this.getCharacteristic(serviceUIID, characteristicUUID)
@@ -537,18 +733,47 @@ var ergometer;
                     }
                 });
             };
+            /*
+            private onCharacteristicValueChanged(event:webbluetooth.CharacteristicsValueChangedEvent) {
+        
+              try {
+                let func=this._listerMap[event.target.uuid];
+                if (func) func(event.target.value.buffer)
+              }
+              catch(e) {
+                if (this.performanceMonitor)
+                  this.performanceMonitor.handleError(e.toString())
+                else throw e;
+              }
+        
+            } */
+            DriverWebBlueTooth.prototype.doOnCharacteristicValueChanged = function (uuid, buffer) {
+                var _this = this;
+                return new Promise(function (resolve, reject) {
+                    try {
+                        var func = _this._listerMap[uuid];
+                        if (func) {
+                            func(buffer);
+                            resolve();
+                        }
+                        else
+                            throw "characteristics uuid " + uuid.toString() + " not found in map";
+                    }
+                    catch (e) {
+                        if (_this.performanceMonitor)
+                            _this.performanceMonitor.handleError(e.toString());
+                        reject(e);
+                    }
+                });
+            };
             DriverWebBlueTooth.prototype.onCharacteristicValueChanged = function (event) {
-                try {
-                    var func = this._listerMap[event.target.uuid];
-                    if (func)
-                        func(event.target.value.buffer);
-                }
-                catch (e) {
-                    if (this.performanceMonitor)
-                        this.performanceMonitor.handleError(e.toString());
-                    else
-                        throw e;
-                }
+                var _this = this;
+                //this may prevent hanging, just a test
+                window.setTimeout(function () {
+                    //process one at a time to prevent dead locks
+                    _this._functionQueue.add(_this.doOnCharacteristicValueChanged, _this, event.target.uuid, event.target.value.buffer);
+                }, 0);
+                return true;
             };
             DriverWebBlueTooth.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
                 var _this = this;
@@ -2286,6 +2511,8 @@ var ergometer;
                 false);   */
             if ((typeof bleat !== 'undefined') && bleat)
                 this._driver = new ergometer.ble.DriverBleat();
+            else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
+                this._driver = new ergometer.ble.DriverSimpleBLE();
             else if (ergometer.ble.hasWebBlueTooth())
                 this._driver = new ergometer.ble.DriverWebBlueTooth();
             else

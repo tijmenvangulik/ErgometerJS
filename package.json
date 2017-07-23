@@ -11,6 +11,7 @@
   "keywords": ["PhoneGap","cordova","ergometer","driver","concept 2", "BLE","PM5"],
   "scripts" : {
     "build:api":"node_modules/.bin/tsc -p api",
+    "build:copy_api_copytowebapp":"node_modules/.bin/copyfiles -f api/lib/ergometer.js ../WebErgometer/WebApp/html/script/lib",
     "build:copy_api_electron":"node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/simple_electron/libs",
     "build:copy_api_electron_ts":"node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/simple_electron/typescript/typings",
     "build:copy_api_cordova":"node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/simplecordova/www/libs",

@@ -835,7 +835,7 @@ module ergometer {
                 false);   */
             if ((typeof bleat !== 'undefined' ) && bleat) this._driver = new ble.DriverBleat();
             else if ((typeof simpleBLE !== 'undefined' ) && simpleBLE ) this._driver = new ble.DriverSimpleBLE();
-            else if (ble.hasWebBlueTooth()) this._driver= new ble.DriverWebBlueTooth();
+            else if (ble.hasWebBlueTooth()) this._driver= new ble.DriverWebBlueTooth(this);
             else this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.") ;
 
             var enableDisableFunc = ()=>{this.enableDisableNotification()};

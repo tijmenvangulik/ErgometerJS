@@ -31,6 +31,7 @@
     "../../api/typescript/ergometer/csafe/push_config_commands.ts",
     "../../api/typescript/ergometer/typedefinitions.ts",
     "../../api/typescript/ergometer/performancemonitor.ts",
+    "../../api/typescript/ergometer/functionQueue.ts",
     "typescript/typings/jquery.d.ts",
     "typescript/recordings/row100meter.ts",
     "typescript/demo.ts",
