@@ -71,7 +71,7 @@ module ergometer.utils {
 
          if((<Uint8Array>data).buffer) {
              if(!(data instanceof Uint8Array))
-                 data = new Uint8Array((<Uint8Array>data).buffer);
+                 data = new Uint8Array((<any>data).buffer);
          } else if(data instanceof ArrayBuffer) {
              data = new Uint8Array(data);
          } else {

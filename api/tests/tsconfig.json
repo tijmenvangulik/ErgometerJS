@@ -6,7 +6,12 @@
     "outFile": "tests.js",
     "declaration": true,
     "stripInternal": true,
-    "noResolve":true
+    "noResolve":true,
+    "lib": [
+      "es5",
+      "es2015"
+    ]
+
   },
   "exclude": [
     "node_modules"

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JavaScriptLibraryMappings">
+    <file url="file://$PROJECT_DIR$" libraries="{MobileErgometer/node_modules}" />
+    <file url="file://$PROJECT_DIR$/demos/ionic_test" libraries="{MobileErgometer/demos/ionic_test/node_modules}" />
+    <file url="file://$PROJECT_DIR$/demos/react_native" libraries="{MobileErgometer/demos/react_native/node_modules}" />
+    <file url="file://$PROJECT_DIR$/demos/recording" libraries="{MobileErgometer/demos/recording/node_modules}" />
+    <file url="file://$PROJECT_DIR$/demos/simple_electron" libraries="{MobileErgometer/demos/simple_electron/node_modules}" />
+    <includedPredefinedLibrary name="ECMAScript 6" />
+  </component>
+</project>

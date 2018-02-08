@@ -2,7 +2,7 @@
  * Created by tijmen on 18-02-16.
  */
 module ergometer.ble {
-    import resolve = Promise.resolve;
+    
     export interface CallBackEvent extends IRecordingItem{
         resolve? : (e? :any)=>void;
         reject? : (e:any)=>void;
@@ -214,6 +214,7 @@ module ergometer.ble {
                 if (!value) {
                     this._eventCallBackMethods=[];
                     this._eventCallbacks=[];
+                    this._performanceMonitor.disconnect();
                 }
             }
         }

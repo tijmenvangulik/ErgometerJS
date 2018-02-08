@@ -8,8 +8,9 @@ module ergometer.ble {
         private _device:bleat.Device;
 
         public performanceMonitor : PerformanceMonitor;
-        
-        //simple wrapper for bleat characteristic functions
+
+
+      //simple wrapper for bleat characteristic functions
         private getCharacteristic(serviceUid : string,characteristicUid : string) : bleat.Characteristic {
             var service= this._device.services[serviceUid];
             if (service) {
@@ -19,7 +20,7 @@ module ergometer.ble {
             }
             else throw `service ${serviceUid} not found`
         }
-
+          
         public connect(device : IDevice,disconnectFn : ()=>void) : Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 try {
@@ -27,7 +28,9 @@ module ergometer.ble {
                     newDevice.connect(()=>{
                         this._device=newDevice;
                         resolve();
-                    },disconnectFn,false,reject);
+                    },disconnectFn,false,(e)=>{
+                      reject(e);
+                    });
                 }
                 catch (e) {
                     reject(e);

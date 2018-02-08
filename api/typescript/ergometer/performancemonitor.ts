@@ -547,7 +547,7 @@ module ergometer {
         public disconnect() {
             if (this.connectionState>=MonitorConnectionState.deviceReady)  {
                 this.driver.disconnect();
-                this.connectionState=MonitorConnectionState.deviceReady
+                this._connectionState=MonitorConnectionState.deviceReady
             }
         }
 
@@ -814,7 +814,7 @@ module ergometer {
                         .getPowerCurve({
                             onDataReceived: (curve : number[]) =>{
                                 this.powerCurveEvent.pub(curve);
-                                this.powerCurve=curve;
+                                this._powerCurve=curve;
                             }
                         })
                         .send();
@@ -1082,6 +1082,7 @@ module ergometer {
                 }).catch((errorCode)=> {
                     this.changeConnectionState(MonitorConnectionState.deviceReady);
                     this.handleError(errorCode);
+
                 });
         }
 
@@ -1097,7 +1098,7 @@ module ergometer {
                     (data:ArrayBuffer)=> {
                         resolve(utils.bufferToString(data));
                     },
-                    reject
+                    reject   
                 )
             })
         }
@@ -1115,12 +1116,12 @@ module ergometer {
         }
 
         /**
-         *
+         *             
          * @param done
          */
         protected readPheripheralInfo() :Promise<void> {
             return new Promise<void>((resolve, reject) => {
-                Promise.all([
+                Promise.all([  
 
                     this.readStringCharacteristic(ble.PMDEVICE_INFO_SERVICE, ble.SERIALNUMBER_CHARACTERISTIC)
                         .then((value:string)=> {

@@ -4,17 +4,16 @@
     "target": "es5",
     "sourceMap": true,
     "outFile": "lib/ergometer.js",
+    "outDir": "lib",
     "declaration": true,
     "stripInternal": true,
-    "noResolve":true
+    "lib": [
+      "ES5",
+      "ES2015",
+      "DOM"]
+
   },
-  "exclude": [
-    "node_modules"
-  ],
-  "filesGlob": [
-  ],
   "files": [
-    "typescript/typings/es6-promise.d.ts",
     "typescript/typings/bleat.classic.d.ts",
     "typescript/typings/webbluetooth.d.ts",
     "typescript/typings/simpleBLE.d.ts",

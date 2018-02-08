@@ -86,7 +86,7 @@ module ergometer.csafe {
     });
 
     //set program
-    export interface ICommandProgramParams {
+    export interface ICommandProgramParams extends ICommandParamsBase {
         value : Program
     }
     export interface IBuffer {
@@ -99,7 +99,7 @@ module ergometer.csafe {
 
     //----------------------------- set time ------------------------------------
 
-    export interface ICommandTimeParams {
+    export interface ICommandTimeParams extends ICommandParamsBase {
         hour : number;
         minute: number;
         second : number;
@@ -114,7 +114,7 @@ module ergometer.csafe {
 
     //----------------------------- set date ------------------------------------
 
-    export interface ICommandDateParams {
+    export interface ICommandDateParams extends ICommandParamsBase {
         year : number;
         month: number;
         day : number;

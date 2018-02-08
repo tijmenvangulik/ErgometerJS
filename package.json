@@ -1,32 +1,43 @@
 {
   "name": "ErgometerJS",
-  "description":"Java script ergometer driver for concept 2 performance monitor with BLE. (The PM5) Works on all major platforms using cordova and node/electron",
+  "description": "Java script ergometer driver for concept 2 performance monitor with BLE. (The PM5) Works on all major platforms using cordova and node/electron",
   "version": "0.0.9",
-  "engines" : { "node" : ">=5.5.0" },
+  "engines": {
+    "node": ">=5.5.0"
+  },
   "devDependencies": {
-    "typescript": "1.8.2",
-    "copyfiles": ">=0.2.1"
+    "copyfiles": ">=0.2.1",
+    "typescript": "2.6.2"
   },
   "license": "Apache-2.0",
-  "keywords": ["PhoneGap","cordova","ergometer","driver","concept 2", "BLE","PM5"],
-  "scripts" : {
-    "build:api":"node_modules/.bin/tsc -p api",
-    "build:copy_api_copytowebapp":"node_modules/.bin/copyfiles -f api/lib/ergometer.js ../WebErgometer/WebApp/html/script/lib",
-    "build:copy_api_electron":"node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/simple_electron/libs",
-    "build:copy_api_electron_ts":"node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/simple_electron/typescript/typings",
-    "build:copy_api_cordova":"node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/simplecordova/www/libs",
-    "build:copy_api_cordova_ts":"node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/simplecordova/www/typescript/typings",
-    "build:copy_api_webbluetooth":"node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/webbluetooth/libs",
-    "build:copy_api_webbluetooth_ts":"node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/webbluetooth/typescript/typings",
-    "build:copy_api":"npm run build:copy_api_electron && npm run build:copy_api_electron_ts && npm run build:copy_api_cordova && npm run build:copy_api_cordova_ts && npm run build:copy_api_webbluetooth && npm run build:copy_api_webbluetooth_ts",
-    "build:simplecordova":"node_modules/.bin/tsc -p demos/simplecordova ",
-    "build:simple_electron":"node_modules/.bin/tsc -p demos/simple_electron ",
-    "build:recording":"node_modules/.bin/tsc -p demos/recording ",
-    "build:webbluetooth":"node_modules/.bin/tsc -p demos/webbluetooth ",
-    "build":"npm run build:api && npm run build:copy_api && npm run build:simplecordova && npm run build:simple_electron  && npm run build:recording && npm run build:webbluetooth"
+  "keywords": [
+    "PhoneGap",
+    "cordova",
+    "ergometer",
+    "driver",
+    "concept 2",
+    "BLE",
+    "PM5"
+  ],
+  "scripts": {
+    "build:api": "node_modules/.bin/tsc -p api",
+    "build:copy_api_copytowebapp": "node_modules/.bin/copyfiles -f api/lib/ergometer.js ../WebErgometer/WebApp/html/script/lib",
+    "build:copy_api_copytowebapp_ts": "node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts ../WebErgometer/WebApp/html/typescripts/lib",
+    "build:copy_api_electron": "node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/simple_electron/libs",
+    "build:copy_api_electron_ts": "node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/simple_electron/typescript/typings",
+    "build:copy_api_cordova": "node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/simplecordova/www/libs",
+    "build:copy_api_cordova_ts": "node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/simplecordova/www/typescript/typings",
+    "build:copy_api_webbluetooth": "node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/webbluetooth/libs",
+    "build:copy_api_webbluetooth_ts": "node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/webbluetooth/typescript/typings",
+    "build:copy_api": "npm run build:copy_api_electron && npm run build:copy_api_electron_ts && npm run build:copy_api_cordova && npm run build:copy_api_cordova_ts && npm run build:copy_api_webbluetooth && npm run build:copy_api_webbluetooth_ts",
+    "build:simplecordova": "node_modules/.bin/tsc -p demos/simplecordova ",
+    "build:simple_electron": "node_modules/.bin/tsc -p demos/simple_electron ",
+    "build:recording": "node_modules/.bin/tsc -p demos/recording ",
+    "build:webbluetooth": "node_modules/.bin/tsc -p demos/webbluetooth ",
+    "build": "npm run build:api && npm run build:copy_api && npm run build:simplecordova && npm run build:simple_electron  && npm run build:recording && npm run build:webbluetooth"
   },
-  "repository" :
-  { "type" : "git"
-  , "url" : "https://github.com/tijmenvangulik/MobileErgometer"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tijmenvangulik/MobileErgometer"
   }
 }

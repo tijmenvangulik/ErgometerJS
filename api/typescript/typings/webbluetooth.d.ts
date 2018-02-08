@@ -4,7 +4,7 @@
 
 declare module webbluetooth {
 
-    export type UUID= string
+    export type UUID= string                     
     export type DOMString= UUID
     export type BluetoothServiceUUID = DOMString | number
     export type BluetoothCharacteristicUUID = DOMString | number
