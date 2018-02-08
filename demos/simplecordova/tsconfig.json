@@ -3,7 +3,12 @@
     "module": "system",
     "target": "es5",
     "sourceMap": true,
-    "outFile": "www/app.js"
+    "outFile": "www/app.js",
+    "lib": [
+      "ES5",
+      "ES2015",
+      "DOM"]
+
   },
   "exclude": [
     "node_modules"
@@ -13,7 +18,6 @@
   "files": [
     "www/typescript/typings/ergometer.d.ts",
     "www/typescript/typings/jquery.d.ts",
-    "www/typescript/typings/es6-promise.d.ts",
     "www/typescript/demo.ts",
     "www/typescript/app.ts"
   ]

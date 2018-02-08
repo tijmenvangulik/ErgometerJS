@@ -3,7 +3,11 @@
     "module": "system",
     "target": "es5",
     "sourceMap": true,
-    "outFile": "app.js"
+    "outFile": "app.js",
+    "lib": [
+      "ES5",
+      "ES2015",
+      "DOM"]
   },
   "exclude": [
     "node_modules"
@@ -11,7 +15,6 @@
   "filesGlob": [
   ],
   "files": [
-    "../../api/typescript/typings/es6-promise.d.ts",
     "../../api/typescript/typings/bleat.classic.d.ts",
     "../../api/typescript/typings/webbluetooth.d.ts",
     "../../api/typescript/typings/simpleBLE.d.ts",

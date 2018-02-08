@@ -21,11 +21,29 @@ class ErgometerReactNative extends Component {
 
    state = {connectionState: "-",
             deviceName : "-",
-            distance: 0
+            distance: 0,
+            versionInfo : ""
             };
 
-   onConnectionStateChanged(oldState, newState ) {
+
+
+   onConnectionStateChanged(oldState , newState ) {
      this.setState({connectionState:newState});
+     var self=this;
+     //do a csafe call when we are ready for communication
+     if (newState==6 ) {  //ready for communication
+       this.performanceMonitor.csafeBuffer
+           .clear()
+           .getVersion({
+             onDataReceived:  function (version ) {
+               self.setState({
+                 versionInfo:  'Version hardware '+version.HardwareVersion.toString()+
+                               ' software:'+version.FirmwareVersion.toString()
+               });
+             }
+           })
+           .send();
+     }
    }
    onRowingGeneralStatus(data) {
      this.setState({distance:data.distance})
@@ -47,6 +65,7 @@ class ErgometerReactNative extends Component {
     }
 
   componentWillMount() {
+    this.performanceMonitor.logLevel = ergometer.LogLevel.trace;
     this.performanceMonitor.connectionStateChangedEvent.sub(this,this.onConnectionStateChanged);
     this.performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
 
@@ -78,6 +97,9 @@ class ErgometerReactNative extends Component {
         </Text>
         <Text style={styles.instructions}>
           Distance: {this.state.distance}
+        </Text>
+        <Text style={styles.instructions}>
+          Version: {this.state.versionInfo}
         </Text>
         <Text style={styles.instructions}>
           Press Cmd+R to reload,{'\n'}

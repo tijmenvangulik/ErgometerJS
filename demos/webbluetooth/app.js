@@ -22,7 +22,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var Demo = (function () {
+var Demo = /** @class */ (function () {
     function Demo() {
         this.initialize();
     }
@@ -172,7 +172,7 @@ var Demo = (function () {
  * limitations under the License.
  */
 /// <reference path="demo.ts"/>
-var App = (function () {
+var App = /** @class */ (function () {
     function App() {
         var _this = this;
         $().ready(function () {

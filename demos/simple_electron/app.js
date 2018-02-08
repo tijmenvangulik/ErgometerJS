@@ -22,7 +22,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var App = (function () {
+var App = /** @class */ (function () {
     function App() {
         var _this = this;
         $().ready(function () {
@@ -64,7 +64,7 @@ var app = new App();
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var Demo = (function () {
+var Demo = /** @class */ (function () {
     function Demo() {
         this._lastDeviceName = null;
         this.initialize();

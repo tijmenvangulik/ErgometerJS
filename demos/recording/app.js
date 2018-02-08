@@ -3,6 +3,10 @@
  */
 /** @internal */
 var ergometer;
+/**
+ * Created by tijmen on 25-12-15.
+ */
+/** @internal */
 (function (ergometer) {
     var utils;
     (function (utils) {
@@ -130,10 +134,30 @@ var ergometer;
  * limitations under the License.
  */
 var ergometer;
+/**
+ *
+ * Created by tijmen on 01-06-15.
+ *
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 (function (ergometer) {
     var pubSub;
     (function (pubSub) {
-        var PubSub = (function () {
+        var PubSub = /** @class */ (function () {
             function PubSub() {
                 this.registry = {};
             }
@@ -202,7 +226,7 @@ var ergometer;
         }());
         pubSub.PubSub = PubSub;
         //new style event using generics
-        var Event = (function () {
+        var Event = /** @class */ (function () {
             function Event() {
                 this._subscribed = [];
             }
@@ -244,7 +268,7 @@ var ergometer;
                     var func = function () {
                         var args = [];
                         for (var _i = 0; _i < arguments.length; _i++) {
-                            args[_i - 0] = arguments[_i];
+                            args[_i] = arguments[_i];
                         }
                         pubsub.doPub(args);
                     };
@@ -259,7 +283,7 @@ var ergometer;
                     var func = function () {
                         var args = [];
                         for (var _i = 0; _i < arguments.length; _i++) {
-                            args[_i - 0] = arguments[_i];
+                            args[_i] = arguments[_i];
                         }
                         setTimeout(function () {
                             pubsub.doPub(args);
@@ -289,10 +313,13 @@ var ergometer;
  * Created by tijmen on 01-02-16.
  */
 var ergometer;
+/**
+ * Created by tijmen on 01-02-16.
+ */
 (function (ergometer) {
     var ble;
     (function (ble) {
-        var DriverBleat = (function () {
+        var DriverBleat = /** @class */ (function () {
             function DriverBleat() {
             }
             //simple wrapper for bleat characteristic functions
@@ -316,7 +343,9 @@ var ergometer;
                         newDevice.connect(function () {
                             _this._device = newDevice;
                             resolve();
-                        }, disconnectFn, false, reject);
+                        }, disconnectFn, false, function (e) {
+                            reject(e);
+                        });
                     }
                     catch (e) {
                         reject(e);
@@ -411,9 +440,13 @@ var ergometer;
  * Created by tijmen on 16-02-16.
  */
 var ergometer;
+/**
+ * Created by tijmen on 16-02-16.
+ */
 (function (ergometer) {
     var ble;
     (function (ble) {
+        var RecordingEventType;
         (function (RecordingEventType) {
             RecordingEventType[RecordingEventType["startScan"] = 0] = "startScan";
             RecordingEventType[RecordingEventType["scanFoundFn"] = 1] = "scanFoundFn";
@@ -426,9 +459,8 @@ var ergometer;
             RecordingEventType[RecordingEventType["enableNotification"] = 8] = "enableNotification";
             RecordingEventType[RecordingEventType["notificationReceived"] = 9] = "notificationReceived";
             RecordingEventType[RecordingEventType["disableNotification"] = 10] = "disableNotification";
-        })(ble.RecordingEventType || (ble.RecordingEventType = {}));
-        var RecordingEventType = ble.RecordingEventType;
-        var RecordingDriver = (function () {
+        })(RecordingEventType = ble.RecordingEventType || (ble.RecordingEventType = {}));
+        var RecordingDriver = /** @class */ (function () {
             function RecordingDriver(performanceMonitor, realDriver) {
                 this._events = [];
                 this._performanceMonitor = performanceMonitor;
@@ -571,7 +603,8 @@ var ergometer;
                         _this.addRecording(RecordingEventType.notificationReceived, {
                             serviceUIID: serviceUIID,
                             characteristicUUID: characteristicUUID,
-                            data: ergometer.utils.typedArrayToHexString(data) });
+                            data: ergometer.utils.typedArrayToHexString(data)
+                        });
                         receive(data);
                     })
                         .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
@@ -600,6 +633,12 @@ var ergometer;
  * Created by tijmen on 01-02-16.
  */
 var ergometer;
+/**
+ * Created by tijmen on 17-07-16.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ */
 (function (ergometer) {
     var ble;
     (function (ble) {
@@ -607,13 +646,18 @@ var ergometer;
             return (navigator && typeof navigator.bluetooth !== 'undefined');
         }
         ble.hasWebBlueTooth = hasWebBlueTooth;
-        var DriverWebBlueTooth = (function () {
-            function DriverWebBlueTooth() {
-                this._listerMap = {};
+        var DriverWebBlueTooth = /** @class */ (function () {
+            function DriverWebBlueTooth(performanceMonitor) {
+                this._listenerMap = {};
+                //needed to prevent early free of the characteristic
+                this._listerCharacteristicMap = {};
+                this._performanceMonitor = performanceMonitor;
             }
             //simple wrapper for bleat characteristic functions
             DriverWebBlueTooth.prototype.getCharacteristic = function (serviceUid, characteristicUid) {
                 var _this = this;
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("getCharacteristic " + characteristicUid + " ");
                 return new Promise(function (resolve, reject) {
                     if (!_this._server || !_this._server.connected)
                         reject("server not connected");
@@ -626,20 +670,27 @@ var ergometer;
                 });
             };
             DriverWebBlueTooth.prototype.onDisconnected = function (event) {
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("onDisconnected ");
                 if (this._disconnectFn)
                     this._disconnectFn();
                 this.clearConnectionVars();
             };
             DriverWebBlueTooth.prototype.clearConnectionVars = function () {
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("clearConnectionVars ");
                 if (this._device)
                     this._device.removeEventListener('ongattserverdisconnected', this.onDisconnected);
                 this._device = null;
                 this._server = null;
                 this._disconnectFn = null;
-                this._listerMap = {};
+                this._listenerMap = {};
+                this._listerCharacteristicMap = {};
             };
             DriverWebBlueTooth.prototype.connect = function (device, disconnectFn) {
                 var _this = this;
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("connect ");
                 return new Promise(function (resolve, reject) {
                     try {
                         var newDevice = device._internalDevice;
@@ -657,12 +708,16 @@ var ergometer;
                 });
             };
             DriverWebBlueTooth.prototype.disconnect = function () {
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("disconnect ");
                 if (this._server && this._server.connected)
                     this._server.disconnect();
                 else
                     this.clearConnectionVars();
             };
             DriverWebBlueTooth.prototype.startScan = function (foundFn) {
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("startScan ");
                 return new Promise(function (resolve, reject) {
                     try {
                         navigator.bluetooth.requestDevice({
@@ -686,6 +741,8 @@ var ergometer;
                 });
             };
             DriverWebBlueTooth.prototype.stopScan = function () {
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("stopScan ");
                 if (typeof navigator.bluetooth.cancelRequest !== 'undefined')
                     return navigator.bluetooth.cancelRequest();
                 else
@@ -693,8 +750,23 @@ var ergometer;
                         resolve();
                     });
             };
+            /*
+            public writeCharacteristic(serviceUIID : string,characteristicUUID:string, data:ArrayBufferView) : Promise<void> {
+              if (this._performanceMonitor.logLevel==LogLevel.trace)
+                this._performanceMonitor.traceInfo(`writeCharacteristic ${characteristicUUID} : ${data} `);
+        
+              //run read and write one at a time , wait for the result and then call the next
+              //this is a workaround for a problem of web blue tooth
+              //not yet tested!
+              return this._functionQueue.add(
+                  this.doWriteCharacteristic,
+                  this,serviceUIID,characteristicUUID,data);
+            }
+            */
             DriverWebBlueTooth.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
                 var _this = this;
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("writeCharacteristic " + characteristicUUID + " : " + data + " ");
                 return new Promise(function (resolve, reject) {
                     try {
                         _this.getCharacteristic(serviceUIID, characteristicUUID)
@@ -708,15 +780,34 @@ var ergometer;
                     }
                 });
             };
+            /*
+            public readCharacteristic(serviceUIID : string,characteristicUUID:string) : Promise<ArrayBuffer> {
+              if (this._performanceMonitor.logLevel==LogLevel.trace)
+                this._performanceMonitor.traceInfo(`readCharacteristic ${characteristicUUID}  `);
+        
+              //run read and write one at a time , wait for the result and then call the next
+              //this is a workaround for a problem of web blue tooth
+              //not yet tested!
+              return this._functionQueue.add(
+                  this.doReadCharacteristic,
+                  this,serviceUIID,characteristicUUID);
+            }
+            */
             DriverWebBlueTooth.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
                 var _this = this;
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("readCharacteristic " + characteristicUUID + "  ");
                 return new Promise(function (resolve, reject) {
                     try {
                         _this.getCharacteristic(serviceUIID, characteristicUUID)
                             .then(function (characteristic) {
                             return characteristic.readValue();
                         })
-                            .then(function (data) { resolve(data.buffer); }, reject);
+                            .then(function (data) {
+                            if (_this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                                _this._performanceMonitor.traceInfo("doReadCharacteristic " + characteristicUUID + " : " + ergometer.utils.typedArrayToHexString(data.buffer) + " ");
+                            resolve(data.buffer);
+                        }, reject);
                     }
                     catch (e) {
                         reject(e);
@@ -724,26 +815,62 @@ var ergometer;
                 });
             };
             DriverWebBlueTooth.prototype.onCharacteristicValueChanged = function (event) {
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("onCharacteristicValueChanged " + event.target.uuid + " : " + ergometer.utils.typedArrayToHexString(event.target.value.buffer) + " ");
                 try {
-                    var func = this._listerMap[event.target.uuid];
+                    var func = this._listenerMap[event.target.uuid];
                     if (func)
                         func(event.target.value.buffer);
                 }
                 catch (e) {
-                    if (this.performanceMonitor)
-                        this.performanceMonitor.handleError(e.toString());
+                    if (this._performanceMonitor)
+                        this._performanceMonitor.handleError(e.toString());
                     else
                         throw e;
                 }
             };
+            /*private onCharacteristicValueChanged(uuid,buffer) : Promise<void> {
+              return new Promise<void>((resolve, reject) => {
+                try {
+                  let func=this._listerMap[uuid];
+                  if (func) {
+                      func(buffer);
+                      resolve();
+                  }
+                  else throw "characteristics uuid "+uuid.toString()+" not found in map";
+                }
+                catch(e) {
+                  if (this._performanceMonitor)
+                    this._performanceMonitor.handleError(e.toString());
+                  reject(e);
+                }
+        
+              });
+            }
+            
+            private onCharacteristicValueChanged(event:webbluetooth.CharacteristicsValueChangedEvent) {
+              if (this._performanceMonitor.logLevel==LogLevel.trace)
+                this._performanceMonitor.traceInfo(`onCharacteristicValueChanged ${event.target.uuid} : ${utils.typedArrayToHexString(event.target.value.buffer)} `);
+              //this may prevent hanging, just a test
+                //process one at a time to prevent dead locks
+              this._functionQueue.add(
+                    this.doOnCharacteristicValueChanged,this,event.target.uuid,event.target.value.buffer);
+        
+              return true;
+            }
+            */
             DriverWebBlueTooth.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
                 var _this = this;
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("enableNotification " + characteristicUUID + "  ");
                 return new Promise(function (resolve, reject) {
                     try {
                         _this.getCharacteristic(serviceUIID, characteristicUUID)
                             .then(function (characteristic) {
                             return characteristic.startNotifications().then(function (_) {
-                                _this._listerMap[characteristicUUID] = receive;
+                                _this._listenerMap[characteristicUUID] = receive;
+                                //bug fix: this prevents the chracteristic from being free-ed
+                                _this._listerCharacteristicMap[characteristicUUID] = characteristic;
                                 characteristic.addEventListener('characteristicvaluechanged', _this.onCharacteristicValueChanged.bind(_this));
                                 resolve();
                             }, reject);
@@ -757,13 +884,16 @@ var ergometer;
             DriverWebBlueTooth.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
                 var _this = this;
                 //only disable when receive is
+                if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
+                    this._performanceMonitor.traceInfo("disableNotification " + characteristicUUID + "  ");
                 return new Promise(function (resolve, reject) {
                     try {
-                        if (typeof _this._listerMap[characteristicUUID] !== 'undefined' && _this._listerMap[characteristicUUID]) {
+                        if (typeof _this._listenerMap[characteristicUUID] !== 'undefined' && _this._listenerMap[characteristicUUID]) {
                             _this.getCharacteristic(serviceUIID, characteristicUUID)
                                 .then(function (characteristic) {
                                 characteristic.stopNotifications().then(function () {
-                                    _this._listerMap[characteristic.uuid] = null;
+                                    _this._listenerMap[characteristic.uuid] = null;
+                                    _this._listerCharacteristicMap[characteristic.uuid] = null;
                                     characteristic.removeEventListener('characteristicvaluechanged', _this.onCharacteristicValueChanged);
                                     resolve();
                                 }, reject);
@@ -783,13 +913,81 @@ var ergometer;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
- * Created by tijmen on 18-02-16.
+ * Created by tijmen on 03/04/2017.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ *
+ * see simpleBLE.d.ts for the definitions of the simpleBLE
+ * It assumes that there simple ble is already imported as a var named simpleBLE
+ *
  */
 var ergometer;
+/**
+ * Created by tijmen on 03/04/2017.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ *
+ * see simpleBLE.d.ts for the definitions of the simpleBLE
+ * It assumes that there simple ble is already imported as a var named simpleBLE
+ *
+ */
 (function (ergometer) {
     var ble;
     (function (ble) {
-        var ReplayDriver = (function () {
+        var DriverSimpleBLE = /** @class */ (function () {
+            function DriverSimpleBLE() {
+            }
+            DriverSimpleBLE.prototype.connect = function (device, disconnectFn) {
+                return new Promise(function (resolve, reject) {
+                    //  simpleBLE.connect("");
+                });
+            };
+            DriverSimpleBLE.prototype.disconnect = function () {
+                simpleBLE.disconnect();
+            };
+            DriverSimpleBLE.prototype.startScan = function (foundFn) {
+                return new Promise(function (resolve, reject) {
+                    //  simpleBLE.scan();
+                });
+            };
+            DriverSimpleBLE.prototype.stopScan = function () {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            DriverSimpleBLE.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            return DriverSimpleBLE;
+        }());
+        ble.DriverSimpleBLE = DriverSimpleBLE;
+    })(ble = ergometer.ble || (ergometer.ble = {}));
+})(ergometer || (ergometer = {}));
+/**
+ * Created by tijmen on 18-02-16.
+ */
+var ergometer;
+/**
+ * Created by tijmen on 18-02-16.
+ */
+(function (ergometer) {
+    var ble;
+    (function (ble) {
+        var ReplayDriver = /** @class */ (function () {
             function ReplayDriver(performanceMonitor, realDriver) {
                 this._events = [];
                 this._eventCallBackMethods = [];
@@ -975,6 +1173,7 @@ var ergometer;
                         if (!value) {
                             this._eventCallBackMethods = [];
                             this._eventCallbacks = [];
+                            this._performanceMonitor.disconnect();
                         }
                     }
                 },
@@ -1042,6 +1241,10 @@ var ergometer;
  */
 /** @internal */
 var ergometer;
+/**
+ * Created by tijmen on 16-01-16.
+ */
+/** @internal */
 (function (ergometer) {
     var ble;
     (function (ble) {
@@ -1087,6 +1290,11 @@ var ergometer;
  * translation of concept 2 csafe.h to typescript version  9/16/08 10:51a
  */
 var ergometer;
+/**
+ * Created by tijmen on 16-01-16.
+ *
+ * translation of concept 2 csafe.h to typescript version  9/16/08 10:51a
+ */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
@@ -1263,10 +1471,18 @@ var ergometer;
  *
  */
 var ergometer;
+/**
+ * Created by tijmen on 19-01-16.
+ *
+ * Extensible frame work so you can add your own csafe commands to the buffer
+ *
+ * this is the core, you do not have to change this code.
+ *
+ */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
-        var CommandManagager = (function () {
+        var CommandManagager = /** @class */ (function () {
             function CommandManagager() {
                 this._commands = [];
             }
@@ -1334,9 +1550,16 @@ var ergometer;
  *
  */
 var ergometer;
+/**
+ * Created by tijmen on 19-01-16.
+ *
+ * Extensible frame work so you can add your own csafe commands to the buffer
+ *
+ */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
+        //----------------------------- get the stoke state ------------------------------------
         csafe.commandManager.register(function (buffer, monitor) {
             buffer.getStrokeState = function (params) {
                 buffer.addRawCommand({
@@ -1407,9 +1630,16 @@ var ergometer;
  *
  */
 var ergometer;
+/**
+ * Created by tijmen on 19-01-16.
+ *
+ * Extensible frame work so you can add your own csafe commands to the buffer
+ *
+ */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
+        //----------------------------- get the version info ------------------------------------
         csafe.commandManager.register(function (buffer, monitor) {
             buffer.getVersion = function (params) {
                 buffer.addRawCommand({
@@ -1437,9 +1667,13 @@ var ergometer;
  * Created by tijmen on 06-02-16.
  */
 var ergometer;
+/**
+ * Created by tijmen on 06-02-16.
+ */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
+        //----------------------------- workout type ------------------------------------
         csafe.registerStandardSetConfig("setWorkoutType", 1 /* PM_SET_WORKOUTTYPE */, function (params) { return [params.value]; });
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
@@ -1467,7 +1701,31 @@ var ergometer;
  * limitations under the License.
  */
 var ergometer;
+/**
+ * Concept 2 ergometer Performance Monitor api for Cordova
+ *
+ * This will will work with the PM5
+ *
+ * Created by tijmen on 01-06-15.
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 (function (ergometer) {
+    var MonitorConnectionState;
     (function (MonitorConnectionState) {
         MonitorConnectionState[MonitorConnectionState["inactive"] = 0] = "inactive";
         MonitorConnectionState[MonitorConnectionState["deviceReady"] = 1] = "deviceReady";
@@ -1476,15 +1734,14 @@ var ergometer;
         MonitorConnectionState[MonitorConnectionState["connected"] = 4] = "connected";
         MonitorConnectionState[MonitorConnectionState["servicesFound"] = 5] = "servicesFound";
         MonitorConnectionState[MonitorConnectionState["readyForCommunication"] = 6] = "readyForCommunication";
-    })(ergometer.MonitorConnectionState || (ergometer.MonitorConnectionState = {}));
-    var MonitorConnectionState = ergometer.MonitorConnectionState;
+    })(MonitorConnectionState = ergometer.MonitorConnectionState || (ergometer.MonitorConnectionState = {}));
+    var LogLevel;
     (function (LogLevel) {
         LogLevel[LogLevel["error"] = 0] = "error";
         LogLevel[LogLevel["info"] = 1] = "info";
         LogLevel[LogLevel["debug"] = 2] = "debug";
         LogLevel[LogLevel["trace"] = 3] = "trace";
-    })(ergometer.LogLevel || (ergometer.LogLevel = {}));
-    var LogLevel = ergometer.LogLevel;
+    })(LogLevel = ergometer.LogLevel || (ergometer.LogLevel = {}));
     /**
      *
      * Usage:
@@ -1513,7 +1770,7 @@ var ergometer;
      *    performanceMonitor.stopScan
      *
      */
-    var PerformanceMonitor = (function () {
+    var PerformanceMonitor = /** @class */ (function () {
         /**
          * To work with this class you will need to create it.
          */
@@ -2010,7 +2267,7 @@ var ergometer;
         PerformanceMonitor.prototype.disconnect = function () {
             if (this.connectionState >= MonitorConnectionState.deviceReady) {
                 this.driver.disconnect();
-                this.connectionState = MonitorConnectionState.deviceReady;
+                this._connectionState = MonitorConnectionState.deviceReady;
             }
         };
         Object.defineProperty(PerformanceMonitor.prototype, "connectionState", {
@@ -2217,6 +2474,7 @@ var ergometer;
                     if (this.multiplex) {
                         this.enableMultiplexNotification();
                     }
+                    //this data is only available for multi ples
                 }
                 else {
                     if (this.multiplex)
@@ -2266,7 +2524,7 @@ var ergometer;
                         .getPowerCurve({
                         onDataReceived: function (curve) {
                             _this.powerCurveEvent.pub(curve);
-                            _this.powerCurve = curve;
+                            _this._powerCurve = curve;
                         }
                     })
                         .send();
@@ -2286,8 +2544,10 @@ var ergometer;
                 false);   */
             if ((typeof bleat !== 'undefined') && bleat)
                 this._driver = new ergometer.ble.DriverBleat();
+            else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
+                this._driver = new ergometer.ble.DriverSimpleBLE();
             else if (ergometer.ble.hasWebBlueTooth())
-                this._driver = new ergometer.ble.DriverWebBlueTooth();
+                this._driver = new ergometer.ble.DriverWebBlueTooth(this);
             else
                 this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.");
             var enableDisableFunc = function () { _this.enableDisableNotification(); };
@@ -2446,7 +2706,8 @@ var ergometer;
                         _internalDevice: device,
                         name: device.name,
                         address: device.address,
-                        quality: 2 * (device.rssi + 100) };
+                        quality: 2 * (device.rssi + 100)
+                    };
                     _this.addDevice(deviceInfo);
                     if (deviceFound(deviceInfo)) {
                         _this.connectToDevice(deviceInfo.name);
@@ -3164,7 +3425,8 @@ var ergometer;
                                         _this.receivedCSaveCommand({
                                             command: command,
                                             detailCommand: detailCommand,
-                                            data: commandData });
+                                            data: commandData
+                                        });
                                     }
                                     catch (e) {
                                         _this.handleError(e); //never let the receive crash the main loop
@@ -3218,9 +3480,148 @@ var ergometer;
     ergometer.PerformanceMonitor = PerformanceMonitor;
 })(ergometer || (ergometer = {}));
 /**
+ * Created by tijmen on 04/07/2017.
+ *
+ * queue function calls which returns a promise, converted to typescript
+ * needed as work around for web blue tooth, this ensures that only one call is processed at at time
+ *
+ *
+ */
+var ergometer;
+/**
+ * Created by tijmen on 04/07/2017.
+ *
+ * queue function calls which returns a promise, converted to typescript
+ * needed as work around for web blue tooth, this ensures that only one call is processed at at time
+ *
+ *
+ */
+(function (ergometer) {
+    var utils;
+    (function (utils) {
+        /**
+         * @return {Object}
+         */
+        var FunctionQueue = /** @class */ (function () {
+            function FunctionQueue(maxPendingPromises, maxQueuedPromises) {
+                this.maxPendingPromises = Infinity;
+                this.maxQueuedPromises = Infinity;
+                this.pendingPromises = 0;
+                this.queue = [];
+                this.maxPendingPromises = typeof maxPendingPromises !== 'undefined' ? maxPendingPromises : Infinity;
+                this.maxQueuedPromises = typeof maxQueuedPromises !== 'undefined' ? maxQueuedPromises : Infinity;
+            }
+            /**
+             * @param {*} value
+             * @returns {LocalPromise}
+             */
+            FunctionQueue.prototype.resolveWith = function (value) {
+                if (value && typeof value.then === 'function') {
+                    return value;
+                }
+                return new Promise(function (resolve) {
+                    resolve(value);
+                });
+            };
+            ;
+            /**
+             * @param {promiseGenerator}  a function which returns a promise
+             * @param {context} the object which is the context where the function is called in
+             * @param  {params} array of parameters for the function
+             * @return {Promise} promise which is resolved when the function is acually called
+             */
+            FunctionQueue.prototype.add = function (promiseGenerator, context) {
+                var params = [];
+                for (var _i = 2; _i < arguments.length; _i++) {
+                    params[_i - 2] = arguments[_i];
+                }
+                var self = this;
+                return new Promise(function (resolve, reject) {
+                    // Do not queue to much promises
+                    if (self.queue.length >= self.maxQueuedPromises) {
+                        reject(new Error('Queue limit reached'));
+                        return;
+                    }
+                    // Add to queue
+                    self.queue.push({
+                        promiseGenerator: promiseGenerator,
+                        context: context,
+                        params: params,
+                        resolve: resolve,
+                        reject: reject
+                    });
+                    self._dequeue();
+                });
+            };
+            ;
+            /**
+             * Number of simultaneously running promises (which are resolving)
+             *
+             * @return {number}
+             */
+            FunctionQueue.prototype.getPendingLength = function () {
+                return this.pendingPromises;
+            };
+            ;
+            /**
+             * Number of queued promises (which are waiting)
+             *
+             * @return {number}
+             */
+            FunctionQueue.prototype.getQueueLength = function () {
+                return this.queue.length;
+            };
+            ;
+            /**
+             * @returns {boolean} true if first item removed from queue
+             * @private
+             */
+            FunctionQueue.prototype._dequeue = function () {
+                var self = this;
+                if (this.pendingPromises >= this.maxPendingPromises) {
+                    return false;
+                }
+                // Remove from queue
+                var item = this.queue.shift();
+                if (!item) {
+                    return false;
+                }
+                try {
+                    this.pendingPromises++;
+                    self.resolveWith(item.promiseGenerator.apply(item.context, item.params))
+                        .then(function (value) {
+                        // It is not pending now
+                        self.pendingPromises--;
+                        // It should pass values
+                        item.resolve(value);
+                        self._dequeue();
+                    }, function (err) {
+                        // It is not pending now
+                        self.pendingPromises--;
+                        // It should not mask errors
+                        item.reject(err);
+                        self._dequeue();
+                    });
+                }
+                catch (err) {
+                    self.pendingPromises--;
+                    item.reject(err);
+                    self._dequeue();
+                }
+                return true;
+            };
+            return FunctionQueue;
+        }());
+        utils.FunctionQueue = FunctionQueue;
+    })(utils = ergometer.utils || (ergometer.utils = {}));
+})(ergometer || (ergometer = {}));
+/**
  * Created by tijmen on 06-03-16.
  */
 var ergometer;
+/**
+ * Created by tijmen on 06-03-16.
+ */
 (function (ergometer) {
     var recording;
     (function (recording) {
@@ -7857,7 +8258,7 @@ var ergometer;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var Demo = (function () {
+var Demo = /** @class */ (function () {
     function Demo() {
         this._lastDeviceName = null;
         this.initialize();
@@ -8063,7 +8464,7 @@ var Demo = (function () {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var App = (function () {
+var App = /** @class */ (function () {
     function App() {
         var _this = this;
         this._demo = new Demo();

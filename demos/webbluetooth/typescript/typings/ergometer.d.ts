@@ -127,9 +127,9 @@ declare namespace ergometer.pubSub {
         sub(applyObject: any, event: T): void;
         unsub(event: T): void;
         protected doPub(args: any[]): void;
-        pub: T;
-        pubAsync: T;
-        count: number;
+        readonly pub: T;
+        readonly pubAsync: T;
+        readonly count: number;
         registerChangedEvent(func: ISubscriptionChanged): void;
     }
 }
@@ -210,9 +210,10 @@ declare module ergometer.ble {
         private _device;
         private _server;
         private _disconnectFn;
-        private _listerMap;
-        private _functionQueue;
-        performanceMonitor: PerformanceMonitor;
+        private _listenerMap;
+        private _listerCharacteristicMap;
+        private _performanceMonitor;
+        constructor(performanceMonitor: PerformanceMonitor);
         private getCharacteristic(serviceUid, characteristicUid);
         private onDisconnected(event);
         private clearConnectionVars();
@@ -221,10 +222,7 @@ declare module ergometer.ble {
         startScan(foundFn?: IFoundFunc): Promise<void>;
         stopScan(): Promise<void>;
         writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
-        doWriteCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
         readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
-        doReadCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
-        private doOnCharacteristicValueChanged(uuid, buffer);
         private onCharacteristicValueChanged(event);
         enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
         disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
@@ -272,7 +270,7 @@ declare module ergometer.ble {
         constructor(performanceMonitor: PerformanceMonitor, realDriver: IDriver);
         protected getRelativeTime(): number;
         addRecording(eventType: RecordingEventType, data?: IRecordCharacteristic | IRecordDevice): IRecordingItem;
-        events: ergometer.ble.IRecordingItem[];
+        readonly events: ergometer.ble.IRecordingItem[];
         clear(): void;
         startRecording(): void;
         protected recordResolveFunc(resolve: () => void, rec: IRecordingItem): () => void;
@@ -308,7 +306,7 @@ declare module ergometer.ble {
         private _performanceMonitor;
         protected getRelativeTime(): number;
         constructor(performanceMonitor: PerformanceMonitor, realDriver: IDriver);
-        events: ergometer.ble.IRecordingItem[];
+        readonly events: ergometer.ble.IRecordingItem[];
         protected isCallBack(eventType: RecordingEventType): boolean;
         protected isSameEvent(event1: IRecordingItem, event2: IRecordingItem): boolean;
         protected runEvent(event: IRecordingItem, queuedEvent: CallBackEvent): void;
@@ -336,52 +334,52 @@ declare module ergometer.ble {
  * translation of concept 2 csafe.h to typescript version  9/16/08 10:51a
  */
 declare module ergometer.csafe.defs {
-    const EXT_FRAME_START_BYTE: number;
-    const FRAME_START_BYTE: number;
-    const FRAME_END_BYTE: number;
-    const FRAME_STUFF_BYTE: number;
-    const FRAME_MAX_STUFF_OFFSET_BYTE: number;
-    const FRAME_FLG_LEN: number;
-    const EXT_FRAME_ADDR_LEN: number;
-    const FRAME_CHKSUM_LEN: number;
-    const SHORT_CMD_TYPE_MSK: number;
-    const LONG_CMD_HDR_LENGTH: number;
-    const LONG_CMD_BYTE_CNT_OFFSET: number;
-    const RSP_HDR_LENGTH: number;
-    const FRAME_STD_TYPE: number;
-    const FRAME_EXT_TYPE: number;
-    const DESTINATION_ADDR_HOST: number;
-    const DESTINATION_ADDR_ERG_MASTER: number;
-    const DESTINATION_ADDR_BROADCAST: number;
-    const DESTINATION_ADDR_ERG_DEFAULT: number;
-    const FRAME_MAXSIZE: number;
-    const INTERFRAMEGAP_MIN: number;
-    const CMDUPLIST_MAXSIZE: number;
-    const MEMORY_BLOCKSIZE: number;
-    const FORCEPLOT_BLOCKSIZE: number;
-    const HEARTBEAT_BLOCKSIZE: number;
-    const MANUFACTURE_ID: number;
-    const CLASS_ID: number;
-    const MODEL_NUM: number;
-    const UNITS_TYPE: number;
-    const SERIALNUM_DIGITS: number;
-    const HMS_FORMAT_CNT: number;
-    const YMD_FORMAT_CNT: number;
-    const ERRORCODE_FORMAT_CNT: number;
-    const CTRL_CMD_LONG_MIN: number;
-    const CFG_CMD_LONG_MIN: number;
-    const DATA_CMD_LONG_MIN: number;
-    const AUDIO_CMD_LONG_MIN: number;
-    const TEXTCFG_CMD_LONG_MIN: number;
-    const TEXTSTATUS_CMD_LONG_MIN: number;
-    const CAP_CMD_LONG_MIN: number;
-    const PMPROPRIETARY_CMD_LONG_MIN: number;
-    const CTRL_CMD_SHORT_MIN: number;
-    const STATUS_CMD_SHORT_MIN: number;
-    const DATA_CMD_SHORT_MIN: number;
-    const AUDIO_CMD_SHORT_MIN: number;
-    const TEXTCFG_CMD_SHORT_MIN: number;
-    const TEXTSTATUS_CMD_SHORT_MIN: number;
+    const EXT_FRAME_START_BYTE = 240;
+    const FRAME_START_BYTE = 241;
+    const FRAME_END_BYTE = 242;
+    const FRAME_STUFF_BYTE = 243;
+    const FRAME_MAX_STUFF_OFFSET_BYTE = 3;
+    const FRAME_FLG_LEN = 2;
+    const EXT_FRAME_ADDR_LEN = 2;
+    const FRAME_CHKSUM_LEN = 1;
+    const SHORT_CMD_TYPE_MSK = 128;
+    const LONG_CMD_HDR_LENGTH = 2;
+    const LONG_CMD_BYTE_CNT_OFFSET = 1;
+    const RSP_HDR_LENGTH = 2;
+    const FRAME_STD_TYPE = 0;
+    const FRAME_EXT_TYPE = 1;
+    const DESTINATION_ADDR_HOST = 0;
+    const DESTINATION_ADDR_ERG_MASTER = 1;
+    const DESTINATION_ADDR_BROADCAST = 255;
+    const DESTINATION_ADDR_ERG_DEFAULT = 253;
+    const FRAME_MAXSIZE = 96;
+    const INTERFRAMEGAP_MIN = 50;
+    const CMDUPLIST_MAXSIZE = 10;
+    const MEMORY_BLOCKSIZE = 64;
+    const FORCEPLOT_BLOCKSIZE = 32;
+    const HEARTBEAT_BLOCKSIZE = 32;
+    const MANUFACTURE_ID = 22;
+    const CLASS_ID = 2;
+    const MODEL_NUM = 5;
+    const UNITS_TYPE = 0;
+    const SERIALNUM_DIGITS = 9;
+    const HMS_FORMAT_CNT = 3;
+    const YMD_FORMAT_CNT = 3;
+    const ERRORCODE_FORMAT_CNT = 3;
+    const CTRL_CMD_LONG_MIN = 1;
+    const CFG_CMD_LONG_MIN = 16;
+    const DATA_CMD_LONG_MIN = 32;
+    const AUDIO_CMD_LONG_MIN = 64;
+    const TEXTCFG_CMD_LONG_MIN = 96;
+    const TEXTSTATUS_CMD_LONG_MIN = 101;
+    const CAP_CMD_LONG_MIN = 112;
+    const PMPROPRIETARY_CMD_LONG_MIN = 118;
+    const CTRL_CMD_SHORT_MIN = 128;
+    const STATUS_CMD_SHORT_MIN = 145;
+    const DATA_CMD_SHORT_MIN = 160;
+    const AUDIO_CMD_SHORT_MIN = 192;
+    const TEXTCFG_CMD_SHORT_MIN = 224;
+    const TEXTSTATUS_CMD_SHORT_MIN = 229;
     const enum SHORT_CTRL_CMDS {
         GETSTATUS_CMD = 128,
         RESET_CMD = 129,
@@ -513,14 +511,14 @@ declare module ergometer.csafe.defs {
         GETPMDATA_CMD = 127,
         PMPROPRIETARY_CMD_LONG_MAX = 128,
     }
-    const GETPMCFG_CMD_SHORT_MIN: number;
-    const GETPMCFG_CMD_LONG_MIN: number;
-    const SETPMCFG_CMD_SHORT_MIN: number;
-    const SETPMCFG_CMD_LONG_MIN: number;
-    const GETPMDATA_CMD_SHORT_MIN: number;
-    const GETPMDATA_CMD_LONG_MIN: number;
-    const SETPMDATA_CMD_SHORT_MIN: number;
-    const SETPMDATA_CMD_LONG_MIN: number;
+    const GETPMCFG_CMD_SHORT_MIN = 128;
+    const GETPMCFG_CMD_LONG_MIN = 80;
+    const SETPMCFG_CMD_SHORT_MIN = 224;
+    const SETPMCFG_CMD_LONG_MIN = 0;
+    const GETPMDATA_CMD_SHORT_MIN = 160;
+    const GETPMDATA_CMD_LONG_MIN = 104;
+    const SETPMDATA_CMD_SHORT_MIN = 208;
+    const SETPMDATA_CMD_LONG_MIN = 48;
     const enum PM_SHORT_PULL_CFG_CMDS {
         PM_GET_FW_VERSION = 128,
         PM_GET_HW_VERSION = 129,
@@ -702,97 +700,97 @@ declare module ergometer.csafe.defs {
         PM_GET_UI_EVENTS = 109,
         GETPMDATA_CMD_LONG_MAX = 110,
     }
-    const PREVOK_FLG: number;
-    const PREVREJECT_FLG: number;
-    const PREVBAD_FLG: number;
-    const PREVNOTRDY_FLG: number;
-    const PREVFRAMESTATUS_MSK: number;
-    const SLAVESTATE_ERR_FLG: number;
-    const SLAVESTATE_RDY_FLG: number;
-    const SLAVESTATE_IDLE_FLG: number;
-    const SLAVESTATE_HAVEID_FLG: number;
-    const SLAVESTATE_INUSE_FLG: number;
-    const SLAVESTATE_PAUSE_FLG: number;
-    const SLAVESTATE_FINISH_FLG: number;
-    const SLAVESTATE_MANUAL_FLG: number;
-    const SLAVESTATE_OFFLINE_FLG: number;
-    const FRAMECNT_FLG: number;
-    const SLAVESTATE_MSK: number;
-    const AUTOSTATUS_FLG: number;
-    const UPSTATUS_FLG: number;
-    const UPLIST_FLG: number;
-    const ACK_FLG: number;
-    const EXTERNCONTROL_FLG: number;
-    const CAPCODE_PROTOCOL: number;
-    const CAPCODE_POWER: number;
-    const CAPCODE_TEXT: number;
-    const DISTANCE_MILE_0_0: number;
-    const DISTANCE_MILE_0_1: number;
-    const DISTANCE_MILE_0_2: number;
-    const DISTANCE_MILE_0_3: number;
-    const DISTANCE_FEET_0_0: number;
-    const DISTANCE_INCH_0_0: number;
-    const WEIGHT_LBS_0_0: number;
-    const WEIGHT_LBS_0_1: number;
-    const DISTANCE_FEET_1_0: number;
-    const SPEED_MILEPERHOUR_0_0: number;
-    const SPEED_MILEPERHOUR_0_1: number;
-    const SPEED_MILEPERHOUR_0_2: number;
-    const SPEED_FEETPERMINUTE_0_0: number;
-    const DISTANCE_KM_0_0: number;
-    const DISTANCE_KM_0_1: number;
-    const DISTANCE_KM_0_2: number;
-    const DISTANCE_METER_0_0: number;
-    const DISTANCE_METER_0_1: number;
-    const DISTANCE_CM_0_0: number;
-    const WEIGHT_KG_0_0: number;
-    const WEIGHT_KG_0_1: number;
-    const SPEED_KMPERHOUR_0_0: number;
-    const SPEED_KMPERHOUR_0_1: number;
-    const SPEED_KMPERHOUR_0_2: number;
-    const SPEED_METERPERMINUTE_0_0: number;
-    const PACE_MINUTEPERMILE_0_0: number;
-    const PACE_MINUTEPERKM_0_0: number;
-    const PACE_SECONDSPERKM_0_0: number;
-    const PACE_SECONDSPERMILE_0_0: number;
-    const DISTANCE_FLOORS_0_0: number;
-    const DISTANCE_FLOORS_0_1: number;
-    const DISTANCE_STEPS_0_0: number;
-    const DISTANCE_REVS_0_0: number;
-    const DISTANCE_STRIDES_0_0: number;
-    const DISTANCE_STROKES_0_0: number;
-    const MISC_BEATS_0_0: number;
-    const ENERGY_CALORIES_0_0: number;
-    const GRADE_PERCENT_0_0: number;
-    const GRADE_PERCENT_0_2: number;
-    const GRADE_PERCENT_0_1: number;
-    const CADENCE_FLOORSPERMINUTE_0_1: number;
-    const CADENCE_FLOORSPERMINUTE_0_0: number;
-    const CADENCE_STEPSPERMINUTE_0_0: number;
-    const CADENCE_REVSPERMINUTE_0_0: number;
-    const CADENCE_STRIDESPERMINUTE_0_0: number;
-    const CADENCE_STROKESPERMINUTE_0_0: number;
-    const MISC_BEATSPERMINUTE_0_0: number;
-    const BURN_CALORIESPERMINUTE_0_0: number;
-    const BURN_CALORIESPERHOUR_0_0: number;
-    const POWER_WATTS_0_0: number;
-    const ENERGY_INCHLB_0_0: number;
-    const ENERGY_FOOTLB_0_0: number;
-    const ENERGY_NM_0_0: number;
-    const KG_TO_LBS: number;
+    const PREVOK_FLG = 0;
+    const PREVREJECT_FLG = 16;
+    const PREVBAD_FLG = 32;
+    const PREVNOTRDY_FLG = 48;
+    const PREVFRAMESTATUS_MSK = 48;
+    const SLAVESTATE_ERR_FLG = 0;
+    const SLAVESTATE_RDY_FLG = 1;
+    const SLAVESTATE_IDLE_FLG = 2;
+    const SLAVESTATE_HAVEID_FLG = 3;
+    const SLAVESTATE_INUSE_FLG = 5;
+    const SLAVESTATE_PAUSE_FLG = 6;
+    const SLAVESTATE_FINISH_FLG = 7;
+    const SLAVESTATE_MANUAL_FLG = 8;
+    const SLAVESTATE_OFFLINE_FLG = 9;
+    const FRAMECNT_FLG = 128;
+    const SLAVESTATE_MSK = 15;
+    const AUTOSTATUS_FLG = 1;
+    const UPSTATUS_FLG = 2;
+    const UPLIST_FLG = 4;
+    const ACK_FLG = 16;
+    const EXTERNCONTROL_FLG = 64;
+    const CAPCODE_PROTOCOL = 0;
+    const CAPCODE_POWER = 1;
+    const CAPCODE_TEXT = 2;
+    const DISTANCE_MILE_0_0 = 1;
+    const DISTANCE_MILE_0_1 = 2;
+    const DISTANCE_MILE_0_2 = 3;
+    const DISTANCE_MILE_0_3 = 4;
+    const DISTANCE_FEET_0_0 = 5;
+    const DISTANCE_INCH_0_0 = 6;
+    const WEIGHT_LBS_0_0 = 7;
+    const WEIGHT_LBS_0_1 = 8;
+    const DISTANCE_FEET_1_0 = 10;
+    const SPEED_MILEPERHOUR_0_0 = 16;
+    const SPEED_MILEPERHOUR_0_1 = 17;
+    const SPEED_MILEPERHOUR_0_2 = 18;
+    const SPEED_FEETPERMINUTE_0_0 = 19;
+    const DISTANCE_KM_0_0 = 33;
+    const DISTANCE_KM_0_1 = 34;
+    const DISTANCE_KM_0_2 = 35;
+    const DISTANCE_METER_0_0 = 36;
+    const DISTANCE_METER_0_1 = 37;
+    const DISTANCE_CM_0_0 = 38;
+    const WEIGHT_KG_0_0 = 39;
+    const WEIGHT_KG_0_1 = 40;
+    const SPEED_KMPERHOUR_0_0 = 48;
+    const SPEED_KMPERHOUR_0_1 = 49;
+    const SPEED_KMPERHOUR_0_2 = 50;
+    const SPEED_METERPERMINUTE_0_0 = 51;
+    const PACE_MINUTEPERMILE_0_0 = 55;
+    const PACE_MINUTEPERKM_0_0 = 56;
+    const PACE_SECONDSPERKM_0_0 = 57;
+    const PACE_SECONDSPERMILE_0_0 = 58;
+    const DISTANCE_FLOORS_0_0 = 65;
+    const DISTANCE_FLOORS_0_1 = 66;
+    const DISTANCE_STEPS_0_0 = 67;
+    const DISTANCE_REVS_0_0 = 68;
+    const DISTANCE_STRIDES_0_0 = 69;
+    const DISTANCE_STROKES_0_0 = 70;
+    const MISC_BEATS_0_0 = 71;
+    const ENERGY_CALORIES_0_0 = 72;
+    const GRADE_PERCENT_0_0 = 74;
+    const GRADE_PERCENT_0_2 = 75;
+    const GRADE_PERCENT_0_1 = 76;
+    const CADENCE_FLOORSPERMINUTE_0_1 = 79;
+    const CADENCE_FLOORSPERMINUTE_0_0 = 80;
+    const CADENCE_STEPSPERMINUTE_0_0 = 81;
+    const CADENCE_REVSPERMINUTE_0_0 = 82;
+    const CADENCE_STRIDESPERMINUTE_0_0 = 83;
+    const CADENCE_STROKESPERMINUTE_0_0 = 84;
+    const MISC_BEATSPERMINUTE_0_0 = 85;
+    const BURN_CALORIESPERMINUTE_0_0 = 86;
+    const BURN_CALORIESPERHOUR_0_0 = 87;
+    const POWER_WATTS_0_0 = 88;
+    const ENERGY_INCHLB_0_0 = 90;
+    const ENERGY_FOOTLB_0_0 = 91;
+    const ENERGY_NM_0_0 = 92;
+    const KG_TO_LBS = 2.2046;
     const LBS_TO_KG: number;
-    const IDDIGITS_MIN: number;
-    const IDDIGITS_MAX: number;
-    const DEFAULT_IDDIGITS: number;
-    const DEFAULT_ID: number;
-    const MANUAL_ID: number;
-    const DEFAULT_SLAVESTATE_TIMEOUT: number;
-    const PAUSED_SLAVESTATE_TIMEOUT: number;
-    const INUSE_SLAVESTATE_TIMEOUT: number;
-    const IDLE_SLAVESTATE_TIMEOUT: number;
-    const BASE_YEAR: number;
-    const DEFAULT_STATUSUPDATE_INTERVAL: number;
-    const DEFAULT_CMDUPLIST_INTERVAL: number;
+    const IDDIGITS_MIN = 2;
+    const IDDIGITS_MAX = 5;
+    const DEFAULT_IDDIGITS = 5;
+    const DEFAULT_ID = 0;
+    const MANUAL_ID = 999999999;
+    const DEFAULT_SLAVESTATE_TIMEOUT = 20;
+    const PAUSED_SLAVESTATE_TIMEOUT = 220;
+    const INUSE_SLAVESTATE_TIMEOUT = 6;
+    const IDLE_SLAVESTATE_TIMEOUT = 30;
+    const BASE_YEAR = 1900;
+    const DEFAULT_STATUSUPDATE_INTERVAL = 256;
+    const DEFAULT_CMDUPLIST_INTERVAL = 256;
 }
 /**
  * Created by tijmen on 19-01-16.
@@ -858,13 +856,13 @@ declare module ergometer.csafe {
     interface IBuffer {
         getPowerCurve(params: ICommandPowerCurve): IBuffer;
     }
-    interface ICommandProgramParams {
+    interface ICommandProgramParams extends ICommandParamsBase {
         value: Program;
     }
     interface IBuffer {
         setProgram(params: ICommandProgramParams): IBuffer;
     }
-    interface ICommandTimeParams {
+    interface ICommandTimeParams extends ICommandParamsBase {
         hour: number;
         minute: number;
         second: number;
@@ -872,7 +870,7 @@ declare module ergometer.csafe {
     interface IBuffer {
         setTime(params: ICommandTimeParams): IBuffer;
     }
-    interface ICommandDateParams {
+    interface ICommandDateParams extends ICommandParamsBase {
         year: number;
         month: number;
         day: number;
@@ -1399,13 +1397,13 @@ declare module ergometer {
         private _waitResponseCommands;
         private _generalStatusEventAttachedByPowerCurve;
         private _recording;
-        protected recordingDriver: ergometer.ble.RecordingDriver;
+        protected readonly recordingDriver: ergometer.ble.RecordingDriver;
         recording: boolean;
-        replayDriver: ble.ReplayDriver;
+        readonly replayDriver: ble.ReplayDriver;
         replaying: boolean;
         replay(events: ble.IRecordingItem[]): void;
-        recordingEvents: ble.IRecordingItem[];
-        protected driver: ergometer.ble.IDriver;
+        readonly recordingEvents: ble.IRecordingItem[];
+        protected readonly driver: ergometer.ble.IDriver;
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
          * @returns {LogLevel}
@@ -1445,148 +1443,148 @@ declare module ergometer {
          *
          * @returns {DeviceInfo[]}
          */
-        devices: ergometer.DeviceInfo[];
+        readonly devices: ergometer.DeviceInfo[];
         /**
          * The values of the last rowingGeneralStatus event
          *
          * @returns {RowingGeneralStatus}
          */
-        rowingGeneralStatus: RowingGeneralStatus;
+        readonly rowingGeneralStatus: RowingGeneralStatus;
         /**
          * The values of the last rowingAdditionalStatus1 event
          * @returns {RowingAdditionalStatus1}
          */
-        rowingAdditionalStatus1: RowingAdditionalStatus1;
+        readonly rowingAdditionalStatus1: RowingAdditionalStatus1;
         /**
          * The values of the last RowingAdditionalStatus2 event
          * @returns {RowingAdditionalStatus2}
          */
-        rowingAdditionalStatus2: RowingAdditionalStatus2;
+        readonly rowingAdditionalStatus2: RowingAdditionalStatus2;
         /**
          *  The values of the last rowingStrokeData event
          * @returns {RowingStrokeData}
          */
-        rowingStrokeData: RowingStrokeData;
+        readonly rowingStrokeData: RowingStrokeData;
         /**
          * The values of the last rowingAdditionalStrokeData event
          * @returns {RowingAdditionalStrokeData}
          */
-        rowingAdditionalStrokeData: RowingAdditionalStrokeData;
+        readonly rowingAdditionalStrokeData: RowingAdditionalStrokeData;
         /**
          * The values of the last rowingSplitIntervalData event
          * @returns {RowingSplitIntervalData}
          */
-        rowingSplitIntervalData: RowingSplitIntervalData;
+        readonly rowingSplitIntervalData: RowingSplitIntervalData;
         /**
          * The values of the last rowingAdditionalSplitIntervalData event
          * @returns {RowingAdditionalSplitIntervalData}
          */
-        rowingAdditionalSplitIntervalData: RowingAdditionalSplitIntervalData;
+        readonly rowingAdditionalSplitIntervalData: RowingAdditionalSplitIntervalData;
         /**
          * The values of the last workoutSummaryData event
          * @returns {WorkoutSummaryData}
          */
-        workoutSummaryData: WorkoutSummaryData;
+        readonly workoutSummaryData: WorkoutSummaryData;
         /**
          * The values of the last additionalWorkoutSummaryData event
          * @returns {AdditionalWorkoutSummaryData}
          */
-        additionalWorkoutSummaryData: AdditionalWorkoutSummaryData;
+        readonly additionalWorkoutSummaryData: AdditionalWorkoutSummaryData;
         /**
          * The values of the last AdditionalWorkoutSummaryData2 event
          * @returns {AdditionalWorkoutSummaryData2}
          */
-        additionalWorkoutSummaryData2: AdditionalWorkoutSummaryData2;
+        readonly additionalWorkoutSummaryData2: AdditionalWorkoutSummaryData2;
         /**
          * The values of the last heartRateBeltInformation event
          * @returns {HeartRateBeltInformation}
          */
-        heartRateBeltInformation: HeartRateBeltInformation;
+        readonly heartRateBeltInformation: HeartRateBeltInformation;
         /**
          * read rowingGeneralStatus data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingGeneralStatusEvent>}
          */
-        rowingGeneralStatusEvent: pubSub.Event<RowingGeneralStatusEvent>;
+        readonly rowingGeneralStatusEvent: pubSub.Event<RowingGeneralStatusEvent>;
         /**
          * read rowingGeneralStatus1 data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingAdditionalStatus1Event>}
          */
-        rowingAdditionalStatus1Event: pubSub.Event<RowingAdditionalStatus1Event>;
+        readonly rowingAdditionalStatus1Event: pubSub.Event<RowingAdditionalStatus1Event>;
         /**
          * read rowingAdditionalStatus2 data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingAdditionalStatus2Event>}
          */
-        rowingAdditionalStatus2Event: pubSub.Event<RowingAdditionalStatus2Event>;
+        readonly rowingAdditionalStatus2Event: pubSub.Event<RowingAdditionalStatus2Event>;
         /**
          * read rowingStrokeData data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingStrokeDataEvent>}
          */
-        rowingStrokeDataEvent: pubSub.Event<RowingStrokeDataEvent>;
+        readonly rowingStrokeDataEvent: pubSub.Event<RowingStrokeDataEvent>;
         /**
          * read rowingAdditionalStrokeData data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingAdditionalStrokeDataEvent>}
          */
-        rowingAdditionalStrokeDataEvent: pubSub.Event<RowingAdditionalStrokeDataEvent>;
+        readonly rowingAdditionalStrokeDataEvent: pubSub.Event<RowingAdditionalStrokeDataEvent>;
         /**
          * read rowingSplitIntervalDat data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingSplitIntervalDataEvent>}
          */
-        rowingSplitIntervalDataEvent: pubSub.Event<RowingSplitIntervalDataEvent>;
+        readonly rowingSplitIntervalDataEvent: pubSub.Event<RowingSplitIntervalDataEvent>;
         /**
          * read rowingAdditionalSplitIntervalData data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingAdditionalSplitIntervalDataEvent>}
          */
-        rowingAdditionalSplitIntervalDataEvent: pubSub.Event<RowingAdditionalSplitIntervalDataEvent>;
+        readonly rowingAdditionalSplitIntervalDataEvent: pubSub.Event<RowingAdditionalSplitIntervalDataEvent>;
         /**
          * read workoutSummaryData data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<WorkoutSummaryDataEvent>}
          */
-        workoutSummaryDataEvent: pubSub.Event<WorkoutSummaryDataEvent>;
+        readonly workoutSummaryDataEvent: pubSub.Event<WorkoutSummaryDataEvent>;
         /**
          * read additionalWorkoutSummaryData data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<AdditionalWorkoutSummaryDataEvent>}
          */
-        additionalWorkoutSummaryDataEvent: pubSub.Event<AdditionalWorkoutSummaryDataEvent>;
+        readonly additionalWorkoutSummaryDataEvent: pubSub.Event<AdditionalWorkoutSummaryDataEvent>;
         /**
          * read additionalWorkoutSummaryData2 data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<AdditionalWorkoutSummaryData2Event>}
          */
-        additionalWorkoutSummaryData2Event: pubSub.Event<AdditionalWorkoutSummaryData2Event>;
+        readonly additionalWorkoutSummaryData2Event: pubSub.Event<AdditionalWorkoutSummaryData2Event>;
         /**
          * read heartRateBeltInformation data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<HeartRateBeltInformationEvent>}
          */
-        heartRateBeltInformationEvent: pubSub.Event<HeartRateBeltInformationEvent>;
-        powerCurveEvent: pubSub.Event<ergometer.PowerCurveEvent>;
+        readonly heartRateBeltInformationEvent: pubSub.Event<HeartRateBeltInformationEvent>;
+        readonly powerCurveEvent: pubSub.Event<ergometer.PowerCurveEvent>;
         /**
          * event which is called when the connection state is changed. For example this way you
          * can check if the device is disconnected.
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<ConnectionStateChangedEvent>}
          */
-        connectionStateChangedEvent: pubSub.Event<ConnectionStateChangedEvent>;
+        readonly connectionStateChangedEvent: pubSub.Event<ConnectionStateChangedEvent>;
         /**
          * returns error and other log information. Some errors can only be received using the logEvent
          * @returns {pubSub.Event<LogEvent>}
          */
-        logEvent: pubSub.Event<LogEvent>;
-        powerCurve: number[];
+        readonly logEvent: pubSub.Event<LogEvent>;
+        readonly powerCurve: number[];
         /**
          * Get device information of the connected device.
          * @returns {DeviceInfo}
          */
-        deviceInfo: ergometer.DeviceInfo;
+        readonly deviceInfo: ergometer.DeviceInfo;
         /**
          * read the performance montitor sample rate. By default this is 500 ms
          * @returns {number}
@@ -1604,7 +1602,7 @@ declare module ergometer {
          * read the current connection state
          * @returns {MonitorConnectionState}
          */
-        connectionState: MonitorConnectionState;
+        readonly connectionState: MonitorConnectionState;
         /**
          *
          * @param value
@@ -1787,6 +1785,6 @@ declare module ergometer {
         protected sendCsafeCommands(byteArray: number[]): Promise<void>;
         receivedCSaveCommand(parsed: ParsedCSafeCommand): void;
         handleCSafeNotifications(): void;
-        csafeBuffer: ergometer.csafe.IBuffer;
+        readonly csafeBuffer: ergometer.csafe.IBuffer;
     }
 }
