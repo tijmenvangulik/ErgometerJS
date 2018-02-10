@@ -3,6 +3,10 @@
  */
 /** @internal */
 var ergometer;
+/**
+ * Created by tijmen on 25-12-15.
+ */
+/** @internal */
 (function (ergometer) {
     var utils;
     (function (utils) {
@@ -118,10 +122,21 @@ var ergometer;
  *
  */
 var ergometer;
+/**
+ * Created by tijmen on 04/07/2017.
+ *
+ * queue function calls which returns a promise, converted to typescript
+ * needed as work around for web blue tooth, this ensures that only one call is processed at at time
+ *
+ *
+ */
 (function (ergometer) {
     var utils;
     (function (utils) {
-        var FunctionQueue = (function () {
+        /**
+         * @return {Object}
+         */
+        var FunctionQueue = /** @class */ (function () {
             function FunctionQueue(maxPendingPromises, maxQueuedPromises) {
                 this.maxPendingPromises = Infinity;
                 this.maxQueuedPromises = Infinity;
@@ -255,10 +270,30 @@ var ergometer;
  * limitations under the License.
  */
 var ergometer;
+/**
+ *
+ * Created by tijmen on 01-06-15.
+ *
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 (function (ergometer) {
     var pubSub;
     (function (pubSub) {
-        var PubSub = (function () {
+        var PubSub = /** @class */ (function () {
             function PubSub() {
                 this.registry = {};
             }
@@ -327,7 +362,7 @@ var ergometer;
         }());
         pubSub.PubSub = PubSub;
         //new style event using generics
-        var Event = (function () {
+        var Event = /** @class */ (function () {
             function Event() {
                 this._subscribed = [];
             }
@@ -369,7 +404,7 @@ var ergometer;
                     var func = function () {
                         var args = [];
                         for (var _i = 0; _i < arguments.length; _i++) {
-                            args[_i - 0] = arguments[_i];
+                            args[_i] = arguments[_i];
                         }
                         pubsub.doPub(args);
                     };
@@ -384,7 +419,7 @@ var ergometer;
                     var func = function () {
                         var args = [];
                         for (var _i = 0; _i < arguments.length; _i++) {
-                            args[_i - 0] = arguments[_i];
+                            args[_i] = arguments[_i];
                         }
                         setTimeout(function () {
                             pubsub.doPub(args);
@@ -414,10 +449,13 @@ var ergometer;
  * Created by tijmen on 01-02-16.
  */
 var ergometer;
+/**
+ * Created by tijmen on 01-02-16.
+ */
 (function (ergometer) {
     var ble;
     (function (ble) {
-        var DriverBleat = (function () {
+        var DriverBleat = /** @class */ (function () {
             function DriverBleat() {
             }
             //simple wrapper for bleat characteristic functions
@@ -441,7 +479,9 @@ var ergometer;
                         newDevice.connect(function () {
                             _this._device = newDevice;
                             resolve();
-                        }, disconnectFn, false, reject);
+                        }, disconnectFn, false, function (e) {
+                            reject(e);
+                        });
                     }
                     catch (e) {
                         reject(e);
@@ -543,10 +583,20 @@ var ergometer;
  *
  */
 var ergometer;
+/**
+ * Created by tijmen on 03/04/2017.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ *
+ * see simpleBLE.d.ts for the definitions of the simpleBLE
+ * It assumes that there simple ble is already imported as a var named simpleBLE
+ *
+ */
 (function (ergometer) {
     var ble;
     (function (ble) {
-        var DriverSimpleBLE = (function () {
+        var DriverSimpleBLE = /** @class */ (function () {
             function DriverSimpleBLE() {
             }
             DriverSimpleBLE.prototype.connect = function (device, disconnectFn) {
@@ -594,6 +644,12 @@ var ergometer;
  * Created by tijmen on 01-02-16.
  */
 var ergometer;
+/**
+ * Created by tijmen on 17-07-16.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ */
 (function (ergometer) {
     var ble;
     (function (ble) {
@@ -601,7 +657,7 @@ var ergometer;
             return (navigator && typeof navigator.bluetooth !== 'undefined');
         }
         ble.hasWebBlueTooth = hasWebBlueTooth;
-        var DriverWebBlueTooth = (function () {
+        var DriverWebBlueTooth = /** @class */ (function () {
             function DriverWebBlueTooth(performanceMonitor) {
                 this._listenerMap = {};
                 //needed to prevent early free of the characteristic
@@ -871,9 +927,13 @@ var ergometer;
  * Created by tijmen on 16-02-16.
  */
 var ergometer;
+/**
+ * Created by tijmen on 16-02-16.
+ */
 (function (ergometer) {
     var ble;
     (function (ble) {
+        var RecordingEventType;
         (function (RecordingEventType) {
             RecordingEventType[RecordingEventType["startScan"] = 0] = "startScan";
             RecordingEventType[RecordingEventType["scanFoundFn"] = 1] = "scanFoundFn";
@@ -886,9 +946,8 @@ var ergometer;
             RecordingEventType[RecordingEventType["enableNotification"] = 8] = "enableNotification";
             RecordingEventType[RecordingEventType["notificationReceived"] = 9] = "notificationReceived";
             RecordingEventType[RecordingEventType["disableNotification"] = 10] = "disableNotification";
-        })(ble.RecordingEventType || (ble.RecordingEventType = {}));
-        var RecordingEventType = ble.RecordingEventType;
-        var RecordingDriver = (function () {
+        })(RecordingEventType = ble.RecordingEventType || (ble.RecordingEventType = {}));
+        var RecordingDriver = /** @class */ (function () {
             function RecordingDriver(performanceMonitor, realDriver) {
                 this._events = [];
                 this._performanceMonitor = performanceMonitor;
@@ -911,6 +970,9 @@ var ergometer;
             Object.defineProperty(RecordingDriver.prototype, "events", {
                 get: function () {
                     return this._events;
+                },
+                set: function (value) {
+                    this._events = value;
                 },
                 enumerable: true,
                 configurable: true
@@ -1005,9 +1067,9 @@ var ergometer;
                 /*
                 //make a wrapper for each call otherwise it returns the
                 class ReturnWrapper {
-    
+          
                     constructor (private serviceUIID,private characteristicUUID,private receive,private driver)  {
-    
+          
                     }
                     public getReturnFunc() {
                         return (data:ArrayBuffer) => {
@@ -1031,7 +1093,8 @@ var ergometer;
                         _this.addRecording(RecordingEventType.notificationReceived, {
                             serviceUIID: serviceUIID,
                             characteristicUUID: characteristicUUID,
-                            data: ergometer.utils.typedArrayToHexString(data) });
+                            data: ergometer.utils.typedArrayToHexString(data)
+                        });
                         receive(data);
                     })
                         .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
@@ -1057,10 +1120,13 @@ var ergometer;
  * Created by tijmen on 18-02-16.
  */
 var ergometer;
+/**
+ * Created by tijmen on 18-02-16.
+ */
 (function (ergometer) {
     var ble;
     (function (ble) {
-        var ReplayDriver = (function () {
+        var ReplayDriver = /** @class */ (function () {
             function ReplayDriver(performanceMonitor, realDriver) {
                 this._events = [];
                 this._eventCallBackMethods = [];
@@ -1246,6 +1312,7 @@ var ergometer;
                         if (!value) {
                             this._eventCallBackMethods = [];
                             this._eventCallbacks = [];
+                            this._performanceMonitor.disconnect();
                         }
                     }
                 },
@@ -1313,6 +1380,10 @@ var ergometer;
  */
 /** @internal */
 var ergometer;
+/**
+ * Created by tijmen on 16-01-16.
+ */
+/** @internal */
 (function (ergometer) {
     var ble;
     (function (ble) {
@@ -1358,6 +1429,11 @@ var ergometer;
  * translation of concept 2 csafe.h to typescript version  9/16/08 10:51a
  */
 var ergometer;
+/**
+ * Created by tijmen on 16-01-16.
+ *
+ * translation of concept 2 csafe.h to typescript version  9/16/08 10:51a
+ */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
@@ -1534,10 +1610,18 @@ var ergometer;
  *
  */
 var ergometer;
+/**
+ * Created by tijmen on 19-01-16.
+ *
+ * Extensible frame work so you can add your own csafe commands to the buffer
+ *
+ * this is the core, you do not have to change this code.
+ *
+ */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
-        var CommandManagager = (function () {
+        var CommandManagager = /** @class */ (function () {
             function CommandManagager() {
                 this._commands = [];
             }
@@ -1605,9 +1689,16 @@ var ergometer;
  *
  */
 var ergometer;
+/**
+ * Created by tijmen on 19-01-16.
+ *
+ * Extensible frame work so you can add your own csafe commands to the buffer
+ *
+ */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
+        //----------------------------- get the stoke state ------------------------------------
         csafe.commandManager.register(function (buffer, monitor) {
             buffer.getStrokeState = function (params) {
                 buffer.addRawCommand({
@@ -1678,9 +1769,16 @@ var ergometer;
  *
  */
 var ergometer;
+/**
+ * Created by tijmen on 19-01-16.
+ *
+ * Extensible frame work so you can add your own csafe commands to the buffer
+ *
+ */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
+        //----------------------------- get the version info ------------------------------------
         csafe.commandManager.register(function (buffer, monitor) {
             buffer.getVersion = function (params) {
                 buffer.addRawCommand({
@@ -1708,9 +1806,13 @@ var ergometer;
  * Created by tijmen on 06-02-16.
  */
 var ergometer;
+/**
+ * Created by tijmen on 06-02-16.
+ */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
+        //----------------------------- workout type ------------------------------------
         csafe.registerStandardSetConfig("setWorkoutType", 1 /* PM_SET_WORKOUTTYPE */, function (params) { return [params.value]; });
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
@@ -1738,7 +1840,31 @@ var ergometer;
  * limitations under the License.
  */
 var ergometer;
+/**
+ * Concept 2 ergometer Performance Monitor api for Cordova
+ *
+ * This will will work with the PM5
+ *
+ * Created by tijmen on 01-06-15.
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 (function (ergometer) {
+    var MonitorConnectionState;
     (function (MonitorConnectionState) {
         MonitorConnectionState[MonitorConnectionState["inactive"] = 0] = "inactive";
         MonitorConnectionState[MonitorConnectionState["deviceReady"] = 1] = "deviceReady";
@@ -1747,15 +1873,14 @@ var ergometer;
         MonitorConnectionState[MonitorConnectionState["connected"] = 4] = "connected";
         MonitorConnectionState[MonitorConnectionState["servicesFound"] = 5] = "servicesFound";
         MonitorConnectionState[MonitorConnectionState["readyForCommunication"] = 6] = "readyForCommunication";
-    })(ergometer.MonitorConnectionState || (ergometer.MonitorConnectionState = {}));
-    var MonitorConnectionState = ergometer.MonitorConnectionState;
+    })(MonitorConnectionState = ergometer.MonitorConnectionState || (ergometer.MonitorConnectionState = {}));
+    var LogLevel;
     (function (LogLevel) {
         LogLevel[LogLevel["error"] = 0] = "error";
         LogLevel[LogLevel["info"] = 1] = "info";
         LogLevel[LogLevel["debug"] = 2] = "debug";
         LogLevel[LogLevel["trace"] = 3] = "trace";
-    })(ergometer.LogLevel || (ergometer.LogLevel = {}));
-    var LogLevel = ergometer.LogLevel;
+    })(LogLevel = ergometer.LogLevel || (ergometer.LogLevel = {}));
     /**
      *
      * Usage:
@@ -1784,7 +1909,7 @@ var ergometer;
      *    performanceMonitor.stopScan
      *
      */
-    var PerformanceMonitor = (function () {
+    var PerformanceMonitor = /** @class */ (function () {
         /**
          * To work with this class you will need to create it.
          */
@@ -1852,6 +1977,9 @@ var ergometer;
         Object.defineProperty(PerformanceMonitor.prototype, "recordingEvents", {
             get: function () {
                 return this.recordingDriver.events;
+            },
+            set: function (value) {
+                this.recordingDriver.events = value;
             },
             enumerable: true,
             configurable: true
@@ -2281,7 +2409,7 @@ var ergometer;
         PerformanceMonitor.prototype.disconnect = function () {
             if (this.connectionState >= MonitorConnectionState.deviceReady) {
                 this.driver.disconnect();
-                this.connectionState = MonitorConnectionState.deviceReady;
+                this._connectionState = MonitorConnectionState.deviceReady;
             }
         };
         Object.defineProperty(PerformanceMonitor.prototype, "connectionState", {
@@ -2488,6 +2616,7 @@ var ergometer;
                     if (this.multiplex) {
                         this.enableMultiplexNotification();
                     }
+                    //this data is only available for multi ples
                 }
                 else {
                     if (this.multiplex)
@@ -2537,7 +2666,7 @@ var ergometer;
                         .getPowerCurve({
                         onDataReceived: function (curve) {
                             _this.powerCurveEvent.pub(curve);
-                            _this.powerCurve = curve;
+                            _this._powerCurve = curve;
                         }
                     })
                         .send();
@@ -2719,7 +2848,8 @@ var ergometer;
                         _internalDevice: device,
                         name: device.name,
                         address: device.address,
-                        quality: 2 * (device.rssi + 100) };
+                        quality: 2 * (device.rssi + 100)
+                    };
                     _this.addDevice(deviceInfo);
                     if (deviceFound(deviceInfo)) {
                         _this.connectToDevice(deviceInfo.name);
@@ -3437,7 +3567,8 @@ var ergometer;
                                         _this.receivedCSaveCommand({
                                             command: command,
                                             detailCommand: detailCommand,
-                                            data: commandData });
+                                            data: commandData
+                                        });
                                     }
                                     catch (e) {
                                         _this.handleError(e); //never let the receive crash the main loop

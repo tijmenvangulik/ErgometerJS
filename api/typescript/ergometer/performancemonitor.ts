@@ -215,6 +215,9 @@ module ergometer {
         public get recordingEvents() : ble.IRecordingItem[] {
             return this.recordingDriver.events;
         }
+        public set recordingEvents(value : ble.IRecordingItem[])  {
+           this.recordingDriver.events=value;
+        }
         protected get driver():ergometer.ble.IDriver {
             if (this.recording) {
                 return this.recordingDriver;

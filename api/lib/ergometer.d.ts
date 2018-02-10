@@ -270,7 +270,7 @@ declare module ergometer.ble {
         constructor(performanceMonitor: PerformanceMonitor, realDriver: IDriver);
         protected getRelativeTime(): number;
         addRecording(eventType: RecordingEventType, data?: IRecordCharacteristic | IRecordDevice): IRecordingItem;
-        readonly events: ergometer.ble.IRecordingItem[];
+        events: ergometer.ble.IRecordingItem[];
         clear(): void;
         startRecording(): void;
         protected recordResolveFunc(resolve: () => void, rec: IRecordingItem): () => void;
@@ -1402,7 +1402,7 @@ declare module ergometer {
         readonly replayDriver: ble.ReplayDriver;
         replaying: boolean;
         replay(events: ble.IRecordingItem[]): void;
-        readonly recordingEvents: ble.IRecordingItem[];
+        recordingEvents: ble.IRecordingItem[];
         protected readonly driver: ergometer.ble.IDriver;
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
