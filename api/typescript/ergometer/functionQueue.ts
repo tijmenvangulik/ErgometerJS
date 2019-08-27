@@ -6,7 +6,7 @@
  *
  *
  */
-module ergometer.utils {
+namespace ergometer.utils {
 
   /**
    * @return {Object}

@@ -1,14 +1,11 @@
 /**
  * Created by tijmen on 01-02-16.
  */
-module ergometer.ble {
+namespace ergometer.ble {
 
     export class DriverBleat implements IDriver {
 
         private _device:bleat.Device;
-
-        public performanceMonitor : PerformanceMonitor;
-
 
       //simple wrapper for bleat characteristic functions
         private getCharacteristic(serviceUid : string,characteristicUid : string) : bleat.Characteristic {

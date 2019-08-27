@@ -2,7 +2,7 @@
  * Created by tijmen on 25-12-15.
  */
  /** @internal */
-module ergometer.utils {
+ namespace ergometer.utils {
 
     export function getByte(value : number,byteIndex : number) : number {
         return (value>>(byteIndex*8) ) & 255;

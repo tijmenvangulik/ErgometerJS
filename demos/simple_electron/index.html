@@ -6,12 +6,9 @@
   </head>
   <body>
     <h1>Hello Ergometer</h1>
-    We are using node <script>document.write(process.versions.node)</script>,
-    Chrome <script>document.write(process.versions.chrome)</script>,
-    and Electron <script>document.write(process.versions.electron)</script>.
 
-    <select id="devices">
-    </select>
+    <button id="StartScan">Start scan</button><br>
+
 
     <h2>Info</h2>
 
@@ -19,11 +16,7 @@
       Extra info
     </p>
   </body>
-  <script>
-    //var bleat=window.bleat;
-    window.$ = window.jQuery = require('./libs/jquery/jquery');
-    var bleat = require('./libs/bleat/index').classic;
-  </script>
+  <script src="libs/jquery/jquery.js"></script>
   <script src="libs/ergometer.js"></script>
   <script src="app.js"></script>
 </html>

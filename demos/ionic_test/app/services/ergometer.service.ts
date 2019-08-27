@@ -16,7 +16,7 @@ export class ErgometerService   {
 
   private _deviceList : string[] = [];
 
-  private _performanceMonitor : ergometer.PerformanceMonitor;
+  private _performanceMonitor : ergometer.PerformanceMonitorBle;
 
   private _log : string;
 
@@ -27,7 +27,7 @@ export class ErgometerService   {
     return this._performanceMonitor;
   }
   constructor(private applicationRef :ApplicationRef) {
-    this._performanceMonitor= new ergometer.PerformanceMonitor();
+    this._performanceMonitor= new ergometer.PerformanceMonitorBle();
     this._log="Begin log";
     this.performanceMonitor.logLevel = ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
     this.performanceMonitor.logEvent.sub(this, this.onLog);

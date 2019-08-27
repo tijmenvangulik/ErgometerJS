@@ -3,7 +3,7 @@
  */
 
 
-module ergometer.ble {
+namespace ergometer.ble {
   export interface IRecordDevice {
     address:string;
     name:string;
@@ -32,9 +32,9 @@ module ergometer.ble {
     private _startTime : number;
     private _events : IRecordingItem[] = [];
 
-    public  _performanceMonitor : PerformanceMonitor;
+    public  _performanceMonitor : PerformanceMonitorBase;
 
-    constructor (performanceMonitor : PerformanceMonitor,realDriver : IDriver)  {
+    constructor (performanceMonitor : PerformanceMonitorBase,realDriver : IDriver)  {
       this._performanceMonitor =performanceMonitor;
       this._realDriver=realDriver;
     }

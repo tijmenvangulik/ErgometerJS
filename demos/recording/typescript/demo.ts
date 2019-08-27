@@ -24,9 +24,9 @@
  */
 class Demo {
 
-    private _performanceMonitor : ergometer.PerformanceMonitor;
+    private _performanceMonitor : ergometer.PerformanceMonitorBle;
     private _lastDeviceName : string = null;
-    public get performanceMonitor(): ergometer.PerformanceMonitor {
+    public get performanceMonitor(): ergometer.PerformanceMonitorBle {
         return this._performanceMonitor;
     }
 
@@ -50,20 +50,22 @@ class Demo {
     /**
      * Print debug info to console and application UI.
      */
-    public showInfo(info : string)
-    {
-        $("#info").text(info);
+    public addText(id : string, text : string) {
+        var ctrl=$("#"+id);
+        var txtCtrl=$("<p/>");
+        txtCtrl.text(text);
+        ctrl.prepend(txtCtrl);
     }
+    
 
     public showData(data : string)
     {
-        $("#data").text(data);
-        console.debug(data);
+        this.addText("data",data);
     }
 
     protected initialize() {
-        this._performanceMonitor= new ergometer.PerformanceMonitor();
-        //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
+        this._performanceMonitor= new ergometer.PerformanceMonitorBle();
+        //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before conneting
         this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
         this.performanceMonitor.logEvent.sub(this,this.onLog);
         this.performanceMonitor.connectionStateChangedEvent.sub(this,this.onConnectionStateChanged);
@@ -84,7 +86,11 @@ class Demo {
         $("#startRecording").click(()=>{this.startRecording()});
         $("#stopRecording").click(()=>{this.stopRecording()});
         $("#replay100meter").click(()=>{this.replay100meter()});
-
+        $("#StartScan").click(()=>{
+            this.startScan()
+        });
+        $("#getinfo").click(this.csafeTest.bind(this));
+        
     }
     public startRecording() {
         this.performanceMonitor.recording=true;
@@ -151,26 +157,27 @@ class Demo {
             this.showData(JSON.stringify( this._performanceMonitor.deviceInfo));
 
             //send two commands and show the results in a jquery way
-
-
-            this.performanceMonitor.csafeBuffer
-                .clear()
-                .getStrokeState({
-                    onDataReceived: (strokeState : ergometer.StrokeState) =>{
-                        this.showData(`stroke state: ${strokeState}`);
-                    }
-                })
-                .getVersion({
-                    onDataReceived: (version : ergometer.csafe.IVersion)=> {
-                        this.showData(`Version hardware ${version.HardwareVersion} software:${version.FirmwareVersion}`);
-                    }
-                })
-                .setProgram({value:ergometer.Program.StandardList1})
-                .send()
-                .then(()=>{  //send returns a promise
-                    console.log("send done, you can send th next")
-                }   );
+            this.csafeTest();            
         }
+    }
+    protected csafeTest() {
+        this.performanceMonitor.csafeBuffer
+        .clear()
+        .getStrokeState({
+            onDataReceived: (strokeState : ergometer.StrokeState) =>{
+                this.showData(`stroke state: ${strokeState}`);
+            }
+        })
+        .getVersion({
+            onDataReceived: (version : ergometer.csafe.IVersion)=> {
+                this.showData(`Version hardware ${version.HardwareVersion} software:${version.FirmwareVersion}`);
+            }
+        })
+        .setProgram({value:ergometer.Program.StandardList1})
+        .send()
+        .then(()=>{  //send returns a promise
+            console.log("send done, you can send th next")
+        }   );
     }
     protected onPowerCurve(curve : number[]) {
         this.showData("Curve in gui: "+JSON.stringify(curve));
@@ -185,7 +192,6 @@ class Demo {
         $('#devices').change( function () {
             self.performanceMonitor.connectToDevice(this.value) ;
         })
-        this.start();
     }
 
     constructor() {
@@ -193,35 +199,15 @@ class Demo {
 
 
     }
-    protected fillDevices() {
-        var options = $('#devices');
-
-        options.find('option').remove();
-        //fill the drop down
-        this.performanceMonitor.devices.forEach( (device) => {
-            options.append($("<option />").val(device.name).text(device.name+" ("+device.quality.toString()+"% )"));
-        });
-
-    }
-
-    public setDevice(name : string) {
-
-    }
 
     public startScan() {
         this.performanceMonitor.startScan((device : ergometer.DeviceInfo) => {
-            this.fillDevices();
-            if (!this.lastDeviceName || device.name==this.lastDeviceName) {
-                $('#devices').val(device.name);
-                return true;//this will connect
-            }
-            else return false;
+            //in web blue tooth the device selection is done by the user
+            //just return true to to accept the user selection
+            return true;
         });
 
     }
-    public start() {
-
-
-    }
+  
 
 }

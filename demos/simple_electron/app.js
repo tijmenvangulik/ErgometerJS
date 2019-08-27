@@ -107,7 +107,8 @@ var Demo = /** @class */ (function () {
         console.debug(data);
     };
     Demo.prototype.initialize = function () {
-        this._performanceMonitor = new ergometer.PerformanceMonitor();
+        var _this = this;
+        this._performanceMonitor = new ergometer.PerformanceMonitorBle();
         //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
         this.performanceMonitor.logLevel = ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
         this.performanceMonitor.logEvent.sub(this, this.onLog);
@@ -125,6 +126,9 @@ var Demo = /** @class */ (function () {
          this.performanceMonitor.heartRateBeltInformationEvent.sub(this,this.onHeartRateBeltInformation);
          this.performanceMonitor.additionalWorkoutSummaryData2Event.sub(this,this.onAdditionalWorkoutSummaryData2); */
         this.performanceMonitor.powerCurveEvent.sub(this, this.onPowerCurve);
+        $("#StartScan").click(function () {
+            _this.startScan();
+        });
     };
     Demo.prototype.onLog = function (info, logLevel) {
         this.showData(info);
@@ -196,10 +200,6 @@ var Demo = /** @class */ (function () {
         $('#devices').change(function () {
             self.performanceMonitor.connectToDevice(this.value);
         });
-        $('#devices').change(function () {
-            self.performanceMonitor.connectToDevice(this.value);
-        });
-        this.start();
     };
     Demo.prototype.fillDevices = function () {
         var options = $('#devices');
@@ -212,19 +212,11 @@ var Demo = /** @class */ (function () {
     Demo.prototype.setDevice = function (name) {
     };
     Demo.prototype.startScan = function () {
-        var _this = this;
         this.performanceMonitor.startScan(function (device) {
-            _this.fillDevices();
-            if (!_this.lastDeviceName || device.name == _this.lastDeviceName) {
-                $('#devices').val(device.name);
-                return true; //this will connect
-            }
-            else
-                return false;
+            //in web blue tooth the device selection is done by the user
+            //just return true to to accept the user selection
+            return true;
         });
-    };
-    Demo.prototype.start = function () {
-        this.startScan();
     };
     return Demo;
 }());

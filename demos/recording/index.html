@@ -6,12 +6,13 @@
   </head>
   <body>
     <h1>Ergometer recording example</h1>
-    We are using node <script>document.write(process.versions.node)</script>,
-    Chrome <script>document.write(process.versions.chrome)</script>,
-    and Electron <script>document.write(process.versions.electron)</script>.
-    <select id="devices">
-    </select><br>
+    <button id="StartScan">Start scan</button> <br>
+
     <br>
+    <button id="getinfo">get info
+    </button> 
+    <br>
+
     To run a pre recorded 100 meter without the need of an ergometer or blue tooth hardware:<br>
 
     <button id="replay100meter">Replay 100 meter</button><br>
@@ -25,9 +26,6 @@
       Extra info
     </p>
   </body>
-  <script>
-    window.$ = window.jQuery = require('./libs/jquery/jquery');
-    var bleat = require('./libs/bleat/index').classic;
-  </script>
+  <script src="libs/jquery/jquery.js"></script>
   <script src="app.js"></script>
 </html>

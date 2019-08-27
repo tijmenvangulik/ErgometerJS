@@ -1,7 +1,7 @@
 /**
  * Created by tijmen on 18-02-16.
  */
-module ergometer.ble {
+namespace ergometer.ble {
     
     export interface CallBackEvent extends IRecordingItem{
         resolve? : (e? :any)=>void;
@@ -18,13 +18,13 @@ module ergometer.ble {
         private _startTime : number;
         private _checkQueueTimerId : number = null;
 
-        private _performanceMonitor : PerformanceMonitor;
+        private _performanceMonitor : PerformanceMonitorBase;
 
         protected getRelativeTime() : number {
             return utils.getTime()-this._startTime
         }
 
-        constructor (performanceMonitor : PerformanceMonitor,realDriver : IDriver)  {
+        constructor (performanceMonitor : PerformanceMonitorBase,realDriver : IDriver)  {
             this._performanceMonitor=performanceMonitor;
             this._realDriver=realDriver;
         }

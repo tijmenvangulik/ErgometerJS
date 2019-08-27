@@ -4,7 +4,7 @@
  * Extensible frame work so you can add your own csafe commands to the buffer
  *
  */
-module ergometer.csafe {
+namespace ergometer.csafe {
 
     //----------------------------- get the version info ------------------------------------
 
@@ -23,7 +23,7 @@ module ergometer.csafe {
 
     }
 
-    commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitor) =>{
+    commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
         buffer.getVersion= function (params : ICommandGetVersion) : IBuffer {
             buffer.addRawCommand({
                 waitForResponse:true,
@@ -61,5 +61,108 @@ module ergometer.csafe {
     registerStandardShortGet<ICommandGetDistance,IDistance>("getDistance",
         csafe.defs.SHORT_DATA_CMDS.GETHORIZONTAL_CMD,
         (data : DataView)=>{return {value: data.getUint16(0,true),unit:data.getUint8(2)};});
+
+    //----------------------------- get pace ------------------------------------
+
+    
+    export interface ICommandGetPace  extends ICommandParamsBase {
+        onDataReceived : (value :number )=>void;
+    }
+    export interface IBuffer {
+        getPace(params : ICommandParamsBase) : IBuffer;
+    }
+
+    registerStandardShortGet<ICommandGetDistance,number>("getPace",
+        csafe.defs.SHORT_DATA_CMDS.GETPACE_CMD,
+        (data : DataView)=>{return data.getUint16(0,true)});
+
+    //----------------------------- get power ------------------------------------
+
+    export interface ICommandGetPower  extends ICommandParamsBase {
+        onDataReceived : (value :number )=>void;
+    }
+    export interface IBuffer {
+        getPower(params : ICommandParamsBase) : IBuffer;
+    }
+
+    registerStandardShortGet<ICommandGetDistance,number>("getPower",
+        csafe.defs.SHORT_DATA_CMDS.GETPOWER_CMD,
+        (data : DataView)=>{return data.getUint16(0,true)});
+//----------------------------- get cadence ------------------------------------
+
+    export interface ICommandGetCadence  extends ICommandParamsBase {
+        onDataReceived : (value :number )=>void;
+    }
+    export interface IBuffer {
+        getCadence(params : ICommandParamsBase) : IBuffer;
+    }
+
+    registerStandardShortGet<ICommandGetDistance,number>("getCadence",
+        csafe.defs.SHORT_DATA_CMDS.GETCADENCE_CMD,
+        (data : DataView)=>{return data.getUint16(0,true)});
+
+//----------------------------- get work time ------------------------------------
+
+    export interface ICommandGetWorkTime  extends ICommandParamsBase {
+        onDataReceived : (value :number )=>void;
+    }
+    export interface IBuffer {
+        getWorkTime(params : ICommandParamsBase) : IBuffer;
+    }
+
+    registerStandardShortGet<ICommandGetWorkTime,number>("getWorkTime",
+        csafe.defs.SHORT_DATA_CMDS.GETTWORK_CMD,
+        (data : DataView)=>{
+            var value=data.getUint8(0)*60*60+
+                data.getUint8(1)*60+
+                data.getUint8(2);
+            return value*1000 });
+
+
+//----------------------------- get horizontal ------------------------------------
+
+    export interface ICommandGetHorizontal  extends ICommandParamsBase {
+        onDataReceived : (value :number )=>void;
+    }
+    export interface IBuffer {
+        getHorizontal(params : ICommandParamsBase) : IBuffer;
+    }
+
+    registerStandardShortGet<ICommandGetHorizontal,number>("getHorizontal",
+        csafe.defs.SHORT_DATA_CMDS.GETHORIZONTAL_CMD,
+        (data : DataView)=>{
+            var value=data.getUint16(0,true);
+            return value});
+    
+
+//----------------------------- get calories ------------------------------------
+
+    export interface ICommandGetCalories  extends ICommandParamsBase {
+        onDataReceived : (value :number )=>void;
+    }
+    export interface IBuffer {
+        getCalories(params : ICommandParamsBase) : IBuffer;
+    }
+
+    registerStandardShortGet<ICommandGetCalories,number>("getCalories",
+        csafe.defs.SHORT_DATA_CMDS.GETCALORIES_CMD,
+        (data : DataView)=>{
+            var value=data.getUint16(0,true);
+            return value});
+       
+//----------------------------- get heart reate ------------------------------------
+
+export interface ICommandHeartRate  extends ICommandParamsBase {
+    onDataReceived : (value :number )=>void;
+}
+export interface IBuffer {
+    getHeartRate(params : ICommandParamsBase) : IBuffer;
+}
+
+registerStandardShortGet<ICommandHeartRate,number>("getHeartRate",
+    csafe.defs.SHORT_DATA_CMDS.GETHRCUR_CMD,
+    (data : DataView)=>{
+        var value=data.getUint8(0);
+        return value});
 
 }

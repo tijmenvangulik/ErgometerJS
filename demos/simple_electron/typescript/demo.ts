@@ -24,9 +24,9 @@
  */
 class Demo {
 
-    private _performanceMonitor : ergometer.PerformanceMonitor;
+    private _performanceMonitor : ergometer.PerformanceMonitorBle;
     private _lastDeviceName : string = null;
-    public get performanceMonitor(): ergometer.PerformanceMonitor {
+    public get performanceMonitor(): ergometer.PerformanceMonitorBle {
         return this._performanceMonitor;
     }
 
@@ -47,29 +47,28 @@ class Demo {
         }
 
     }
-    /**
-     * Print debug info to console and application UI.
-     */
-    public showInfo(info : string)
-    {
-        $("#info").text(info);
+    public addText(id : string, text : string) {
+        var ctrl=$("#"+id);
+        var txtCtrl=$("<p/>");
+        txtCtrl.text(text);
+        ctrl.prepend(txtCtrl);
     }
+    
 
     public showData(data : string)
     {
-        $("#data").text(data);
-        console.debug(data);
+        this.addText("data",data);
     }
 
     protected initialize() {
-        this._performanceMonitor= new ergometer.PerformanceMonitor();
-        //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
-        this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
+        this._performanceMonitor= new ergometer.PerformanceMonitorBle();
+        //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before conneting
+        //this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
         this.performanceMonitor.logEvent.sub(this,this.onLog);
         this.performanceMonitor.connectionStateChangedEvent.sub(this,this.onConnectionStateChanged);
         //connect to the rowing
-        //this.performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
-        /* this.performanceMonitor.rowingAdditionalStatus1Event.sub(this,this.onRowingAdditionalStatus1);
+         this.performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
+         this.performanceMonitor.rowingAdditionalStatus1Event.sub(this,this.onRowingAdditionalStatus1);
          this.performanceMonitor.rowingAdditionalStatus2Event.sub(this,this.onRowingAdditionalStatus2);
          this.performanceMonitor.rowingStrokeDataEvent.sub(this,this.onRowingStrokeData);
          this.performanceMonitor.rowingAdditionalStrokeDataEvent.sub(this,this.onRowingAdditionalStrokeData);
@@ -78,8 +77,11 @@ class Demo {
          this.performanceMonitor.workoutSummaryDataEvent.sub(this,this.onWorkoutSummaryData);
          this.performanceMonitor.additionalWorkoutSummaryDataEvent.sub(this,this.onAdditionalWorkoutSummaryData);
          this.performanceMonitor.heartRateBeltInformationEvent.sub(this,this.onHeartRateBeltInformation);
-         this.performanceMonitor.additionalWorkoutSummaryData2Event.sub(this,this.onAdditionalWorkoutSummaryData2); */
+         this.performanceMonitor.additionalWorkoutSummaryData2Event.sub(this,this.onAdditionalWorkoutSummaryData2);
         this.performanceMonitor.powerCurveEvent.sub(this,this.onPowerCurve);
+        $("#StartScan").click(()=>{
+            this.startScan()
+        });
     }
     public onLog(info : string,logLevel : ergometer.LogLevel)
     {   this.showData(info);
@@ -159,11 +161,6 @@ class Demo {
         $('#devices').change( function ( ) {
             self.performanceMonitor.connectToDevice(this.value) ;
         });
-
-        $('#devices').change( function () {
-            self.performanceMonitor.connectToDevice(this.value) ;
-        })
-        this.start();
     }
 
     constructor() {
@@ -187,18 +184,11 @@ class Demo {
     }
 
     public startScan() {
-        this.performanceMonitor.startScan((device : ergometer.DeviceInfo) : boolean => {
-            this.fillDevices();
-            if (!this.lastDeviceName || device.name==this.lastDeviceName) {
-                $('#devices').val(device.name);
-                return true;//this will connect
-            }
-            else return false;
+        this.performanceMonitor.startScan((device : ergometer.DeviceInfo) => {
+            //in web blue tooth the device selection is done by the user
+            //just return true to to accept the user selection
+            return true;
         });
-
-    }
-    public start() {
-        this.startScan();
 
     }
 

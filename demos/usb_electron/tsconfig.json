@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "module": "system",
+    "target": "es5",
+    "sourceMap": true,
+    "outFile": "app.js",
+    "lib": [
+      "es5",
+      "es2015",
+      "dom"],
+      "typeRoots" : ["./typescript/typings"]
+  },
+  "exclude": [
+    "node_modules"
+  ],
+  "filesGlob": [],
+  "files": [
+    "typescript/app.ts",
+    "typescript/demo.ts",
+    "typescript/typings/ergometer.d.ts",
+    "typescript/typings/jquery.d.ts"
+  ],
+  "atom": {
+    "rewriteTsconfig": true
+  }
+}

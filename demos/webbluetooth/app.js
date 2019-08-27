@@ -45,7 +45,7 @@ var Demo = /** @class */ (function () {
     };
     Demo.prototype.initialize = function () {
         var _this = this;
-        this._performanceMonitor = new ergometer.PerformanceMonitor();
+        this._performanceMonitor = new ergometer.PerformanceMonitorBle();
         //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
         //this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
         this.performanceMonitor.logEvent.sub(this, this.onLog);

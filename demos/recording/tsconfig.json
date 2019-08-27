@@ -5,9 +5,10 @@
     "sourceMap": true,
     "outFile": "app.js",
     "lib": [
-      "ES5",
-      "ES2015",
-      "DOM"]
+      "es5",
+      "es2015",
+      "dom"],
+      "typeRoots" : ["./typescript/typings"]
   },
   "exclude": [
     "node_modules"
@@ -18,6 +19,7 @@
     "../../api/typescript/typings/bleat.classic.d.ts",
     "../../api/typescript/typings/webbluetooth.d.ts",
     "../../api/typescript/typings/simpleBLE.d.ts",
+    "../../api/typescript/typings/nodehid.d.ts",
     "../../api/typescript/ergometer/utils.ts",
     "../../api/typescript/ergometer/pubsub.ts",
     "../../api/typescript/ergometer/ble/Driver.ts",
@@ -26,6 +28,9 @@
     "../../api/typescript/ergometer/ble/DriverWebBlueTooth.ts",
     "../../api/typescript/ergometer/ble/DriverSimpleBLE.ts",
     "../../api/typescript/ergometer/ble/ReplayDriver.ts",
+    "../../api/typescript/ergometer/usb/CSaveHidUtils.ts",
+    "../../api/typescript/ergometer/usb/Driver.ts",
+    "../../api/typescript/ergometer/usb/DriverNodeHid.ts",
     "../../api/typescript/ergometer/ble/typedefinitions.ts",
     "../../api/typescript/ergometer/csafe/typedefinitions.ts",
     "../../api/typescript/ergometer/csafe/command_core.ts",
@@ -33,8 +38,9 @@
     "../../api/typescript/ergometer/csafe/short_commands.ts",
     "../../api/typescript/ergometer/csafe/push_config_commands.ts",
     "../../api/typescript/ergometer/typedefinitions.ts",
-    "../../api/typescript/ergometer/performancemonitor.ts",
-    "../../api/typescript/ergometer/functionQueue.ts",
+    "../../api/typescript/ergometer/performancemonitorBase.ts",
+    "../../api/typescript/ergometer/performancemonitorUsb.ts",
+    "../../api/typescript/ergometer/performancemonitorBle.ts",
     "typescript/typings/jquery.d.ts",
     "typescript/recordings/row100meter.ts",
     "typescript/demo.ts",

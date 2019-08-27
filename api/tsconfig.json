@@ -8,15 +8,15 @@
     "declaration": true,
     "stripInternal": true,
     "lib": [
-      "ES5",
-      "ES2015",
-      "DOM"]
+      "es5",
+      "es2015",
+      "dom"]
 
-  },
-  "files": [
+  },"files": [
     "typescript/typings/bleat.classic.d.ts",
     "typescript/typings/webbluetooth.d.ts",
     "typescript/typings/simpleBLE.d.ts",
+    "typescript/typings/nodehid.d.ts",
     "typescript/ergometer/utils.ts",
     "typescript/ergometer/functionQueue.ts",
     "typescript/ergometer/pubsub.ts",
@@ -27,13 +27,18 @@
     "typescript/ergometer/ble/RecordingDriver.ts",
     "typescript/ergometer/ble/ReplayDriver.ts",
     "typescript/ergometer/ble/typedefinitions.ts",
+    "typescript/ergometer/usb/CSaveHidUtils.ts",
+    "typescript/ergometer/usb/Driver.ts",
+    "typescript/ergometer/usb/DriverNodeHid.ts",
     "typescript/ergometer/csafe/typedefinitions.ts",
     "typescript/ergometer/csafe/command_core.ts",
     "typescript/ergometer/csafe/long_commands.ts",
     "typescript/ergometer/csafe/short_commands.ts",
     "typescript/ergometer/csafe/push_config_commands.ts",
     "typescript/ergometer/typedefinitions.ts",
-    "typescript/ergometer/performancemonitor.ts"
-
-  ]
+    "typescript/ergometer/performancemonitorBase.ts",
+    "typescript/ergometer/performancemonitorUsb.ts",
+    "typescript/ergometer/performancemonitorBle.ts"
+  ],
+ 
 }

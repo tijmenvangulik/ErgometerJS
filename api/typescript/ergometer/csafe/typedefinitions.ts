@@ -4,7 +4,7 @@
  * translation of concept 2 csafe.h to typescript version  9/16/08 10:51a
  */
 
-module ergometer.csafe.defs {
+namespace ergometer.csafe.defs {
 
     /* Frame contents */
     export const EXT_FRAME_START_BYTE          =0xF0;

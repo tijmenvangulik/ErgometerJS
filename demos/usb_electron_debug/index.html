@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Hello World2!</title>
+  </head>
+  <body>
+    <h1>Hello Ergometer</h1>
+    We are using node <script>document.write(process.versions.node)</script>,
+    Chrome <script>document.write(process.versions.chrome)</script>,
+    and Electron <script>document.write(process.versions.electron)</script>.
+
+    <select id="devices">
+    </select> 
+    <button id="connect">connect
+    </button> 
+    <button id="disconnect">disconnect
+    </button> 
+
+    <button id="getinfo">get info
+    </button> 
+    <h2>Log</h2>
+    <div id="data">
+ 
+    </div>
+  </body>
+  <script>
+    var nodehid = require('node-hid');
+    //var bleat=window.bleat;
+    window.$ = window.jQuery = require('./libs/jquery/jquery');
+  </script>
+  <script src="app.js"></script>
+</html>

@@ -4,7 +4,7 @@
 /**
  * Created by tijmen on 01-02-16.
  */
-module ergometer.ble {
+namespace ergometer.ble {
   
 
   export function hasWebBlueTooth() : boolean {
@@ -29,9 +29,9 @@ module ergometer.ble {
     //should queue the read and writes, this may be the cause of the blocking issues, this is a work arround for the chrome web blue tooth problem
     //private _functionQueue : utils.FunctionQueue = new utils.FunctionQueue(1); //1 means one at a time
 
-    private _performanceMonitor : PerformanceMonitor;
+    private _performanceMonitor : PerformanceMonitorBase;
 
-    constructor (performanceMonitor : PerformanceMonitor)  {
+    constructor (performanceMonitor : PerformanceMonitorBase)  {
       this._performanceMonitor =performanceMonitor;
 
     }
@@ -89,6 +89,7 @@ module ergometer.ble {
             this._device=newDevice;
             this._server=server;
             this._disconnectFn=disconnectFn;
+            newDevice.ongattserverdisconnected=this.onDisconnected.bind(this) ;
             newDevice.addEventListener('ongattserverdisconnected', this.onDisconnected.bind(this) );
             resolve();
           },reject);
@@ -165,7 +166,10 @@ module ergometer.ble {
     public writeCharacteristic(serviceUIID : string,characteristicUUID:string, data:ArrayBufferView) : Promise<void> {
       if (this._performanceMonitor.logLevel==LogLevel.trace)
         this._performanceMonitor.traceInfo(`writeCharacteristic ${characteristicUUID} : ${data} `);
-
+      if (!this._device.gatt.connected) {
+         this.onDisconnected(null);
+         return Promise.reject("Not connected");
+      }  
       return new Promise<void>((resolve, reject) => {
         try {
 
@@ -173,7 +177,13 @@ module ergometer.ble {
               .then(( characteristic : webbluetooth.BluetoothRemoteGATTCharacteristic) => {
                 return characteristic.writeValue(data.buffer)
               })
-              .then(resolve,reject);
+              .then(resolve)
+              .catch(e=>{
+                 reject(e);
+                 //when an write gives an error asume that we are disconnected
+                 if (!this._device.gatt.connected)
+                    this.onDisconnected(null);
+              });
         }
         catch (e) {
           reject(e);
@@ -198,6 +208,11 @@ module ergometer.ble {
     public readCharacteristic(serviceUIID : string,characteristicUUID:string) : Promise<ArrayBuffer> {
       if (this._performanceMonitor.logLevel==LogLevel.trace)
         this._performanceMonitor.traceInfo(`readCharacteristic ${characteristicUUID}  `);
+       if (!this._device.gatt.connected) {
+          this.onDisconnected(null);
+          return Promise.reject("Not connected");
+       }
+      
       return new Promise<ArrayBuffer>((resolve, reject) => {
         try {
           this.getCharacteristic(serviceUIID,characteristicUUID)
@@ -209,7 +224,13 @@ module ergometer.ble {
                   this._performanceMonitor.traceInfo(`doReadCharacteristic ${characteristicUUID} : ${utils.typedArrayToHexString(data.buffer)} `);
 
                 resolve(data.buffer);
-            }, reject);
+            })
+            .catch(e=>{
+              reject(e);
+              //when an write gives an error asume that we are disconnected
+              if (!this._device.gatt.connected)
+                 this.onDisconnected(null);
+           });;
 
         }
         catch (e) {
@@ -221,8 +242,12 @@ module ergometer.ble {
     private onCharacteristicValueChanged(event:webbluetooth.CharacteristicsValueChangedEvent) {
       if (this._performanceMonitor.logLevel==LogLevel.trace)
         this._performanceMonitor.traceInfo(`onCharacteristicValueChanged ${event.target.uuid} : ${utils.typedArrayToHexString(event.target.value.buffer)} `);
-
+      
       try {
+        if (!this._device.gatt.connected) {
+          this.onDisconnected(null);
+          throw "Not connected";
+        }
         let func=this._listenerMap[event.target.uuid];
         if (func) func(event.target.value.buffer)
       }
@@ -267,7 +292,11 @@ module ergometer.ble {
       
       if (this._performanceMonitor.logLevel==LogLevel.trace)
         this._performanceMonitor.traceInfo(`enableNotification ${characteristicUUID}  `);
-
+      
+      if (!this._device.gatt.connected) {
+          this.onDisconnected(null);
+          return Promise.reject("Not connected");
+      }
       return new Promise<void>((resolve, reject) => {
         try {
           this.getCharacteristic(serviceUIID,characteristicUUID)

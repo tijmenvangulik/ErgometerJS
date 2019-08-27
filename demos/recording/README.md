@@ -1,5 +1,7 @@
 # Record an replay
  
+The demo makes use of the standard web BLE support of chrome. You can also make use of noble. But this is more complex to install and windows support is limited. Chrome BLE is easier bug it needs an extra click for connecting to the device. (you can only connect to an blue tooth device when the end user clicks on an button to select the device.)
+ 
 Recording records all low level communication between the blue tooth driver and the ergometer monitor. You will see
 in the log a lot of events which are normally skipped because the are duplicate.
 

@@ -8,13 +8,9 @@
  * It assumes that there simple ble is already imported as a var named simpleBLE
  *
  */
-module ergometer.ble {
+namespace ergometer.ble {
 
   export class DriverSimpleBLE implements IDriver {
-
-
-
-    public performanceMonitor : PerformanceMonitor;
 
 
     public connect(device : IDevice,disconnectFn : ()=>void) : Promise<void> {

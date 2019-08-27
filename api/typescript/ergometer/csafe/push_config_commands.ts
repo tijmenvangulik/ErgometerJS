@@ -2,7 +2,7 @@
  * Created by tijmen on 06-02-16.
  */
 
-module ergometer.csafe {
+namespace ergometer.csafe {
 
     //----------------------------- workout type ------------------------------------
 

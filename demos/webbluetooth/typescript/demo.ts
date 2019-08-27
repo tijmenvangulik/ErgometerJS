@@ -24,8 +24,8 @@
  */
 class Demo {
 
-    private _performanceMonitor : ergometer.PerformanceMonitor;
-    public get performanceMonitor(): ergometer.PerformanceMonitor {
+    private _performanceMonitor : ergometer.PerformanceMonitorBle;
+    public get performanceMonitor(): ergometer.PerformanceMonitorBle {
         return this._performanceMonitor;
     }
 
@@ -44,7 +44,7 @@ class Demo {
     }
 
     protected initialize() {
-        this._performanceMonitor= new ergometer.PerformanceMonitor();
+        this._performanceMonitor= new ergometer.PerformanceMonitorBle();
         //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
         //this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
         this.performanceMonitor.logEvent.sub(this,this.onLog);

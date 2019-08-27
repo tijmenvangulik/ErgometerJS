@@ -81,11 +81,17 @@ You only need to change the javascript included file
 
 - 0.0.12
     * Web bluetooth Fix: web blue tooth messages stop after some time.
-     
+- 1.0.0
+   * Make it possible to set the driver
+   * Added USB support for PM3, PM4 (current only a demo using electron/node)
+     I am here anticipating on the next WebHid standard which should add browser support for Usb devices.
+   * Breaking change: the PerformanceMonitor is now named PerformanceMonitorBle
+   * Fix: Web blue tooth driver dit not notice when device is disconnected
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
-* Uses low power bluetooth (BLE) connection.
+* Uses low power bluetooth (BLE) connection (only PM5).
+* Experimental usb (hid) support for PM3/4/5
 * Written in typescript which is compiled to javascript. You can use the driver without typescript.
 * Platform independent (mobile / desktop / web ) I have not yet been able to test all platforms but it should work on:
   
@@ -109,9 +115,22 @@ Components
 - Bleat : Mit license
 - Electron: Mit license
 
+# platforms
+
+            | pm3-5 usb   | Blue tooth |
+------------|-------------|------------|    
+Web         | comming     | yes        |
+Cordova     | investigate | yes        |
+Electron    | yes         | yes        |
+React native|             | *          |
+
+* the demo contains an limeted proof of concept, there are other libraries
+ which have better suport. it is not difficult to support other usb/ble drivers ( react-native-ble-plx may be an better option)
+
+
 # Todo
 
-* Write a demo of an app which can really be used.
+* Usb support for web (webhid) and cordova
 * Add more commands
 
 # Known problems
@@ -137,8 +156,9 @@ due to this the csafe commands and the power curve do not work.
 To make it work you need:
 
 * An concept2 ergometer with PM5
-* An android or iphone with BLE capability.
+* An PC or Mac, android or iphone with BLE capability.
 * npm which can be downloaded from https://www.npmjs.com
+(for the electron usb demo you can use an older PM3 device)
 
 Do a download or checkout from github (https://github.com/tijmenvangulik/ErgometerJS)
 
@@ -165,11 +185,10 @@ To use the library you need all the files in the lib directory and include it in
 	<script src="libs/jquery/jquery.js"></script>
 
 
-#Usage                                                                                                             
-                                                                                                                 
+#Usage for Ble                                                                                                                                                                                                                            
 Create this class to acCess the performance data
                                                                      
-    var performanceMonitor= new ergometer.PerformanceMonitor();                                                       
+    var performanceMonitor= new ergometer.PerformanceMonitorBle();                                                       
                                                                                                                  
 After this connect to the events to get data
                                                                         
@@ -302,6 +321,81 @@ allways send raw commands. For example
            console.log("send done, you can send th next")
          }); 
 
+#Usage for Usb
+
+An usb device has a quicker way of finding devices but does not have all the concept2 BLE events. So the api is a bit different. The csafe part is exactly the same as for the ble device.
+
+To create an Usb monitor:
+
+  var performanceMonitor= new ergometer.PerformanceMonitorUsb();  
+
+  //to find out which concept2 devices are connected
+   var foundDevice;
+   this.performanceMonitor.requestDevics().then(devices=>{
+       //here a list of concept 2 devices are returned
+       //you can loop the devices
+       devices.forEach( (device) => {
+         console.log(device.productName);
+         foundDevice=device;
+       })
+   });
+   //to connect to an device you can use the connectToDevice
+   if (foundDevice)
+     performanceMonitor.connectToDevice(foundDevice);
+
+to disconnect from the performance monitor call the disconnect method.
+
+    performanceMonitor.disconnect()
+
+you can retreive data from the monitor by connecting to events. when you do not subscribe 
+to any of the training/stroke/power curve events then the monitor will not do any csafe commands
+to get data. You have to do your own csafe calls to get data.
+
+##logEvent
+returns error, info and trace messages. (same event as in the blue tooth ergometer)
+
+##connectionStateChangedEvent
+Get info on the connection state.  (same event as in the blue tooth ergometer)
+
+    performanceMonitor.connectionStateChangedEvent.sub(this,(oldState,newState)=>{
+        console.log("new connection state="+newState.toString());       
+    });
+
+##strokeStateEvent
+Using this event you can see if the rower is doing is rowing and you can see in which phase he is.
+
+    performanceMonitor.strokeStateEvent.sub(this,(oldState : ergometer.StrokeState,newState : ergometer.StrokeState)=>{
+        console.log("New state:"+newState.toString());
+    })
+
+##trainingDataEvent
+Information on the selected training and the state of the training.
+
+    performanceMonitor.trainingDataEvent.sub(this,(data :ergometer.TrainingData)=>{
+        console.log("training data :"+JSON.stringify(data,null,"  "));
+    });
+
+##strokeDataEvent
+Data on the last stroke.
+
+    performanceMonitor.strokeDataEvent.sub(this,(data: ergometer.StrokeData)=>{
+        console.log("stroke data:"+JSON.stringify(data,null,"  "));
+    });
+
+##powerCurveEvent
+The power curve. When you connect to this event the data will be retreived. (same event as in the blue tooth ergometer)
+
+    performanceMonitor.powerCurveEvent.sub(this,(data : number[])=>{
+        console.log("stroke data:"+JSON.stringify(data,null,"  "));
+    })
+
+##csafe comnunication
+
+Csafe communication is done the same way as the ble commnunication.
+See the csafe paragraph of the previous chapter how to do csafe commands.
+
+    this.performanceMonitor.csafeBuffer
+
 # Examples
                   
 ## Simple Cordova
@@ -313,7 +407,8 @@ Use cordova when you want to write a mobile app using html5.
 
 ## Electron
 
-Use this when you want tow write a desktop app using html 5
+Use this when you want tow write a desktop app using html 5. ErgometerJS can connect
+using noble to an PM5 device or using.
 
 [demos/simple_electron](demos/simple_electron/README.md)                 
 
@@ -347,3 +442,13 @@ This is for web application. Directy access the ergometer from the webbrowser. T
 is at the point of writing only works in the latest chrome on a mac and linux.
 
 [demos/webbluetooth](demos/webbluetooth/README.md)
+
+## Node/electron Usb (hid device)
+
+An example how to connect to an older PM3-4 monitor using usb. Blue tooth native library is not installed, but it can still make use of blue tooth using chrome web ble in electron.
+
+[demos/usb_electron](demos/usb_electron/README.md)
+
+Version which includes all the ergometer js source for debuging purpose.
+
+[demos/usb_electron_debug](demos/usb_electron_debug/README.md)

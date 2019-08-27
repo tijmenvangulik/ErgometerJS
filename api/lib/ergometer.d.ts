@@ -6,7 +6,7 @@
  *
  *
  */
-declare module ergometer.utils {
+declare namespace ergometer.utils {
     /**
      * @return {Object}
      */
@@ -136,7 +136,7 @@ declare namespace ergometer.pubSub {
 /**
  * Created by tijmen on 01-02-16.
  */
-declare module ergometer.ble {
+declare namespace ergometer.ble {
     interface IDevice {
         address: string;
         name: string;
@@ -160,10 +160,9 @@ declare module ergometer.ble {
 /**
  * Created by tijmen on 01-02-16.
  */
-declare module ergometer.ble {
+declare namespace ergometer.ble {
     class DriverBleat implements IDriver {
         private _device;
-        performanceMonitor: PerformanceMonitor;
         private getCharacteristic(serviceUid, characteristicUid);
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
         disconnect(): void;
@@ -185,9 +184,8 @@ declare module ergometer.ble {
  * It assumes that there simple ble is already imported as a var named simpleBLE
  *
  */
-declare module ergometer.ble {
+declare namespace ergometer.ble {
     class DriverSimpleBLE implements IDriver {
-        performanceMonitor: PerformanceMonitor;
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
         disconnect(): void;
         startScan(foundFn?: IFoundFunc): Promise<void>;
@@ -204,7 +202,7 @@ declare module ergometer.ble {
 /**
  * Created by tijmen on 01-02-16.
  */
-declare module ergometer.ble {
+declare namespace ergometer.ble {
     function hasWebBlueTooth(): boolean;
     class DriverWebBlueTooth implements IDriver {
         private _device;
@@ -213,7 +211,7 @@ declare module ergometer.ble {
         private _listenerMap;
         private _listerCharacteristicMap;
         private _performanceMonitor;
-        constructor(performanceMonitor: PerformanceMonitor);
+        constructor(performanceMonitor: PerformanceMonitorBase);
         private getCharacteristic(serviceUid, characteristicUid);
         private onDisconnected(event);
         private clearConnectionVars();
@@ -231,7 +229,7 @@ declare module ergometer.ble {
 /**
  * Created by tijmen on 16-02-16.
  */
-declare module ergometer.ble {
+declare namespace ergometer.ble {
     interface IRecordDevice {
         address: string;
         name: string;
@@ -266,8 +264,8 @@ declare module ergometer.ble {
         private _realDriver;
         private _startTime;
         private _events;
-        _performanceMonitor: PerformanceMonitor;
-        constructor(performanceMonitor: PerformanceMonitor, realDriver: IDriver);
+        _performanceMonitor: PerformanceMonitorBase;
+        constructor(performanceMonitor: PerformanceMonitorBase, realDriver: IDriver);
         protected getRelativeTime(): number;
         addRecording(eventType: RecordingEventType, data?: IRecordCharacteristic | IRecordDevice): IRecordingItem;
         events: ergometer.ble.IRecordingItem[];
@@ -289,7 +287,7 @@ declare module ergometer.ble {
 /**
  * Created by tijmen on 18-02-16.
  */
-declare module ergometer.ble {
+declare namespace ergometer.ble {
     interface CallBackEvent extends IRecordingItem {
         resolve?: (e?: any) => void;
         reject?: (e: any) => void;
@@ -305,7 +303,7 @@ declare module ergometer.ble {
         private _checkQueueTimerId;
         private _performanceMonitor;
         protected getRelativeTime(): number;
-        constructor(performanceMonitor: PerformanceMonitor, realDriver: IDriver);
+        constructor(performanceMonitor: PerformanceMonitorBase, realDriver: IDriver);
         readonly events: ergometer.ble.IRecordingItem[];
         protected isCallBack(eventType: RecordingEventType): boolean;
         protected isSameEvent(event1: IRecordingItem, event2: IRecordingItem): boolean;
@@ -328,12 +326,55 @@ declare module ergometer.ble {
         disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
     }
 }
+declare namespace ergometer.usb {
+    const USB_CSAVE_SIZE = 120;
+    const WRITE_BUF_SIZE = 121;
+    const REPORT_TYPE = 2;
+}
+declare namespace ergometer.usb {
+    type DisconnectFunc = () => void;
+    type Devices = IDevice[];
+    interface IDevice {
+        readonly vendorId: number;
+        readonly productId: number;
+        readonly productName: string;
+        readonly serialNumber: string;
+        open(disconnect: () => void, error: (err: any) => void): Promise<void>;
+        close(): Promise<void>;
+        sendData(data: ArrayBuffer): Promise<void>;
+        readData(): Promise<DataView>;
+    }
+    interface IDriver {
+        requestDevics(): Promise<Devices>;
+    }
+}
+declare namespace ergometer.usb {
+    class DeviceNodeHid implements IDevice {
+        private _disconnect;
+        private _onError;
+        private _deviceInfo;
+        private _hid;
+        vendorId: number;
+        productId: number;
+        productName: string;
+        serialNumber: string;
+        constructor(deviceInfo: any);
+        callError(err: any): void;
+        open(disconnect: DisconnectFunc, error: (err: any) => void): Promise<void>;
+        close(): Promise<void>;
+        sendData(data: ArrayBuffer): Promise<void>;
+        readData(): Promise<DataView>;
+    }
+    class DriverNodeHid implements IDriver {
+        requestDevics(): Promise<Devices>;
+    }
+}
 /**
  * Created by tijmen on 16-01-16.
  *
  * translation of concept 2 csafe.h to typescript version  9/16/08 10:51a
  */
-declare module ergometer.csafe.defs {
+declare namespace ergometer.csafe.defs {
     const EXT_FRAME_START_BYTE = 240;
     const FRAME_START_BYTE = 241;
     const FRAME_END_BYTE = 242;
@@ -800,7 +841,7 @@ declare module ergometer.csafe.defs {
  * this is the core, you do not have to change this code.
  *
  */
-declare module ergometer.csafe {
+declare namespace ergometer.csafe {
     interface ICommandParamsBase {
         onError?: ErrorHandler;
         onDataReceived?: (data: any) => void;
@@ -821,12 +862,12 @@ declare module ergometer.csafe {
         send(success?: () => void, error?: ErrorHandler): Promise<void>;
     }
     interface ICommand {
-        (buffer: IBuffer, monitor: PerformanceMonitor): void;
+        (buffer: IBuffer, monitor: PerformanceMonitorBase): void;
     }
     class CommandManagager {
         private _commands;
         register(createCommand: ICommand): void;
-        apply(buffer: IBuffer, monitor: PerformanceMonitor): void;
+        apply(buffer: IBuffer, monitor: PerformanceMonitorBase): void;
     }
     var commandManager: CommandManagager;
     interface ICommandSetStandardValue extends ICommandParamsBase {
@@ -835,6 +876,7 @@ declare module ergometer.csafe {
     function registerStandardSet<T extends ICommandParamsBase>(functionName: string, command: number, setParams: (params: T) => number[]): void;
     function registerStandardSetConfig<T extends ICommandParamsBase>(functionName: string, command: number, setParams: (params: T) => number[]): void;
     function registerStandardShortGet<T extends ICommandParamsBase, U>(functionName: string, command: number, converter: (data: DataView) => U): void;
+    function registerStandardLongGet<T extends ICommandParamsBase, U>(functionName: string, detailCommand: number, converter: (data: DataView) => U): void;
 }
 /**
  * Created by tijmen on 19-01-16.
@@ -842,12 +884,30 @@ declare module ergometer.csafe {
  * Extensible frame work so you can add your own csafe commands to the buffer
  *
  */
-declare module ergometer.csafe {
+declare namespace ergometer.csafe {
     interface ICommandStrokeState extends ICommandParamsBase {
         onDataReceived: (state: StrokeState) => void;
     }
     interface IBuffer {
         getStrokeState(params: ICommandStrokeState): IBuffer;
+    }
+    interface ICommandDragFactor extends ICommandParamsBase {
+        onDataReceived: (state: number) => void;
+    }
+    interface IBuffer {
+        getDragFactor(params: ICommandDragFactor): IBuffer;
+    }
+    interface ICommandWorkDistance extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getWorkDistance(params: ICommandWorkDistance): IBuffer;
+    }
+    interface ICommandWorkTime extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getWorkTime(params: ICommandWorkTime): IBuffer;
     }
     interface ICommandPowerCurve {
         onDataReceived: (curve: number[]) => void;
@@ -855,6 +915,42 @@ declare module ergometer.csafe {
     }
     interface IBuffer {
         getPowerCurve(params: ICommandPowerCurve): IBuffer;
+    }
+    interface ICommandGetWorkoutType extends ICommandParamsBase {
+        onDataReceived: (value: WorkoutType) => void;
+    }
+    interface IBuffer {
+        getWorkoutType(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetWorkoutState extends ICommandParamsBase {
+        onDataReceived: (value: WorkoutState) => void;
+    }
+    interface IBuffer {
+        getWorkoutState(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetWorkoutIntervalCount extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getWorkoutIntervalCount(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetWorkoutIntervalType extends ICommandParamsBase {
+        onDataReceived: (value: IntervalType) => void;
+    }
+    interface IBuffer {
+        getWorkoutIntervalType(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetWorkoutIntervalRestTime extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getWorkoutIntervalRestTime(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetWork extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getWork(params: ICommandParamsBase): IBuffer;
     }
     interface ICommandProgramParams extends ICommandParamsBase {
         value: Program;
@@ -906,7 +1002,7 @@ declare module ergometer.csafe {
  * Extensible frame work so you can add your own csafe commands to the buffer
  *
  */
-declare module ergometer.csafe {
+declare namespace ergometer.csafe {
     interface IVersion {
         ManufacturerId: number;
         CID: number;
@@ -930,11 +1026,53 @@ declare module ergometer.csafe {
     interface IBuffer {
         getDistance(params: ICommandParamsBase): IBuffer;
     }
+    interface ICommandGetPace extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getPace(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetPower extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getPower(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetCadence extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getCadence(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetWorkTime extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getWorkTime(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetHorizontal extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getHorizontal(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetCalories extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getCalories(params: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandHeartRate extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getHeartRate(params: ICommandParamsBase): IBuffer;
+    }
 }
 /**
  * Created by tijmen on 06-02-16.
  */
-declare module ergometer.csafe {
+declare namespace ergometer.csafe {
     interface ICommandSetWorkOutType extends ICommandParamsBase {
         value: WorkoutType;
     }
@@ -945,7 +1083,7 @@ declare module ergometer.csafe {
 /**
  * Created by tijmen on 28-12-15.
  */
-declare module ergometer {
+declare namespace ergometer {
     const enum RowingSampleRate {
         rate1sec = 0,
         rate500ms = 1,
@@ -1251,7 +1389,299 @@ declare module ergometer {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-declare module ergometer {
+declare namespace ergometer {
+    interface ErrorHandler {
+        (e: any): void;
+    }
+    enum LogLevel {
+        error = 0,
+        info = 1,
+        debug = 2,
+        trace = 3,
+    }
+    interface LogEvent extends pubSub.ISubscription {
+        (text: string, logLevel: LogLevel): void;
+    }
+    interface ParsedCSafeCommand {
+        command: number;
+        detailCommand: number;
+        data: Uint8Array;
+    }
+    enum MonitorConnectionState {
+        inactive = 0,
+        deviceReady = 1,
+        scanning = 2,
+        connecting = 3,
+        connected = 4,
+        servicesFound = 5,
+        readyForCommunication = 6,
+    }
+    interface ConnectionStateChangedEvent extends pubSub.ISubscription {
+        (oldState: MonitorConnectionState, newState: MonitorConnectionState): void;
+    }
+    interface PowerCurveEvent extends pubSub.ISubscription {
+        (data: number[]): void;
+    }
+    /**
+     *
+     * Usage:
+     *
+     * Create this class to acess the performance data
+     *   var performanceMonitor= new ergometer.PerformanceMonitor();
+     *
+     * after this connect to the events to get data
+     *   performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
+     * On some android phones you can connect to a limited number of events. Use the multiplex property to overcome
+     * this problem. When the multi plex mode is switched on the data send to the device can be a a bit different, see
+     * the documentation in the properties You must set the multi plex property before connecting
+     *   performanceMonitor.multiplex=true;
+     *
+     * to start the connection first start scanning for a device,
+     * you should call when the cordova deviceready event is called (or later)
+     *   performanceMonitor.startScan((device : ergometer.DeviceInfo) : boolean => {
+     *      //return true when you want to connect to the device
+     *       return device.name=='My device name';
+     *   });
+     *  to connect at at a later time
+     *    performanceMonitor.connectToDevice('my device name');
+     *  the devices which where found during the scan are collected in
+     *    performanceMonitor.devices
+     *  when you connect to a device the scan is stopped, when you want to stop the scan earlier you need to call
+     *    performanceMonitor.stopScan
+     *
+     */
+    class PerformanceMonitorBase {
+        private _logEvent;
+        private _logLevel;
+        private _csafeBuffer;
+        private _waitResponseCommands;
+        protected _connectionState: MonitorConnectionState;
+        protected _powerCurve: number[];
+        protected _splitCommandsWhenToBig: boolean;
+        protected _checkFrameEnding: boolean;
+        private _connectionStateChangedEvent;
+        private _powerCurveEvent;
+        private _checksumCheckEnabled;
+        constructor();
+        protected initialize(): void;
+        protected enableDisableNotification(): void;
+        /**
+         * returns error and other log information. Some errors can only be received using the logEvent
+         * @returns {pubSub.Event<LogEvent>}
+         */
+        readonly logEvent: pubSub.Event<LogEvent>;
+        readonly powerCurveEvent: pubSub.Event<ergometer.PowerCurveEvent>;
+        readonly powerCurve: number[];
+        /**
+         * Print debug info to console and application UI.
+         * @param info
+         */
+        traceInfo(info: string): void;
+        /**
+         *
+         * @param info
+         */
+        debugInfo(info: string): void;
+        /**
+         *
+         * @param info
+         */
+        showInfo(info: string): void;
+        /**
+         * call the global error hander and call the optional error handler if given
+         * @param error
+         */
+        handleError(error: string, errorFn?: ErrorHandler): void;
+        /**
+         * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
+         * @param errorDescription
+         * @param errorFn
+         */
+        getErrorHandlerFunc(errorDescription: string, errorFn?: ErrorHandler): ErrorHandler;
+        /**
+ * By default it the logEvent will return errors if you want more debug change the log level
+ * @returns {LogLevel}
+ */
+        /**
+         * By default it the logEvent will return errors if you want more debug change the log level
+         * @param value
+         */
+        logLevel: LogLevel;
+        disconnect(): void;
+        /**
+         * read the current connection state
+         * @returns {MonitorConnectionState}
+         */
+        readonly connectionState: MonitorConnectionState;
+        protected connected(): void;
+        /**
+         *
+         * @param value
+         */
+        protected changeConnectionState(value: MonitorConnectionState): void;
+        /**
+        * event which is called when the connection state is changed. For example this way you
+        * can check if the device is disconnected.
+        * connect to the using .sub(this,myFunction)
+        * @returns {pubSub.Event<ConnectionStateChangedEvent>}
+        */
+        readonly connectionStateChangedEvent: pubSub.Event<ConnectionStateChangedEvent>;
+        protected removeOldSendCommands(): void;
+        protected driver_write(data: ArrayBufferView): Promise<void>;
+        /**
+         *  send everyt thing which is put into the csave buffer
+         *
+         * @param success
+         * @param error
+         * @returns {Promise<void>|Promise} use promis instead of success and error function
+         */
+        sendCSafeBuffer(): Promise<void>;
+        protected sendCsafeCommands(byteArray: number[]): Promise<void>;
+        protected receivedCSaveCommand(parsed: ParsedCSafeCommand): void;
+        private _csafeState;
+        protected resetStartCsafe(): void;
+        handeReceivedDriverData(dataView: DataView): void;
+        protected getPacketSize(): number;
+        readonly csafeBuffer: ergometer.csafe.IBuffer;
+    }
+}
+/**
+ * Concept 2 ergometer Performance Monitor api for Cordova
+ *
+ * This will will work with the PM5
+ *
+ * Created by tijmen on 01-06-15.
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+declare namespace ergometer {
+    class UsbDevice {
+        vendorId: number;
+        productId: number;
+        productName: string;
+        serialNumber: string;
+    }
+    type UsbDevices = UsbDevice[];
+    interface StrokeStateChangedEvent extends pubSub.ISubscription {
+        (oldState: StrokeState, newState: StrokeState, duration: number): void;
+    }
+    interface TrainingDataEvent extends pubSub.ISubscription {
+        (data: TrainingData): void;
+    }
+    interface StrokeDataEvent extends pubSub.ISubscription {
+        (data: StrokeData): void;
+    }
+    class StrokeData {
+        dragFactor: number;
+        workDistance: number;
+        workTime: number;
+        splitTime: number;
+        power: number;
+        strokesPerMinuteAverage: number;
+        strokesPerMinute: number;
+        distance: number;
+        time: number;
+        totCalories: number;
+        caloriesPerHour: number;
+        heartRate: number;
+    }
+    class TrainingData {
+        workoutType: WorkoutType;
+        duration: number;
+        distance: number;
+        workoutState: WorkoutState;
+        workoutIntervalCount: number;
+        intervalType: IntervalType;
+        restTime: number;
+        endDistance: number;
+        endDuration: number;
+    }
+    class PerformanceMonitorUsb extends PerformanceMonitorBase {
+        private _driver;
+        private _device;
+        private _nSPMReads;
+        private _nSPM;
+        private _strokeStateEvent;
+        private _trainingDataEvent;
+        private _strokeDataEvent;
+        private _strokeData;
+        private _trainingData;
+        private _strokeState;
+        private _lastTrainingTime;
+        private _csafeBuzy;
+        readonly csafeBuzy: boolean;
+        readonly strokeData: StrokeData;
+        readonly trainingData: TrainingData;
+        readonly strokeState: StrokeState;
+        readonly device: ergometer.usb.IDevice;
+        readonly strokeStateEvent: pubSub.Event<StrokeStateChangedEvent>;
+        readonly trainingDataEvent: pubSub.Event<TrainingDataEvent>;
+        readonly strokeDataEvent: pubSub.Event<StrokeDataEvent>;
+        static canUseNodeHid(): boolean;
+        static canUseUsb(): boolean;
+        protected initialize(): void;
+        driver: ergometer.usb.IDriver;
+        protected driver_write(data: ArrayBufferView): Promise<void>;
+        sendCSafeBuffer(): Promise<void>;
+        requestDevics(): Promise<UsbDevices>;
+        disconnect(): void;
+        private disconnected();
+        connectToDevice(device: UsbDevice): Promise<void>;
+        protected getPacketSize(): number;
+        protected highResolutionUpdate(): Promise<void>;
+        private handlePowerCurve();
+        protected connected(): void;
+        private _autoUpdating;
+        private listeningToEvents();
+        protected autoUpdate(first?: boolean): void;
+        protected nextAutoUpdate(): void;
+        protected update(): Promise<void>;
+        private _startPhaseTime;
+        protected calcStrokeStateDuration(): number;
+        protected lowResolutionUpdate(): Promise<void>;
+        protected newStrokeState(state: StrokeState): void;
+        protected trainingDataUpdate(): Promise<void>;
+        private resetStartRowing();
+    }
+}
+/**
+ * Concept 2 ergometer Performance Monitor api for Cordova
+ *
+ * This will will work with the PM5
+ *
+ * Created by tijmen on 01-06-15.
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+declare namespace ergometer {
     interface RowingGeneralStatusEvent extends pubSub.ISubscription {
         (data: RowingGeneralStatus): void;
     }
@@ -1285,33 +1715,6 @@ declare module ergometer {
     interface HeartRateBeltInformationEvent extends pubSub.ISubscription {
         (data: HeartRateBeltInformation): void;
     }
-    interface PowerCurveEvent extends pubSub.ISubscription {
-        (data: number[]): void;
-    }
-    enum MonitorConnectionState {
-        inactive = 0,
-        deviceReady = 1,
-        scanning = 2,
-        connecting = 3,
-        connected = 4,
-        servicesFound = 5,
-        readyForCommunication = 6,
-    }
-    enum LogLevel {
-        error = 0,
-        info = 1,
-        debug = 2,
-        trace = 3,
-    }
-    interface LogEvent extends pubSub.ISubscription {
-        (text: string, logLevel: LogLevel): void;
-    }
-    interface ConnectionStateChangedEvent extends pubSub.ISubscription {
-        (oldState: MonitorConnectionState, newState: MonitorConnectionState): void;
-    }
-    interface ErrorHandler {
-        (e: any): void;
-    }
     interface DeviceInfo {
         connected: boolean;
         name: string;
@@ -1321,11 +1724,6 @@ declare module ergometer {
         hardwareRevision?: string;
         firmwareRevision?: string;
         manufacturer?: string;
-    }
-    interface ParsedCSafeCommand {
-        command: number;
-        detailCommand: number;
-        data: Uint8Array;
     }
     /**
      *
@@ -1355,13 +1753,10 @@ declare module ergometer {
      *    performanceMonitor.stopScan
      *
      */
-    class PerformanceMonitor {
+    class PerformanceMonitorBle extends PerformanceMonitorBase {
         private _driver;
         private _recordingDriver;
         private _replayDriver;
-        private _connectionState;
-        private _logEvent;
-        private _connectionStateChangedEvent;
         private _rowingGeneralStatusEvent;
         private _rowingAdditionalStatus1Event;
         private _rowingAdditionalStatus2Event;
@@ -1373,7 +1768,6 @@ declare module ergometer {
         private _additionalWorkoutSummaryDataEvent;
         private _additionalWorkoutSummaryData2Event;
         private _heartRateBeltInformationEvent;
-        private _powerCurveEvent;
         private _deviceInfo;
         private _rowingGeneralStatus;
         private _rowingAdditionalStatus1;
@@ -1386,15 +1780,11 @@ declare module ergometer {
         private _additionalWorkoutSummaryData;
         private _additionalWorkoutSummaryData2;
         private _heartRateBeltInformation;
-        private _powerCurve;
         private _devices;
         private _multiplex;
         private _multiplexSubscribeCount;
         private _sampleRate;
         private _autoReConnect;
-        private _logLevel;
-        private _csafeBuffer;
-        private _waitResponseCommands;
         private _generalStatusEventAttachedByPowerCurve;
         private _recording;
         protected readonly recordingDriver: ergometer.ble.RecordingDriver;
@@ -1404,15 +1794,6 @@ declare module ergometer {
         replay(events: ble.IRecordingItem[]): void;
         recordingEvents: ble.IRecordingItem[];
         protected readonly driver: ergometer.ble.IDriver;
-        /**
-         * By default it the logEvent will return errors if you want more debug change the log level
-         * @returns {LogLevel}
-         */
-        /**
-         * By default it the logEvent will return errors if you want more debug change the log level
-         * @param value
-         */
-        logLevel: LogLevel;
         /**
          * when the connection is lost re-connect
          * @returns {boolean}
@@ -1566,20 +1947,6 @@ declare module ergometer {
          * @returns {pubSub.Event<HeartRateBeltInformationEvent>}
          */
         readonly heartRateBeltInformationEvent: pubSub.Event<HeartRateBeltInformationEvent>;
-        readonly powerCurveEvent: pubSub.Event<ergometer.PowerCurveEvent>;
-        /**
-         * event which is called when the connection state is changed. For example this way you
-         * can check if the device is disconnected.
-         * connect to the using .sub(this,myFunction)
-         * @returns {pubSub.Event<ConnectionStateChangedEvent>}
-         */
-        readonly connectionStateChangedEvent: pubSub.Event<ConnectionStateChangedEvent>;
-        /**
-         * returns error and other log information. Some errors can only be received using the logEvent
-         * @returns {pubSub.Event<LogEvent>}
-         */
-        readonly logEvent: pubSub.Event<LogEvent>;
-        readonly powerCurve: number[];
         /**
          * Get device information of the connected device.
          * @returns {DeviceInfo}
@@ -1599,20 +1966,6 @@ declare module ergometer {
          */
         disconnect(): void;
         /**
-         * read the current connection state
-         * @returns {MonitorConnectionState}
-         */
-        readonly connectionState: MonitorConnectionState;
-        /**
-         *
-         * @param value
-         */
-        protected changeConnectionState(value: MonitorConnectionState): void;
-        /**
-         * To work with this class you will need to create it.
-         */
-        constructor();
-        /**
          *
          */
         protected enableMultiplexNotification(): void;
@@ -1625,6 +1978,7 @@ declare module ergometer {
          */
         protected enableDisableNotification(): void;
         protected onPowerCurveRowingGeneralStatus(data: ergometer.RowingGeneralStatus): void;
+        currentDriverIsWebBlueTooth(): boolean;
         /**
          *
          */
@@ -1632,32 +1986,6 @@ declare module ergometer {
         /**
          * When low level initialization complete, this function is called.
          */
-        /**
-         * Print debug info to console and application UI.
-         * @param info
-         */
-        traceInfo(info: string): void;
-        /**
-         *
-         * @param info
-         */
-        debugInfo(info: string): void;
-        /**
-         *
-         * @param info
-         */
-        showInfo(info: string): void;
-        /**
-         * call the global error hander and call the optional error handler if given
-         * @param error
-         */
-        handleError(error: string, errorFn?: ErrorHandler): void;
-        /**
-         * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
-         * @param errorDescription
-         * @param errorFn
-         */
-        getErrorHandlerFunc(errorDescription: string, errorFn?: ErrorHandler): ErrorHandler;
         /**
          *
          * @param device
@@ -1762,6 +2090,7 @@ declare module ergometer {
          * @param data
          */
         protected handleHeartRateBeltInformation(data: DataView): void;
+        handleCSafeNotifications(): void;
         /**
          *
          * @param data
@@ -1773,18 +2102,7 @@ declare module ergometer {
          * @param func
          */
         protected handleDataCallback(data: ArrayBuffer, func: (data: DataView) => void): void;
-        protected removeOldSendCommands(): void;
-        /**
-         *  send everyt thing which is put into the csave buffer
-         *
-         * @param success
-         * @param error
-         * @returns {Promise<void>|Promise} use promis instead of success and error function
-         */
-        sendCSafeBuffer(): Promise<void>;
-        protected sendCsafeCommands(byteArray: number[]): Promise<void>;
-        receivedCSaveCommand(parsed: ParsedCSafeCommand): void;
-        handleCSafeNotifications(): void;
-        readonly csafeBuffer: ergometer.csafe.IBuffer;
+        protected driver_write(data: ArrayBufferView): Promise<void>;
+        protected getPacketSize(): number;
     }
 }

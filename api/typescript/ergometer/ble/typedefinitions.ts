@@ -2,7 +2,7 @@
  * Created by tijmen on 16-01-16.
  */
 /** @internal */
-module ergometer.ble {
+namespace ergometer.ble {
 
     /** @internal */
     export const  PMDEVICE =                             "ce060000-43e5-11e4-916c-0800200c9a66";

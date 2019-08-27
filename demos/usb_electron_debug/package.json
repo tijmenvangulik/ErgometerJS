@@ -1,0 +1,33 @@
+{
+  "name": "electron-ergometer-usb",
+  "version": "1.0.0",
+  "description": "A minimal Electron ergometer application for usb",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron main.js",
+    "postinstall": "electron-rebuild --force",
+    "build": "../../node_modules/.bin/tsc -p .",
+    "electron-rebuild": "electron-rebuild",
+    "watch": "../../node_modules/.bin/tsc --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tijmenvangulik/MobileErgometer"
+  },
+  "keywords": [
+    "Electron",
+    "ergometer",
+    "demo"
+  ],
+  "dependencies": {
+    "node-hid": "^0.7.8"
+  },
+  "author": "GitHub",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/atom/electron-quick-start#readme",
+  "devDependencies": {
+    "electron": "^5.0.1",
+    "electron-builder": "^20.39.0",
+    "electron-rebuild": "^1.8.4"
+  }
+}

@@ -6,7 +6,7 @@
  * this is the core, you do not have to change this code.
  *
  */
-module ergometer.csafe {
+namespace ergometer.csafe {
 
     export interface ICommandParamsBase {
         onError? : ErrorHandler;
@@ -30,14 +30,14 @@ module ergometer.csafe {
     }
 
     export interface ICommand {
-        (buffer : IBuffer,monitor : PerformanceMonitor) :void
+        (buffer : IBuffer,monitor : PerformanceMonitorBase) :void
     }
     export class CommandManagager {
         private _commands : ICommand[] = [];
         public register(createCommand : ICommand) {
             this._commands.push(createCommand)
         }
-        public apply(buffer : IBuffer,monitor : PerformanceMonitor) {
+        public apply(buffer : IBuffer,monitor : PerformanceMonitorBase) {
             this._commands.forEach((command : ICommand) => {
                 command(buffer,monitor);
             });
@@ -53,7 +53,7 @@ module ergometer.csafe {
     }
 
     export function registerStandardSet<T extends ICommandParamsBase>(functionName :string , command : number, setParams : (params : T)=> number[]) {
-        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitor) =>{
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
             buffer[functionName]= function (params : T) : IBuffer {
                 buffer.addRawCommand({
                     waitForResponse:false,
@@ -66,7 +66,7 @@ module ergometer.csafe {
         })
     }
     export function registerStandardSetConfig<T extends ICommandParamsBase>(functionName :string , command : number, setParams : (params : T)=> number[]) {
-        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitor) =>{
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
             buffer[functionName]= function (params : T) : IBuffer {
                 buffer.addRawCommand({
                     waitForResponse:false,
@@ -81,7 +81,7 @@ module ergometer.csafe {
     }
 
     export function registerStandardShortGet<T extends ICommandParamsBase,U>(functionName :string , command : number,converter : (data : DataView)=> U) {
-        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitor) =>{
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
             buffer[functionName]= function (params : T) : IBuffer {
                 buffer.addRawCommand({
                     waitForResponse:true,
@@ -93,4 +93,20 @@ module ergometer.csafe {
             }
         })
     }
+
+    export function registerStandardLongGet<T extends ICommandParamsBase,U>(functionName :string , detailCommand : number,converter : (data : DataView)=> U) {
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
+            buffer[functionName]= function (params : T) : IBuffer {
+                buffer.addRawCommand({
+                    waitForResponse:true,
+                    command : csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
+                    detailCommand: detailCommand,
+                    onDataReceived : (data : DataView)=>{params.onDataReceived(<U>converter(data)) }  ,
+                    onError:params.onError
+                });
+                return buffer;
+            }
+        })
+    }
+    
 }

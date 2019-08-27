@@ -1,7 +1,7 @@
 /**
  * Created by tijmen on 28-12-15.
  */
-module ergometer {
+namespace ergometer {
 
     export const enum RowingSampleRate
     {

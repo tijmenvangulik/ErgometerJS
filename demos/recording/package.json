@@ -4,21 +4,31 @@
   "description": "A minimal Electron ergometer recording application",
   "main": "main.js",
   "scripts": {
-    "start": "electron main.js"
+    "start": "electron main.js",
+    "postinstall": "electron-rebuild --force",
+    "build": "../../node_modules/.bin/tsc -p .",
+    "electron-rebuild": "electron-rebuild",
+    "watch": "../../node_modules/.bin/tsc --watch"
+
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tijmenvangulik/MobileErgometer"
   },
-  "keywords": [
+  "keywords": [ 
     "Electron",
     "ergometer",
     "demo"
   ],
+  "dependencies": {
+    "node-hid": "^0.7.8"
+  },
   "author": "GitHub",
   "license": "Apache-2.0",
   "homepage": "https://github.com/atom/electron-quick-start#readme",
   "devDependencies": {
-    "electron-prebuilt": "^0.36.0"
+    "electron": "^5.0.1",
+    "electron-builder": "^20.39.0",
+    "electron-rebuild": "^1.8.4"
   }
 }

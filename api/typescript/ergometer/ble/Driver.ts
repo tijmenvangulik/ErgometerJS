@@ -1,7 +1,7 @@
 /**
  * Created by tijmen on 01-02-16.
  */
-module ergometer.ble {
+namespace ergometer.ble {
 
     export interface IDevice {
         address :string;
