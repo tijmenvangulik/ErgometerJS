@@ -82,11 +82,13 @@ You only need to change the javascript included file
 - 0.0.12
     * Web bluetooth Fix: web blue tooth messages stop after some time.
 - 1.0.0
+   * Added USB support for PM3, PM4, PM5 for electron and node
+     I am  anticipating on the next WebHid standard which should add browser support for Usb devices. I will also check if it is possible to support cordova.
    * Make it possible to set the driver
-   * Added USB support for PM3, PM4 (current only a demo using electron/node)
-     I am here anticipating on the next WebHid standard which should add browser support for Usb devices.
    * Breaking change: the PerformanceMonitor is now named PerformanceMonitorBle
    * Fix: Web blue tooth driver dit not notice when device is disconnected
+   * Upgraded Electron demo. The demo does not use web bluetooth instead of noble.
+  
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
