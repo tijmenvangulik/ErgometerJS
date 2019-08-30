@@ -119,12 +119,12 @@ Components
 
 # platforms
 
-            | pm3-5 usb   | Blue tooth |
-------------|-------------|------------|    
-Web         | comming     | yes        |
-Cordova     | investigate | yes        |
-Electron    | yes         | yes        |
-React native|             | *          |
+|            | pm3-5 usb   | Blue tooth |
+|------------|-------------|------------|    
+|Web         | comming     | yes        |
+|Cordova     | investigate | yes        |
+|Electron    | yes         | yes        |
+|React native|             | *          |
 
 * the demo contains an limeted proof of concept, there are other libraries
  which have better suport. it is not difficult to support other usb/ble drivers ( react-native-ble-plx may be an better option)
@@ -187,7 +187,7 @@ To use the library you need all the files in the lib directory and include it in
 	<script src="libs/jquery/jquery.js"></script>
 
 
-#Usage for Ble                                                                                                                                                                                                                            
+# Usage for Ble                                                                                                                                                                                                                            
 Create this class to acCess the performance data
                                                                      
     var performanceMonitor= new ergometer.PerformanceMonitorBle();                                                       
@@ -226,7 +226,7 @@ More information can be found in the typescript definitions:
     
     https://github.com/tijmenvangulik/MobileErgometer/blob/master/api/lib/ergometer.d.ts
     
-##CSafe
+## CSafe
 
 CSafe is used to send and receive commands. I have implemented an jquery like api which is:
 - chainable (not required)
@@ -323,7 +323,7 @@ allways send raw commands. For example
            console.log("send done, you can send th next")
          }); 
 
-#Usage for Usb
+# Usage for Usb
 
 An usb device has a quicker way of finding devices but does not have all the concept2 BLE events. So the api is a bit different. The csafe part is exactly the same as for the ble device.
 
@@ -353,45 +353,45 @@ you can retreive data from the monitor by connecting to events. when you do not 
 to any of the training/stroke/power curve events then the monitor will not do any csafe commands
 to get data. You have to do your own csafe calls to get data.
 
-##logEvent
+## logEvent
 returns error, info and trace messages. (same event as in the blue tooth ergometer)
 
-##connectionStateChangedEvent
+## connectionStateChangedEvent
 Get info on the connection state.  (same event as in the blue tooth ergometer)
 
     performanceMonitor.connectionStateChangedEvent.sub(this,(oldState,newState)=>{
         console.log("new connection state="+newState.toString());       
     });
 
-##strokeStateEvent
+## strokeStateEvent
 Using this event you can see if the rower is doing is rowing and you can see in which phase he is.
 
     performanceMonitor.strokeStateEvent.sub(this,(oldState : ergometer.StrokeState,newState : ergometer.StrokeState)=>{
         console.log("New state:"+newState.toString());
     })
 
-##trainingDataEvent
+## trainingDataEvent
 Information on the selected training and the state of the training.
 
     performanceMonitor.trainingDataEvent.sub(this,(data :ergometer.TrainingData)=>{
         console.log("training data :"+JSON.stringify(data,null,"  "));
     });
 
-##strokeDataEvent
+## strokeDataEvent
 Data on the last stroke.
 
     performanceMonitor.strokeDataEvent.sub(this,(data: ergometer.StrokeData)=>{
         console.log("stroke data:"+JSON.stringify(data,null,"  "));
     });
 
-##powerCurveEvent
+## powerCurveEvent
 The power curve. When you connect to this event the data will be retreived. (same event as in the blue tooth ergometer)
 
     performanceMonitor.powerCurveEvent.sub(this,(data : number[])=>{
         console.log("stroke data:"+JSON.stringify(data,null,"  "));
     })
 
-##csafe comnunication
+## csafe comnunication
 
 Csafe communication is done the same way as the ble commnunication.
 See the csafe paragraph of the previous chapter how to do csafe commands.
