@@ -338,6 +338,7 @@ declare namespace ergometer.usb {
         readonly vendorId: number;
         readonly productId: number;
         readonly productName: string;
+        readonly serialNumber: string;
         open(disconnect: () => void, error: (err: any) => void): Promise<void>;
         close(): Promise<void>;
         sendData(data: ArrayBuffer): Promise<void>;
@@ -356,6 +357,7 @@ declare namespace ergometer.usb {
         vendorId: number;
         productId: number;
         productName: string;
+        serialNumber: string;
         constructor(deviceInfo: any);
         callError(err: any): void;
         open(disconnect: DisconnectFunc, error: (err: any) => void): Promise<void>;
@@ -1042,12 +1044,6 @@ declare namespace ergometer.csafe {
     interface IBuffer {
         getCadence(params: ICommandParamsBase): IBuffer;
     }
-    interface ICommandGetWorkTime extends ICommandParamsBase {
-        onDataReceived: (value: number) => void;
-    }
-    interface IBuffer {
-        getWorkTime(params: ICommandParamsBase): IBuffer;
-    }
     interface ICommandGetHorizontal extends ICommandParamsBase {
         onDataReceived: (value: number) => void;
     }
@@ -1459,6 +1455,7 @@ declare namespace ergometer {
         protected _checkFrameEnding: boolean;
         private _connectionStateChangedEvent;
         private _powerCurveEvent;
+        private _checksumCheckEnabled;
         constructor();
         protected initialize(): void;
         protected enableDisableNotification(): void;
@@ -1570,6 +1567,7 @@ declare namespace ergometer {
         vendorId: number;
         productId: number;
         productName: string;
+        serialNumber: string;
     }
     type UsbDevices = UsbDevice[];
     interface StrokeStateChangedEvent extends pubSub.ISubscription {
@@ -1590,7 +1588,6 @@ declare namespace ergometer {
         strokesPerMinuteAverage: number;
         strokesPerMinute: number;
         distance: number;
-        time: number;
         totCalories: number;
         caloriesPerHour: number;
         heartRate: number;
@@ -1623,6 +1620,7 @@ declare namespace ergometer {
         readonly strokeData: StrokeData;
         readonly trainingData: TrainingData;
         readonly strokeState: StrokeState;
+        readonly device: ergometer.usb.IDevice;
         readonly strokeStateEvent: pubSub.Event<StrokeStateChangedEvent>;
         readonly trainingDataEvent: pubSub.Event<TrainingDataEvent>;
         readonly strokeDataEvent: pubSub.Event<StrokeDataEvent>;
@@ -1973,6 +1971,7 @@ declare namespace ergometer {
          */
         protected enableDisableNotification(): void;
         protected onPowerCurveRowingGeneralStatus(data: ergometer.RowingGeneralStatus): void;
+        currentDriverIsWebBlueTooth(): boolean;
         /**
          *
          */

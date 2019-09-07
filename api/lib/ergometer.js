@@ -2054,12 +2054,6 @@ var ergometer;
         csafe.registerStandardShortGet("getPace", 166 /* GETPACE_CMD */, function (data) { return data.getUint16(0, true); });
         csafe.registerStandardShortGet("getPower", 180 /* GETPOWER_CMD */, function (data) { return data.getUint16(0, true); });
         csafe.registerStandardShortGet("getCadence", 167 /* GETCADENCE_CMD */, function (data) { return data.getUint16(0, true); });
-        csafe.registerStandardShortGet("getWorkTime", 160 /* GETTWORK_CMD */, function (data) {
-            var value = data.getUint8(0) * 60 * 60 +
-                data.getUint8(1) * 60 +
-                data.getUint8(2);
-            return value * 1000;
-        });
         csafe.registerStandardShortGet("getHorizontal", 161 /* GETHORIZONTAL_CMD */, function (data) {
             var value = data.getUint16(0, true);
             return value;
@@ -2705,7 +2699,7 @@ var ergometer;
             this.strokesPerMinuteAverage = 0;
             this.strokesPerMinute = 0;
             this.distance = 0;
-            this.time = 0;
+            //time =0;  //does not yet work remove for now
             this.totCalories = 0; // accumulated calories burned  CSAFE_GETCALORIES_CMD
             this.caloriesPerHour = 0; // calories/Hr derived from pace (GETPACE)
             this.heartRate = 0;
@@ -3086,9 +3080,6 @@ var ergometer;
                     _this.strokeData.workDistance = value;
                 }
             })
-                .getWork({ onDataReceived: function (value) {
-                    _this.strokeData.time = value;
-                } })
                 .getPace({
                 onDataReceived: function (pace) {
                     var caloriesPerHour = 0;
@@ -3240,33 +3231,34 @@ var ergometer;
                         if (duration && duration > 0) {
                             _this.strokeData.workTime = duration;
                             _this.strokeData.workDistance = 0;
-                            _this.strokeData.time = duration;
+                            //this.strokeData.time=duration;
                             _this.strokeData.distance = distance;
-                            _this.trainingData.endDistance = distance;
+                            _this.trainingData.endDistance = _this.trainingData.distance;
                             _this.trainingData.endDuration = duration;
                         }
                         if (distance && distance > 0) {
                             _this.strokeData.workDistance = distance;
                             _this.strokeData.workTime = 0;
-                            _this.strokeData.time = duration;
+                            //this.strokeData.time= duration;
                             _this.strokeData.distance = distance;
-                            _this.trainingData.endDuration = duration;
+                            _this.trainingData.endDistance = distance;
+                            _this.trainingData.endDuration = _this.trainingData.duration;
                         }
                         strokeDataChanged = true; //send the updated last end time/ duration to the server
                     }
                     changed = true;
                 }
                 if (_this.trainingData.workoutState != 12 /* workoutLogged */ &&
-                    (!_this.trainingData.endDistance || _this.trainingData.endDistance != 0 ||
-                        _this.trainingData.endDuration != 0 || !_this.trainingData.endDuration)) {
+                    (_this.trainingData.endDistance || _this.trainingData.endDistance != 0 ||
+                        _this.trainingData.endDuration != 0 || _this.trainingData.endDuration)) {
                     _this.trainingData.endDistance = 0;
                     _this.trainingData.endDuration = 0;
                     changed = true;
                 }
-                if (changed)
-                    _this.trainingDataEvent.pub(_this.trainingData);
                 if (strokeDataChanged)
                     _this._strokeDataEvent.pub(_this.strokeData);
+                if (changed)
+                    _this.trainingDataEvent.pub(_this.trainingData);
             });
         };
         PerformanceMonitorUsb.prototype.resetStartRowing = function () {
@@ -3281,7 +3273,7 @@ var ergometer;
             this.strokeData.strokesPerMinuteAverage = 0;
             this.strokeData.strokesPerMinute = 0;
             this.strokeData.distance = 0;
-            this.strokeData.time = 0;
+            //this.strokeData.time =0;
             this.strokeData.totCalories = 0; // accumulated calories burned  CSAFE_GETCALORIES_CMD
             this.strokeData.caloriesPerHour = 0; // calories/Hr derived from pace (GETPACE)
             this.strokeData.heartRate = 0;

@@ -101,23 +101,6 @@ namespace ergometer.csafe {
         csafe.defs.SHORT_DATA_CMDS.GETCADENCE_CMD,
         (data : DataView)=>{return data.getUint16(0,true)});
 
-//----------------------------- get work time ------------------------------------
-
-    export interface ICommandGetWorkTime  extends ICommandParamsBase {
-        onDataReceived : (value :number )=>void;
-    }
-    export interface IBuffer {
-        getWorkTime(params : ICommandParamsBase) : IBuffer;
-    }
-
-    registerStandardShortGet<ICommandGetWorkTime,number>("getWorkTime",
-        csafe.defs.SHORT_DATA_CMDS.GETTWORK_CMD,
-        (data : DataView)=>{
-            var value=data.getUint8(0)*60*60+
-                data.getUint8(1)*60+
-                data.getUint8(2);
-            return value*1000 });
-
 
 //----------------------------- get horizontal ------------------------------------
 

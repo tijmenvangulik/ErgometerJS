@@ -719,6 +719,7 @@ var ergometer;
                             _this._device = newDevice;
                             _this._server = server;
                             _this._disconnectFn = disconnectFn;
+                            newDevice.ongattserverdisconnected = _this.onDisconnected.bind(_this);
                             newDevice.addEventListener('ongattserverdisconnected', _this.onDisconnected.bind(_this));
                             resolve();
                         }, reject);
@@ -788,13 +789,23 @@ var ergometer;
                 var _this = this;
                 if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
                     this._performanceMonitor.traceInfo("writeCharacteristic " + characteristicUUID + " : " + data + " ");
+                if (!this._device.gatt.connected) {
+                    this.onDisconnected(null);
+                    return Promise.reject("Not connected");
+                }
                 return new Promise(function (resolve, reject) {
                     try {
                         _this.getCharacteristic(serviceUIID, characteristicUUID)
                             .then(function (characteristic) {
                             return characteristic.writeValue(data.buffer);
                         })
-                            .then(resolve, reject);
+                            .then(resolve)
+                            .catch(function (e) {
+                            reject(e);
+                            //when an write gives an error asume that we are disconnected
+                            if (!_this._device.gatt.connected)
+                                _this.onDisconnected(null);
+                        });
                     }
                     catch (e) {
                         reject(e);
@@ -818,6 +829,10 @@ var ergometer;
                 var _this = this;
                 if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
                     this._performanceMonitor.traceInfo("readCharacteristic " + characteristicUUID + "  ");
+                if (!this._device.gatt.connected) {
+                    this.onDisconnected(null);
+                    return Promise.reject("Not connected");
+                }
                 return new Promise(function (resolve, reject) {
                     try {
                         _this.getCharacteristic(serviceUIID, characteristicUUID)
@@ -828,7 +843,14 @@ var ergometer;
                             if (_this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
                                 _this._performanceMonitor.traceInfo("doReadCharacteristic " + characteristicUUID + " : " + ergometer.utils.typedArrayToHexString(data.buffer) + " ");
                             resolve(data.buffer);
-                        }, reject);
+                        })
+                            .catch(function (e) {
+                            reject(e);
+                            //when an write gives an error asume that we are disconnected
+                            if (!_this._device.gatt.connected)
+                                _this.onDisconnected(null);
+                        });
+                        ;
                     }
                     catch (e) {
                         reject(e);
@@ -839,6 +861,10 @@ var ergometer;
                 if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
                     this._performanceMonitor.traceInfo("onCharacteristicValueChanged " + event.target.uuid + " : " + ergometer.utils.typedArrayToHexString(event.target.value.buffer) + " ");
                 try {
+                    if (!this._device.gatt.connected) {
+                        this.onDisconnected(null);
+                        throw "Not connected";
+                    }
                     var func = this._listenerMap[event.target.uuid];
                     if (func)
                         func(event.target.value.buffer);
@@ -884,6 +910,10 @@ var ergometer;
                 var _this = this;
                 if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
                     this._performanceMonitor.traceInfo("enableNotification " + characteristicUUID + "  ");
+                if (!this._device.gatt.connected) {
+                    this.onDisconnected(null);
+                    return Promise.reject("Not connected");
+                }
                 return new Promise(function (resolve, reject) {
                     try {
                         _this.getCharacteristic(serviceUIID, characteristicUUID)
@@ -1541,6 +1571,7 @@ var ergometer;
                         //add all concept 2 devices
                         if (device.vendorId == 6052) {
                             var deviceInfo = new DeviceNodeHid(device);
+                            deviceInfo.serialNumber = device.serialNumber;
                             deviceInfo.productId = device.productId;
                             deviceInfo.vendorId = device.vendorId;
                             deviceInfo.productName = device.product;
@@ -2023,12 +2054,6 @@ var ergometer;
         csafe.registerStandardShortGet("getPace", 166 /* GETPACE_CMD */, function (data) { return data.getUint16(0, true); });
         csafe.registerStandardShortGet("getPower", 180 /* GETPOWER_CMD */, function (data) { return data.getUint16(0, true); });
         csafe.registerStandardShortGet("getCadence", 167 /* GETCADENCE_CMD */, function (data) { return data.getUint16(0, true); });
-        csafe.registerStandardShortGet("getWorkTime", 160 /* GETTWORK_CMD */, function (data) {
-            var value = data.getUint8(0) * 60 * 60 +
-                data.getUint8(1) * 60 +
-                data.getUint8(2);
-            return value * 1000;
-        });
         csafe.registerStandardShortGet("getHorizontal", 161 /* GETHORIZONTAL_CMD */, function (data) {
             var value = data.getUint16(0, true);
             return value;
@@ -2171,6 +2196,7 @@ var ergometer;
             this._connectionState = MonitorConnectionState.inactive;
             //events
             this._connectionStateChangedEvent = new ergometer.pubSub.Event();
+            this._checksumCheckEnabled = false;
             this._csafeState = new CSaveParseState();
             this.initialize();
         }
@@ -2512,7 +2538,7 @@ var ergometer;
                                 this._csafeState.calcCheck = this._csafeState.calcCheck ^ currentByte;
                                 this._csafeState.calcCheck = this._csafeState.calcCheck ^ this._csafeState.command;
                                 //check the calculated with the message checksum
-                                if (checksum != this._csafeState.calcCheck)
+                                if (this._checksumCheckEnabled && checksum != this._csafeState.calcCheck)
                                     this.handleError("Wrong checksum " + ergometer.utils.toHexString(checksum, 1) + " expected " + ergometer.utils.toHexString(this._csafeState.calcCheck, 1) + " ");
                                 this._csafeState.command = 0; //do not check checksum
                                 this._csafeState.frameState = 0 /* initial */; //start again from te beginning
@@ -2673,7 +2699,7 @@ var ergometer;
             this.strokesPerMinuteAverage = 0;
             this.strokesPerMinute = 0;
             this.distance = 0;
-            this.time = 0;
+            //time =0;  //does not yet work remove for now
             this.totCalories = 0; // accumulated calories burned  CSAFE_GETCALORIES_CMD
             this.caloriesPerHour = 0; // calories/Hr derived from pace (GETPACE)
             this.heartRate = 0;
@@ -2737,6 +2763,13 @@ var ergometer;
         Object.defineProperty(PerformanceMonitorUsb.prototype, "strokeState", {
             get: function () {
                 return this._strokeState;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(PerformanceMonitorUsb.prototype, "device", {
+            get: function () {
+                return this._device;
             },
             enumerable: true,
             configurable: true
@@ -2849,6 +2882,7 @@ var ergometer;
                         device.productId = driverDevice.productId;
                         device.productName = driverDevice.productName;
                         device.vendorId = driverDevice.vendorId;
+                        device.serialNumber = driverDevice.serialNumber;
                         device._internalDevice = driverDevice;
                         result.push(device);
                     });
@@ -2865,8 +2899,10 @@ var ergometer;
         };
         PerformanceMonitorUsb.prototype.disconnected = function () {
             this._csafeBuzy = false;
-            if (this._device)
+            if (this._device) {
                 this.changeConnectionState(ergometer.MonitorConnectionState.deviceReady);
+                this._device = null;
+            }
         };
         PerformanceMonitorUsb.prototype.connectToDevice = function (device) {
             var _this = this;
@@ -3044,9 +3080,6 @@ var ergometer;
                     _this.strokeData.workDistance = value;
                 }
             })
-                .getWork({ onDataReceived: function (value) {
-                    _this.strokeData.time = value;
-                } })
                 .getPace({
                 onDataReceived: function (pace) {
                     var caloriesPerHour = 0;
@@ -3190,40 +3223,42 @@ var ergometer;
                 //    _trainingData.endDuration=_trainingData.endDuration;
                 //}
                 if (_this.trainingData.workoutState == 12 /* workoutLogged */ &&
-                    (_this.trainingData.endDuration == 0 &&
-                        _this.trainingData.endDistance == 0)) {
+                    ((_this.trainingData.endDuration === 0) &&
+                        (_this.trainingData.endDistance === 0))) {
                     //otherwise the work time does not reflect the last time and distance
                     if (_this.trainingData.workoutType >= 2 /* fixedDistanceNoAplits */ &&
                         _this.trainingData.workoutType <= 4 /* fixedTimeNoAplits */) {
-                        if (duration != 0) {
+                        if (duration && duration > 0) {
                             _this.strokeData.workTime = duration;
                             _this.strokeData.workDistance = 0;
-                            _this.strokeData.time = duration;
+                            //this.strokeData.time=duration;
                             _this.strokeData.distance = distance;
-                            _this.trainingData.endDistance = distance;
+                            _this.trainingData.endDistance = _this.trainingData.distance;
                             _this.trainingData.endDuration = duration;
                         }
-                        if (distance != 0) {
+                        if (distance && distance > 0) {
                             _this.strokeData.workDistance = distance;
                             _this.strokeData.workTime = 0;
-                            _this.strokeData.time = duration;
+                            //this.strokeData.time= duration;
                             _this.strokeData.distance = distance;
-                            _this.trainingData.endDuration = duration;
+                            _this.trainingData.endDistance = distance;
+                            _this.trainingData.endDuration = _this.trainingData.duration;
                         }
                         strokeDataChanged = true; //send the updated last end time/ duration to the server
                     }
                     changed = true;
                 }
                 if (_this.trainingData.workoutState != 12 /* workoutLogged */ &&
-                    (_this.trainingData.endDistance != 0 || _this.trainingData.endDuration != 0)) {
+                    (_this.trainingData.endDistance || _this.trainingData.endDistance != 0 ||
+                        _this.trainingData.endDuration != 0 || _this.trainingData.endDuration)) {
                     _this.trainingData.endDistance = 0;
                     _this.trainingData.endDuration = 0;
                     changed = true;
                 }
-                if (changed)
-                    _this.trainingDataEvent.pub(_this.trainingData);
                 if (strokeDataChanged)
                     _this._strokeDataEvent.pub(_this.strokeData);
+                if (changed)
+                    _this.trainingDataEvent.pub(_this.trainingData);
             });
         };
         PerformanceMonitorUsb.prototype.resetStartRowing = function () {
@@ -3238,7 +3273,7 @@ var ergometer;
             this.strokeData.strokesPerMinuteAverage = 0;
             this.strokeData.strokesPerMinute = 0;
             this.strokeData.distance = 0;
-            this.strokeData.time = 0;
+            //this.strokeData.time =0;
             this.strokeData.totCalories = 0; // accumulated calories burned  CSAFE_GETCALORIES_CMD
             this.strokeData.caloriesPerHour = 0; // calories/Hr derived from pace (GETPACE)
             this.strokeData.heartRate = 0;
@@ -4004,6 +4039,9 @@ var ergometer;
                 }
             }
         };
+        PerformanceMonitorBle.prototype.currentDriverIsWebBlueTooth = function () {
+            return this._driver instanceof ergometer.ble.DriverWebBlueTooth;
+        };
         /**
          *
          */
@@ -4162,7 +4200,7 @@ var ergometer;
             return this.driver.connect(deviceInfo._internalDevice, function () {
                 _this.changeConnectionState(ergometer.MonitorConnectionState.deviceReady);
                 _this.showInfo('Disconnected');
-                if (_this.autoReConnect) {
+                if (_this.autoReConnect && !_this.currentDriverIsWebBlueTooth()) {
                     _this.startScan(function (device) {
                         return device.name == deviceName;
                     });

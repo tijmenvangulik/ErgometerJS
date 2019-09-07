@@ -100,11 +100,16 @@ var Demo = /** @class */ (function () {
         //this.performanceMonitor.logLevel=ergometer.LogLevel.trace;
         var self = this;
         $('#connect').click(function () {
-            var index = parseInt($('#devices').val());
-            if (function (index) { return 0 && self._foundDevices && self._foundDevices.length > 0; })
-                self.performanceMonitor.connectToDevice(self._foundDevices[index])
-                    .then(_this.connected.bind(self))
-                    .catch(self.showError.bind(_this));
+            var indexstr = $('#devices').val();
+            if (indexstr) {
+                var index = parseInt(indexstr);
+                if (function (index) { return 0 && self._foundDevices && self._foundDevices.length > 0; })
+                    self.performanceMonitor.connectToDevice(self._foundDevices[index])
+                        .then(_this.connected.bind(self))
+                        .catch(self.showError.bind(_this));
+            }
+            else
+                _this.showError("first select a pm device");
         });
         $('#disconnect').click(function () {
             _this.performanceMonitor.disconnect();

@@ -1044,12 +1044,6 @@ declare namespace ergometer.csafe {
     interface IBuffer {
         getCadence(params: ICommandParamsBase): IBuffer;
     }
-    interface ICommandGetWorkTime extends ICommandParamsBase {
-        onDataReceived: (value: number) => void;
-    }
-    interface IBuffer {
-        getWorkTime(params: ICommandParamsBase): IBuffer;
-    }
     interface ICommandGetHorizontal extends ICommandParamsBase {
         onDataReceived: (value: number) => void;
     }
@@ -1594,7 +1588,6 @@ declare namespace ergometer {
         strokesPerMinuteAverage: number;
         strokesPerMinute: number;
         distance: number;
-        time: number;
         totCalories: number;
         caloriesPerHour: number;
         heartRate: number;

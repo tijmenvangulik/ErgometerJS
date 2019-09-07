@@ -88,7 +88,9 @@ You only need to change the javascript included file
    * Breaking change: the PerformanceMonitor is now named PerformanceMonitorBle
    * Fix: Web blue tooth driver dit not notice when device is disconnected
    * Upgraded Electron demo. The demo does not use web bluetooth instead of noble.
-  
+- 1.0.1
+   * Fixed bugs in Usb part
+   *   
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 

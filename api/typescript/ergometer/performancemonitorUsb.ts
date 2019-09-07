@@ -50,15 +50,15 @@ namespace ergometer {
     export class StrokeData {
         dragFactor =0;
         workDistance =0 ; 
-	    workTime =0;
+	      workTime =0;
         splitTime=0;
-	    power =0;
-	    strokesPerMinuteAverage =0;
-	    strokesPerMinute =0;
+	      power =0;
+	      strokesPerMinuteAverage =0;
+	      strokesPerMinute =0;
         distance =0;
-	    time =0;
-	    totCalories =0; // accumulated calories burned  CSAFE_GETCALORIES_CMD
-	    caloriesPerHour =0;  // calories/Hr derived from pace (GETPACE)
+	      //time =0;  //does not yet work remove for now
+        totCalories =0; // accumulated calories burned  CSAFE_GETCALORIES_CMD
+	      caloriesPerHour =0;  // calories/Hr derived from pace (GETPACE)
         heartRate =0;
     }
     export class TrainingData 
@@ -425,9 +425,9 @@ namespace ergometer {
                     this.strokeData.workDistance=value;
                 }
             })
-            .getWork({onDataReceived: (value) => {		
+            /*.getWork({onDataReceived: (value) => {		
                  this.strokeData.time=value;
-            }})
+            }})*/
             .getPace({
                 onDataReceived: (pace : number) => {
                     var caloriesPerHour=0;
@@ -558,12 +558,14 @@ namespace ergometer {
                 }})
                 .getWork({onDataReceived: (value) => {		
                     actualTime=value;
+                    
                 }})
                 .getHorizontal({onDataReceived: (value) => {		
                     actualDistance=value;
                 }})                       
                 .send()
                 .then(()=>{
+                    
                     //total time and distance can be changed because the rower is rowing.
                     //the work time and work distance should be 0 for initial change
                     if ( this.strokeState<=StrokeState.waitingForWheelToAccelerateState && 
@@ -603,31 +605,32 @@ namespace ergometer {
                             if (duration && duration>0) { //doing an fixed distance
                                 this.strokeData.workTime = duration;
                                 this.strokeData.workDistance = 0;
-                                this.strokeData.time=duration;
+                                //this.strokeData.time=duration;
                                 this.strokeData.distance = distance;
-                                this.trainingData.endDistance= distance;
+                                this.trainingData.endDistance= this.trainingData.distance;
                                 this.trainingData.endDuration=duration;
                             }
                             if (distance && distance>0) { //doing a fixed time
                                 this.strokeData.workDistance = distance;
                                 this.strokeData.workTime = 0;
-                                this.strokeData.time= duration;
+                                //this.strokeData.time= duration;
                                 this.strokeData.distance = distance;
-                                this.trainingData.endDuration=duration;
+                                this.trainingData.endDistance=distance;
+                                this.trainingData.endDuration=this.trainingData.duration;
                             }
                             strokeDataChanged=true;//send the updated last end time/ duration to the server
                         }
                         changed= true;
                     }
                     if (this.trainingData.workoutState!=WorkoutState.workoutLogged &&
-                        ( !this.trainingData.endDistance || this.trainingData.endDistance!=0 ||  
-                            this.trainingData.endDuration!=0 || !this.trainingData.endDuration)) {
+                        ( this.trainingData.endDistance || this.trainingData.endDistance!=0 ||  
+                            this.trainingData.endDuration!=0 || this.trainingData.endDuration)) {
                             this.trainingData.endDistance=0;
                             this.trainingData.endDuration=0;
                         changed=true;
                     }
-                    if (changed) this.trainingDataEvent.pub(this.trainingData);
                     if (strokeDataChanged) this._strokeDataEvent.pub(this.strokeData);
+                    if (changed) this.trainingDataEvent.pub(this.trainingData);
                     
                 });
         }
@@ -644,11 +647,10 @@ namespace ergometer {
             this.strokeData.strokesPerMinuteAverage =0;
             this.strokeData.strokesPerMinute =0;
             this.strokeData.distance =0;
-            this.strokeData.time =0;
+            //this.strokeData.time =0;
             this.strokeData.totCalories =0; // accumulated calories burned  CSAFE_GETCALORIES_CMD
             this.strokeData.caloriesPerHour =0;  // calories/Hr derived from pace (GETPACE)
             this.strokeData.heartRate =0;
-            
         }
         
     }
