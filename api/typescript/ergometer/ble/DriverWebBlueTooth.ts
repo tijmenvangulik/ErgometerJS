@@ -85,12 +85,14 @@ namespace ergometer.ble {
 
 
           var newDevice = device._internalDevice;
+                                      
+          newDevice.addEventListener('gattserverdisconnected', this.onDisconnected.bind(this));
+          newDevice.ongattserverdisconnected=this.onDisconnected.bind(this) ;
+          
           newDevice.gatt.connect().then((server : webbluetooth.BluetoothRemoteGATTServer)=>{
             this._device=newDevice;
             this._server=server;
             this._disconnectFn=disconnectFn;
-            newDevice.ongattserverdisconnected=this.onDisconnected.bind(this) ;
-            newDevice.addEventListener('ongattserverdisconnected', this.onDisconnected.bind(this) );
             resolve();
           },reject);
 
@@ -166,7 +168,7 @@ namespace ergometer.ble {
     public writeCharacteristic(serviceUIID : string,characteristicUUID:string, data:ArrayBufferView) : Promise<void> {
       if (this._performanceMonitor.logLevel==LogLevel.trace)
         this._performanceMonitor.traceInfo(`writeCharacteristic ${characteristicUUID} : ${data} `);
-      if (!this._device.gatt.connected) {
+      if (!this._device || !this._device.gatt || !this._device.gatt.connected) {
          this.onDisconnected(null);
          return Promise.reject("Not connected");
       }  
@@ -208,7 +210,7 @@ namespace ergometer.ble {
     public readCharacteristic(serviceUIID : string,characteristicUUID:string) : Promise<ArrayBuffer> {
       if (this._performanceMonitor.logLevel==LogLevel.trace)
         this._performanceMonitor.traceInfo(`readCharacteristic ${characteristicUUID}  `);
-       if (!this._device.gatt.connected) {
+       if (!this._device || !this._device.gatt || !this._device.gatt.connected) {
           this.onDisconnected(null);
           return Promise.reject("Not connected");
        }

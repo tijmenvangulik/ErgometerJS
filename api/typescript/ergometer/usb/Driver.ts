@@ -9,10 +9,10 @@ namespace ergometer.usb {
       readonly productName : string;
       readonly serialNumber : string;
       
-      open(disconnect : ()=>void,error : (err:any)=>void) : Promise<void>;
+      open(disconnect : ()=>void,error : (err:any)=>void,receiveData : (data:DataView)=>void) : Promise<void>;
       close() : Promise<void>;
       sendData( data : ArrayBuffer) : Promise<void>;
-      readData() : Promise<DataView>;
+      
     }
     
     export interface IDriver {

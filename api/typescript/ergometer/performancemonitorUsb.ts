@@ -124,13 +124,20 @@ namespace ergometer {
         static canUseNodeHid() : boolean {
             return typeof nodehid!="undefined"
         }
+        static canUseWebHid() : boolean {
+            return typeof navigator.hid!="undefined"
+        }
         static canUseUsb() : boolean {
-            return PerformanceMonitorUsb.canUseNodeHid();
+            return PerformanceMonitorUsb.canUseNodeHid() || 
+                    PerformanceMonitorUsb.canUseWebHid();
         }
         protected initialize() {
             super.initialize();
             if (PerformanceMonitorUsb.canUseNodeHid()) {
                 this._driver= new ergometer.usb.DriverNodeHid();
+            }
+            else if (PerformanceMonitorUsb.canUseWebHid()) {
+                this._driver= new ergometer.usb.DriverWebHid();
             }
             this._splitCommandsWhenToBig=false;
             this._checkFrameEnding=false;  
@@ -153,7 +160,11 @@ namespace ergometer {
             })
             return result;
         }
-        
+        private receiveData(data:DataView) {
+            this.resetStartCsafe();
+            this.handeReceivedDriverData(data);
+            this._csafeBuzy=false;
+        }
 
         public sendCSafeBuffer() : Promise<void> {
             
@@ -172,20 +183,12 @@ namespace ergometer {
                     
                     this.traceInfo("buzy");
                     this.traceInfo("send "+JSON.stringify(this.csafeBuffer.rawCommands));
+                    //the send will resolve when all is received
                     super.sendCSafeBuffer().then(()=>{
-                        this._device.readData().then((dataView : DataView)=>{
-                            this.resetStartCsafe();
-                            this.handeReceivedDriverData(dataView);
-                            this._csafeBuzy=false;
-                            this.traceInfo("end buzy");
-                            resolve();
-                        }).catch( (e)=>{
-                            this.disconnected();//the usb has not an disconnect event, assume an error is an disconnect
-                            this.handleError(e);
-                            this._csafeBuzy=false;
-                            this.traceInfo("end buzy");
-                            reject(e);
-                        })
+                        this._csafeBuzy=false;
+                        this.traceInfo("end buzy");
+                        resolve();
+                        
                     }).catch( (e)=>{
                         this.disconnected();//the usb has not an disconnect event, assume an error is an disconnect
                         this.handleError(e);
@@ -226,6 +229,7 @@ namespace ergometer {
             }
         }
         private disconnected() {
+            
             this._csafeBuzy=false;
             if (this._device) {
                 this.changeConnectionState(MonitorConnectionState.deviceReady )        
@@ -233,13 +237,15 @@ namespace ergometer {
             }
               
         }
-
+        
         public connectToDevice(device : UsbDevice)  : Promise<void>{
             if (!this._driver) return Promise.reject("driver not set");
             if (!device) return Promise.reject("device is null");
             this._device=device._internalDevice;
             this.changeConnectionState(MonitorConnectionState.connecting);
-            var result=this._device.open(this.disconnected,this.handleError.bind(this));
+            var result=this._device.open(this.disconnected,
+                this.handleError.bind(this),
+                this.receiveData.bind(this));
             result.then(()=>{
                 this._csafeBuzy=false;
                 this.changeConnectionState(MonitorConnectionState.connected);

@@ -210,7 +210,7 @@ namespace ergometer {
             this._logLevel = value;
         }
         public disconnect() {
-
+            
         }
         /**
          * read the current connection state
@@ -221,7 +221,7 @@ namespace ergometer {
         }
 
         protected connected() {
-
+            
         }
         /**
          *
@@ -232,8 +232,11 @@ namespace ergometer {
                 var oldValue=this._connectionState;
                 this._connectionState=value;
                 this.connectionStateChangedEvent.pub(oldValue,value);
-                if (value==MonitorConnectionState.connected)
-                  this.connected()
+                if (value==MonitorConnectionState.connected) {
+                    this.clearWaitResponseCommands();
+                    this.connected();
+                }
+                  
             }
         }
 
@@ -246,11 +249,13 @@ namespace ergometer {
         public get connectionStateChangedEvent(): pubSub.Event<ConnectionStateChangedEvent> {
             return this._connectionStateChangedEvent;
         }
-
+        
         /* ***************************************************************************************
          *                               csafe
          *****************************************************************************************  */
-
+         protected clearWaitResponseCommands(){
+            this._waitResponseCommands=[];
+         }
          protected removeOldSendCommands() {
             for (var i=this._waitResponseCommands.length-1;i>=0;i--) {
                 var command : IRawCommand = this._waitResponseCommands[i];
@@ -261,6 +266,7 @@ namespace ergometer {
                         command.onError("Nothing returned in 20 seconds");
                         this.handleError(`Nothing returned in 20 seconds from command ${command.command} ${command.detailCommand}`);
                     }
+                    if (command._reject) command._reject("Command time out");
                     this._waitResponseCommands.splice(i,1);
                 }
             }
@@ -278,51 +284,72 @@ namespace ergometer {
          * @returns {Promise<void>|Promise} use promis instead of success and error function
          */
         public sendCSafeBuffer() : Promise<void>{
-            this.removeOldSendCommands();
-            //prepare the array to be send
-            var rawCommandBuffer = this.csafeBuffer.rawCommands;
-            var commandArray : number[] = [];
-            rawCommandBuffer.forEach((command : IRawCommand)=>{
-
-                commandArray.push(command.command);
-                if (command.command>= csafe.defs.CTRL_CMD_SHORT_MIN)  {
-                    //it is an short command
-                    if (command.detailCommand|| command.data) {
-                        throw "short commands can not contain data or a detail command"
+            return new Promise((resolve,reject)=>{
+                this.removeOldSendCommands();
+                //prepare the array to be send
+                var rawCommandBuffer = this.csafeBuffer.rawCommands;
+                var commandArray : number[] = [];
+                rawCommandBuffer.forEach((command : IRawCommand)=>{
+    
+                    commandArray.push(command.command);
+                    if (command.command>= csafe.defs.CTRL_CMD_SHORT_MIN)  {
+                        //it is an short command
+                        if (command.detailCommand|| command.data) {
+                            throw "short commands can not contain data or a detail command"
+                        }
                     }
+                    else {
+                        if (command.detailCommand) {
+                            var dataLength=1;
+                            if (command.data  && command.data.length>0)
+                                dataLength=dataLength+command.data.length+1;
+                            commandArray.push(dataLength); //length for the short command
+                            //the detail command
+                            commandArray.push(command.detailCommand);
+                        }
+                        //the data
+                        if (command.data && command.data.length>0) {
+                            commandArray.push(command.data.length);
+                            commandArray=commandArray.concat(command.data);
+                        }
+                    }
+    
+                });
+                var waitingForResult=false;
+                //the  last command which waits for result will resolve when the last result is received
+                if (rawCommandBuffer.length>0) {
+                    for (let index = rawCommandBuffer.length-1; index >=0 ; index--) {
+                        const lastCommand = rawCommandBuffer[index];
+                        if (lastCommand.waitForResponse) {
+                            lastCommand._reject=reject;
+                            lastCommand._resolve=resolve;
+                            waitingForResult=true;
+                            break;
+                        }
+                    }
+                    
+                    
                 }
-                else {
-                    if (command.detailCommand) {
-                        var dataLength=1;
-                        if (command.data  && command.data.length>0)
-                            dataLength=dataLength+command.data.length+1;
-                        commandArray.push(dataLength); //length for the short command
-                        //the detail command
-                        commandArray.push(command.detailCommand);
-                    }
-                    //the data
-                    if (command.data && command.data.length>0) {
-                        commandArray.push(command.data.length);
-                        commandArray=commandArray.concat(command.data);
-                    }
-                }
-
-            });
-            this.csafeBuffer.clear();
-            //send all the csafe commands in one go
-            return this.sendCsafeCommands(commandArray)
-               .then(()=>{
-                rawCommandBuffer.forEach((command : IRawCommand)=> {
-                    command._timestamp = new Date().getTime();
-                    if (command.waitForResponse)
-                        this._waitResponseCommands.push(command);
-                })
-                },(e)=>{
-                        rawCommandBuffer.forEach((command : IRawCommand)=>{
-                        if (command.onError) command.onError(e);
-                        })
-                    }
-               );
+                this.csafeBuffer.clear();
+                //send all the csafe commands in one go
+                 this.sendCsafeCommands(commandArray)
+                   .then(()=>{
+                    rawCommandBuffer.forEach((command : IRawCommand)=> {
+                        command._timestamp = new Date().getTime();
+                        if (command.waitForResponse)
+                            this._waitResponseCommands.push(command);
+                    });
+                    //when not waiting for results, resolve directly, no need for delay
+                    if (!waitingForResult) resolve();
+                    },(e)=>{
+                            rawCommandBuffer.forEach((command : IRawCommand)=>{
+                            if (command.onError) command.onError(e);
+                            });
+                            reject(e);
+                        }
+                   );
+            })
+            
         }
 
         
@@ -359,7 +386,7 @@ namespace ergometer {
                                 ()=>{
                                     this.traceInfo("csafe command send");
                                     if (sendBytesIndex>=bytesToSend.length) {
-                                        //resolve when all data is received
+                                        //resolve when all data is send
                                        resolve();
                                     }
     
@@ -391,6 +418,7 @@ namespace ergometer {
                         var dataView= new DataView(parsed.data.buffer);
                         command.onDataReceived(dataView);
                     }
+                    if (command._resolve) command._resolve();
                     this._waitResponseCommands.splice(i,1);//remove the item from the send list
                     
                        
@@ -551,7 +579,13 @@ namespace ergometer {
                         return this.csafeBuffer;
                     },
                     send: (sucess? : ()=>void,error? : ErrorHandler) : Promise<void> => {
-                        return this.sendCSafeBuffer().then(sucess,error);
+                        return this.sendCSafeBuffer()
+                          .then(sucess)
+                          .catch(e=>{
+                              this.handleError(e);
+                              if (error) error(e);
+                              return Promise.reject(e);
+                            });
                     },
                     addRawCommand: (info:csafe.IRawCommand):csafe.IBuffer=> {
                         this.csafeBuffer.rawCommands.push(info);

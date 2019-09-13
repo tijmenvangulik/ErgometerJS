@@ -66,7 +66,7 @@ class Demo {
     protected initialize() {
         this._performanceMonitor= new ergometer.PerformanceMonitorBle();
         //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before conneting
-        this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
+        //this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
         this.performanceMonitor.logEvent.sub(this,this.onLog);
         this.performanceMonitor.connectionStateChangedEvent.sub(this,this.onConnectionStateChanged);
         //connect to the rowing
@@ -177,7 +177,9 @@ class Demo {
         .send()
         .then(()=>{  //send returns a promise
             console.log("send done, you can send th next")
-        }   );
+        }).catch(e=>{
+            console.error(e);
+        });
     }
     protected onPowerCurve(curve : number[]) {
         this.showData("Curve in gui: "+JSON.stringify(curve));

@@ -330,7 +330,6 @@ declare namespace ergometer.usb {
     const USB_CSAVE_SIZE = 120;
     const WRITE_BUF_SIZE = 121;
     const REPORT_TYPE = 2;
-    const CONCEPT2_VENDOR_ID = 6052;
 }
 declare namespace ergometer.usb {
     type DisconnectFunc = () => void;
@@ -340,9 +339,10 @@ declare namespace ergometer.usb {
         readonly productId: number;
         readonly productName: string;
         readonly serialNumber: string;
-        open(disconnect: () => void, error: (err: any) => void, receiveData: (data: DataView) => void): Promise<void>;
+        open(disconnect: () => void, error: (err: any) => void): Promise<void>;
         close(): Promise<void>;
         sendData(data: ArrayBuffer): Promise<void>;
+        readData(): Promise<DataView>;
     }
     interface IDriver {
         requestDevics(): Promise<Devices>;
@@ -360,41 +360,12 @@ declare namespace ergometer.usb {
         serialNumber: string;
         constructor(deviceInfo: any);
         callError(err: any): void;
-        private _receiveData;
-        open(disconnect: DisconnectFunc, error: (err: any) => void, receiveData: (data: DataView) => void): Promise<void>;
+        open(disconnect: DisconnectFunc, error: (err: any) => void): Promise<void>;
         close(): Promise<void>;
         sendData(data: ArrayBuffer): Promise<void>;
-        readData(): void;
-    }
-    class DriverNodeHid implements IDriver {
-        requestDevics(): Promise<Devices>;
-    }
-}
-declare namespace ergometer.usb {
-    class DeviceWebHid implements IDevice {
-        private _disconnect;
-        private _onError;
-        private _deviceInfo;
-        vendorId: number;
-        productId: number;
-        productName: string;
-        serialNumber: string;
-        constructor(deviceInfo: webhid.HIDDevice);
-        callError(err: any): void;
-        private disconnected(device);
-        private received;
-        private _receiveData;
-        open(disconnect: DisconnectFunc, error: (err: any) => void, receiveData: (data: DataView) => void): Promise<void>;
-        private detachDisconnect();
-        close(): Promise<void>;
-        sendData(data: ArrayBuffer): Promise<void>;
-        private receivedReportd(ev);
-        private _waitingForRead;
-        private _waitingForReadReject;
-        private _readDataQueue;
         readData(): Promise<DataView>;
     }
-    class DriverWebHid implements IDriver {
+    class DriverNodeHid implements IDriver {
         requestDevics(): Promise<Devices>;
     }
 }
@@ -882,6 +853,7 @@ declare namespace ergometer.csafe {
         data?: number[];
         onDataReceived?: (data: DataView) => void;
         onError?: ErrorHandler;
+        _timestamp?: number;
     }
     interface IBuffer {
         rawCommands: IRawCommand[];
@@ -1548,7 +1520,6 @@ declare namespace ergometer {
         * @returns {pubSub.Event<ConnectionStateChangedEvent>}
         */
         readonly connectionStateChangedEvent: pubSub.Event<ConnectionStateChangedEvent>;
-        protected clearWaitResponseCommands(): void;
         protected removeOldSendCommands(): void;
         protected driver_write(data: ArrayBufferView): Promise<void>;
         /**
@@ -1654,12 +1625,10 @@ declare namespace ergometer {
         readonly trainingDataEvent: pubSub.Event<TrainingDataEvent>;
         readonly strokeDataEvent: pubSub.Event<StrokeDataEvent>;
         static canUseNodeHid(): boolean;
-        static canUseWebHid(): boolean;
         static canUseUsb(): boolean;
         protected initialize(): void;
         driver: ergometer.usb.IDriver;
         protected driver_write(data: ArrayBufferView): Promise<void>;
-        private receiveData(data);
         sendCSafeBuffer(): Promise<void>;
         requestDevics(): Promise<UsbDevices>;
         disconnect(): void;

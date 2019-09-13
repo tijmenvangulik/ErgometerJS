@@ -7,15 +7,12 @@
     "lib": [
       "es5",
       "es2015",
-      "dom"],
-      "typeRoots" : ["./typescript/typings"]
+      "dom"]
   },
-  
   "exclude": [
     "node_modules"
   ],
   "filesGlob": [
-
   ],
   "files": [
     "../../api/typescript/typings/bleat.classic.d.ts",

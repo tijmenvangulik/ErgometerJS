@@ -583,68 +583,196 @@ var ergometer;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
- * Created by tijmen on 03/04/2017.
- */
-/**
- * Created by tijmen on 01-02-16.
- *
- * see simpleBLE.d.ts for the definitions of the simpleBLE
- * It assumes that there simple ble is already imported as a var named simpleBLE
- *
+ * Created by tijmen on 16-02-16.
  */
 var ergometer;
 /**
- * Created by tijmen on 03/04/2017.
- */
-/**
- * Created by tijmen on 01-02-16.
- *
- * see simpleBLE.d.ts for the definitions of the simpleBLE
- * It assumes that there simple ble is already imported as a var named simpleBLE
- *
+ * Created by tijmen on 16-02-16.
  */
 (function (ergometer) {
     var ble;
     (function (ble) {
-        var DriverSimpleBLE = /** @class */ (function () {
-            function DriverSimpleBLE() {
+        var RecordingEventType;
+        (function (RecordingEventType) {
+            RecordingEventType[RecordingEventType["startScan"] = 0] = "startScan";
+            RecordingEventType[RecordingEventType["scanFoundFn"] = 1] = "scanFoundFn";
+            RecordingEventType[RecordingEventType["stopScan"] = 2] = "stopScan";
+            RecordingEventType[RecordingEventType["connect"] = 3] = "connect";
+            RecordingEventType[RecordingEventType["disconnectFn"] = 4] = "disconnectFn";
+            RecordingEventType[RecordingEventType["disconnect"] = 5] = "disconnect";
+            RecordingEventType[RecordingEventType["writeCharacteristic"] = 6] = "writeCharacteristic";
+            RecordingEventType[RecordingEventType["readCharacteristic"] = 7] = "readCharacteristic";
+            RecordingEventType[RecordingEventType["enableNotification"] = 8] = "enableNotification";
+            RecordingEventType[RecordingEventType["notificationReceived"] = 9] = "notificationReceived";
+            RecordingEventType[RecordingEventType["disableNotification"] = 10] = "disableNotification";
+        })(RecordingEventType = ble.RecordingEventType || (ble.RecordingEventType = {}));
+        var RecordingDriver = /** @class */ (function () {
+            function RecordingDriver(performanceMonitor, realDriver) {
+                this._events = [];
+                this._performanceMonitor = performanceMonitor;
+                this._realDriver = realDriver;
             }
-            DriverSimpleBLE.prototype.connect = function (device, disconnectFn) {
+            RecordingDriver.prototype.getRelativeTime = function () {
+                return ergometer.utils.getTime() - this._startTime;
+            };
+            RecordingDriver.prototype.addRecording = function (eventType, data) {
+                var newRec = {
+                    timeStamp: this.getRelativeTime(),
+                    eventType: RecordingEventType[eventType]
+                };
+                if (data) {
+                    newRec.data = data;
+                }
+                this._events.push(newRec);
+                return newRec;
+            };
+            Object.defineProperty(RecordingDriver.prototype, "events", {
+                get: function () {
+                    return this._events;
+                },
+                set: function (value) {
+                    this._events = value;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            RecordingDriver.prototype.clear = function () {
+                this._events = [];
+            };
+            RecordingDriver.prototype.startRecording = function () {
+                this.clear();
+                this._startTime = ergometer.utils.getTime();
+            };
+            RecordingDriver.prototype.recordResolveFunc = function (resolve, rec) {
+                var _this = this;
+                return function () {
+                    rec.timeStampReturn = _this.getRelativeTime();
+                    resolve();
+                };
+            };
+            RecordingDriver.prototype.recordResolveBufferFunc = function (resolve, rec) {
+                var _this = this;
+                return function (data) {
+                    rec.timeStampReturn = _this.getRelativeTime();
+                    rec.data.data = ergometer.utils.typedArrayToHexString(data);
+                    resolve(data);
+                };
+            };
+            RecordingDriver.prototype.recordErrorFunc = function (reject, rec) {
+                var _this = this;
+                return function (e) {
+                    rec.timeStampReturn = _this.getRelativeTime();
+                    rec.error = e;
+                    reject(e);
+                };
+            };
+            RecordingDriver.prototype.startScan = function (foundFn) {
+                var _this = this;
                 return new Promise(function (resolve, reject) {
-                    //  simpleBLE.connect("");
+                    var rec = _this.addRecording(RecordingEventType.startScan);
+                    _this._realDriver.startScan(function (device) {
+                        _this.addRecording(RecordingEventType.scanFoundFn, {
+                            address: device.address,
+                            name: device.name,
+                            rssi: device.rssi
+                        });
+                        foundFn(device);
+                    })
+                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
                 });
             };
-            DriverSimpleBLE.prototype.disconnect = function () {
-                simpleBLE.disconnect();
+            RecordingDriver.prototype.stopScan = function () {
+                this.addRecording(RecordingEventType.stopScan);
+                this._realDriver.stopScan();
             };
-            DriverSimpleBLE.prototype.startScan = function (foundFn) {
+            RecordingDriver.prototype.connect = function (device, disconnectFn) {
+                var _this = this;
                 return new Promise(function (resolve, reject) {
-                    //  simpleBLE.scan();
+                    var rec = _this.addRecording(RecordingEventType.connect);
+                    _this._realDriver.connect(device, function () {
+                        _this.addRecording(RecordingEventType.disconnectFn);
+                        disconnectFn();
+                    }).then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
                 });
             };
-            DriverSimpleBLE.prototype.stopScan = function () {
+            RecordingDriver.prototype.disconnect = function () {
+                this.addRecording(RecordingEventType.disconnect);
+                this._realDriver.disconnect();
+            };
+            RecordingDriver.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+                var _this = this;
                 return new Promise(function (resolve, reject) {
+                    var rec = _this.addRecording(RecordingEventType.writeCharacteristic, {
+                        serviceUIID: serviceUIID,
+                        characteristicUUID: characteristicUUID,
+                        data: ergometer.utils.typedArrayToHexString(data.buffer)
+                    });
+                    _this._realDriver.writeCharacteristic(serviceUIID, characteristicUUID, data)
+                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
                 });
             };
-            DriverSimpleBLE.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+            RecordingDriver.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+                var _this = this;
                 return new Promise(function (resolve, reject) {
+                    var rec = _this.addRecording(RecordingEventType.readCharacteristic, {
+                        serviceUIID: serviceUIID,
+                        characteristicUUID: characteristicUUID
+                    });
+                    _this._realDriver.readCharacteristic(serviceUIID, characteristicUUID)
+                        .then(_this.recordResolveBufferFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
                 });
             };
-            DriverSimpleBLE.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+            RecordingDriver.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+                /*
+                //make a wrapper for each call otherwise it returns the
+                class ReturnWrapper {
+          
+                    constructor (private serviceUIID,private characteristicUUID,private receive,private driver)  {
+          
+                    }
+                    public getReturnFunc() {
+                        return (data:ArrayBuffer) => {
+                        this.driver.addRecording(RecordingEventType.notificationReceived,{
+                            serviceUIID:this.serviceUIID,
+                            characteristicUUID:this.characteristicUUID,
+                            data:utils.typedArrayToHexString(data)});
+                        this.receive(data);
+                    }
+                }
+                }
+                var receivedWrapper = new ReturnWrapper(serviceUIID,characteristicUUID,receive,this);
+                */
+                var _this = this;
                 return new Promise(function (resolve, reject) {
+                    var rec = _this.addRecording(RecordingEventType.enableNotification, {
+                        serviceUIID: serviceUIID,
+                        characteristicUUID: characteristicUUID
+                    });
+                    _this._realDriver.enableNotification(serviceUIID, characteristicUUID, function (data) {
+                        _this.addRecording(RecordingEventType.notificationReceived, {
+                            serviceUIID: serviceUIID,
+                            characteristicUUID: characteristicUUID,
+                            data: ergometer.utils.typedArrayToHexString(data)
+                        });
+                        receive(data);
+                    })
+                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
                 });
             };
-            DriverSimpleBLE.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+            RecordingDriver.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+                var _this = this;
                 return new Promise(function (resolve, reject) {
+                    var rec = _this.addRecording(RecordingEventType.disableNotification, {
+                        serviceUIID: serviceUIID,
+                        characteristicUUID: characteristicUUID
+                    });
+                    _this._realDriver.disableNotification(serviceUIID, characteristicUUID)
+                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
                 });
             };
-            DriverSimpleBLE.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
-                return new Promise(function (resolve, reject) {
-                });
-            };
-            return DriverSimpleBLE;
+            return RecordingDriver;
         }());
-        ble.DriverSimpleBLE = DriverSimpleBLE;
+        ble.RecordingDriver = RecordingDriver;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -964,196 +1092,68 @@ var ergometer;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
- * Created by tijmen on 16-02-16.
+ * Created by tijmen on 03/04/2017.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ *
+ * see simpleBLE.d.ts for the definitions of the simpleBLE
+ * It assumes that there simple ble is already imported as a var named simpleBLE
+ *
  */
 var ergometer;
 /**
- * Created by tijmen on 16-02-16.
+ * Created by tijmen on 03/04/2017.
+ */
+/**
+ * Created by tijmen on 01-02-16.
+ *
+ * see simpleBLE.d.ts for the definitions of the simpleBLE
+ * It assumes that there simple ble is already imported as a var named simpleBLE
+ *
  */
 (function (ergometer) {
     var ble;
     (function (ble) {
-        var RecordingEventType;
-        (function (RecordingEventType) {
-            RecordingEventType[RecordingEventType["startScan"] = 0] = "startScan";
-            RecordingEventType[RecordingEventType["scanFoundFn"] = 1] = "scanFoundFn";
-            RecordingEventType[RecordingEventType["stopScan"] = 2] = "stopScan";
-            RecordingEventType[RecordingEventType["connect"] = 3] = "connect";
-            RecordingEventType[RecordingEventType["disconnectFn"] = 4] = "disconnectFn";
-            RecordingEventType[RecordingEventType["disconnect"] = 5] = "disconnect";
-            RecordingEventType[RecordingEventType["writeCharacteristic"] = 6] = "writeCharacteristic";
-            RecordingEventType[RecordingEventType["readCharacteristic"] = 7] = "readCharacteristic";
-            RecordingEventType[RecordingEventType["enableNotification"] = 8] = "enableNotification";
-            RecordingEventType[RecordingEventType["notificationReceived"] = 9] = "notificationReceived";
-            RecordingEventType[RecordingEventType["disableNotification"] = 10] = "disableNotification";
-        })(RecordingEventType = ble.RecordingEventType || (ble.RecordingEventType = {}));
-        var RecordingDriver = /** @class */ (function () {
-            function RecordingDriver(performanceMonitor, realDriver) {
-                this._events = [];
-                this._performanceMonitor = performanceMonitor;
-                this._realDriver = realDriver;
+        var DriverSimpleBLE = /** @class */ (function () {
+            function DriverSimpleBLE() {
             }
-            RecordingDriver.prototype.getRelativeTime = function () {
-                return ergometer.utils.getTime() - this._startTime;
-            };
-            RecordingDriver.prototype.addRecording = function (eventType, data) {
-                var newRec = {
-                    timeStamp: this.getRelativeTime(),
-                    eventType: RecordingEventType[eventType]
-                };
-                if (data) {
-                    newRec.data = data;
-                }
-                this._events.push(newRec);
-                return newRec;
-            };
-            Object.defineProperty(RecordingDriver.prototype, "events", {
-                get: function () {
-                    return this._events;
-                },
-                set: function (value) {
-                    this._events = value;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            RecordingDriver.prototype.clear = function () {
-                this._events = [];
-            };
-            RecordingDriver.prototype.startRecording = function () {
-                this.clear();
-                this._startTime = ergometer.utils.getTime();
-            };
-            RecordingDriver.prototype.recordResolveFunc = function (resolve, rec) {
-                var _this = this;
-                return function () {
-                    rec.timeStampReturn = _this.getRelativeTime();
-                    resolve();
-                };
-            };
-            RecordingDriver.prototype.recordResolveBufferFunc = function (resolve, rec) {
-                var _this = this;
-                return function (data) {
-                    rec.timeStampReturn = _this.getRelativeTime();
-                    rec.data.data = ergometer.utils.typedArrayToHexString(data);
-                    resolve(data);
-                };
-            };
-            RecordingDriver.prototype.recordErrorFunc = function (reject, rec) {
-                var _this = this;
-                return function (e) {
-                    rec.timeStampReturn = _this.getRelativeTime();
-                    rec.error = e;
-                    reject(e);
-                };
-            };
-            RecordingDriver.prototype.startScan = function (foundFn) {
-                var _this = this;
+            DriverSimpleBLE.prototype.connect = function (device, disconnectFn) {
                 return new Promise(function (resolve, reject) {
-                    var rec = _this.addRecording(RecordingEventType.startScan);
-                    _this._realDriver.startScan(function (device) {
-                        _this.addRecording(RecordingEventType.scanFoundFn, {
-                            address: device.address,
-                            name: device.name,
-                            rssi: device.rssi
-                        });
-                        foundFn(device);
-                    })
-                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
+                    //  simpleBLE.connect("");
                 });
             };
-            RecordingDriver.prototype.stopScan = function () {
-                this.addRecording(RecordingEventType.stopScan);
-                this._realDriver.stopScan();
+            DriverSimpleBLE.prototype.disconnect = function () {
+                simpleBLE.disconnect();
             };
-            RecordingDriver.prototype.connect = function (device, disconnectFn) {
-                var _this = this;
+            DriverSimpleBLE.prototype.startScan = function (foundFn) {
                 return new Promise(function (resolve, reject) {
-                    var rec = _this.addRecording(RecordingEventType.connect);
-                    _this._realDriver.connect(device, function () {
-                        _this.addRecording(RecordingEventType.disconnectFn);
-                        disconnectFn();
-                    }).then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
+                    //  simpleBLE.scan();
                 });
             };
-            RecordingDriver.prototype.disconnect = function () {
-                this.addRecording(RecordingEventType.disconnect);
-                this._realDriver.disconnect();
-            };
-            RecordingDriver.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
-                var _this = this;
+            DriverSimpleBLE.prototype.stopScan = function () {
                 return new Promise(function (resolve, reject) {
-                    var rec = _this.addRecording(RecordingEventType.writeCharacteristic, {
-                        serviceUIID: serviceUIID,
-                        characteristicUUID: characteristicUUID,
-                        data: ergometer.utils.typedArrayToHexString(data.buffer)
-                    });
-                    _this._realDriver.writeCharacteristic(serviceUIID, characteristicUUID, data)
-                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
                 });
             };
-            RecordingDriver.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
-                var _this = this;
+            DriverSimpleBLE.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
                 return new Promise(function (resolve, reject) {
-                    var rec = _this.addRecording(RecordingEventType.readCharacteristic, {
-                        serviceUIID: serviceUIID,
-                        characteristicUUID: characteristicUUID
-                    });
-                    _this._realDriver.readCharacteristic(serviceUIID, characteristicUUID)
-                        .then(_this.recordResolveBufferFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
                 });
             };
-            RecordingDriver.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
-                /*
-                //make a wrapper for each call otherwise it returns the
-                class ReturnWrapper {
-          
-                    constructor (private serviceUIID,private characteristicUUID,private receive,private driver)  {
-          
-                    }
-                    public getReturnFunc() {
-                        return (data:ArrayBuffer) => {
-                        this.driver.addRecording(RecordingEventType.notificationReceived,{
-                            serviceUIID:this.serviceUIID,
-                            characteristicUUID:this.characteristicUUID,
-                            data:utils.typedArrayToHexString(data)});
-                        this.receive(data);
-                    }
-                }
-                }
-                var receivedWrapper = new ReturnWrapper(serviceUIID,characteristicUUID,receive,this);
-                */
-                var _this = this;
+            DriverSimpleBLE.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
                 return new Promise(function (resolve, reject) {
-                    var rec = _this.addRecording(RecordingEventType.enableNotification, {
-                        serviceUIID: serviceUIID,
-                        characteristicUUID: characteristicUUID
-                    });
-                    _this._realDriver.enableNotification(serviceUIID, characteristicUUID, function (data) {
-                        _this.addRecording(RecordingEventType.notificationReceived, {
-                            serviceUIID: serviceUIID,
-                            characteristicUUID: characteristicUUID,
-                            data: ergometer.utils.typedArrayToHexString(data)
-                        });
-                        receive(data);
-                    })
-                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
                 });
             };
-            RecordingDriver.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
-                var _this = this;
+            DriverSimpleBLE.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
                 return new Promise(function (resolve, reject) {
-                    var rec = _this.addRecording(RecordingEventType.disableNotification, {
-                        serviceUIID: serviceUIID,
-                        characteristicUUID: characteristicUUID
-                    });
-                    _this._realDriver.disableNotification(serviceUIID, characteristicUUID)
-                        .then(_this.recordResolveFunc(resolve, rec), _this.recordErrorFunc(reject, rec));
                 });
             };
-            return RecordingDriver;
+            DriverSimpleBLE.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+                return new Promise(function (resolve, reject) {
+                });
+            };
+            return DriverSimpleBLE;
         }());
-        ble.RecordingDriver = RecordingDriver;
+        ble.DriverSimpleBLE = DriverSimpleBLE;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -1415,54 +1415,6 @@ var ergometer;
         ble.ReplayDriver = ReplayDriver;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
-/**
- * Created by tijmen on 16-01-16.
- */
-/** @internal */
-var ergometer;
-/**
- * Created by tijmen on 16-01-16.
- */
-/** @internal */
-(function (ergometer) {
-    var ble;
-    (function (ble) {
-        /** @internal */
-        ble.PMDEVICE = "ce060000-43e5-11e4-916c-0800200c9a66";
-        // Service UUIDs
-        ble.PMDEVICE_INFO_SERVICE = "ce060010-43e5-11e4-916c-0800200c9a66";
-        ble.PMCONTROL_SERVICE = "ce060020-43e5-11e4-916c-0800200c9a66";
-        ble.PMROWING_SERVICE = "ce060030-43e5-11e4-916c-0800200c9a66";
-        // Characteristic UUIDs for PM device info service
-        ble.MODELNUMBER_CHARACTERISIC = "ce060011-43e5-11e4-916c-0800200c9a66";
-        ble.SERIALNUMBER_CHARACTERISTIC = "ce060012-43e5-11e4-916c-0800200c9a66";
-        ble.HWREVISION_CHARACTERISIC = "ce060013-43e5-11e4-916c-0800200c9a66";
-        ble.FWREVISION_CHARACTERISIC = "ce060014-43e5-11e4-916c-0800200c9a66";
-        ble.MANUFNAME_CHARACTERISIC = "ce060015-43e5-11e4-916c-0800200c9a66";
-        ble.MACHINETYPE_CHARACTERISIC = "ce060016-43e5-11e4-916c-0800200c9a66";
-        // Characteristic UUIDs for PM control service
-        ble.TRANSMIT_TO_PM_CHARACTERISIC = "ce060021-43e5-11e4-916c-0800200c9a66";
-        ble.RECEIVE_FROM_PM_CHARACTERISIC = "ce060022-43e5-11e4-916c-0800200c9a66";
-        // Characteristic UUIDs for rowing service
-        ble.ROWING_STATUS_CHARACTERISIC = "ce060031-43e5-11e4-916c-0800200c9a66";
-        ble.EXTRA_STATUS1_CHARACTERISIC = "ce060032-43e5-11e4-916c-0800200c9a66";
-        ble.EXTRA_STATUS2_CHARACTERISIC = "ce060033-43e5-11e4-916c-0800200c9a66";
-        ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC = "ce060034-43e5-11e4-916c-0800200c9a66";
-        ble.STROKE_DATA_CHARACTERISIC = "ce060035-43e5-11e4-916c-0800200c9a66";
-        ble.EXTRA_STROKE_DATA_CHARACTERISIC = "ce060036-43e5-11e4-916c-0800200c9a66";
-        ble.SPLIT_INTERVAL_DATA_CHARACTERISIC = "ce060037-43e5-11e4-916c-0800200c9a66";
-        ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC = "ce060038-43e5-11e4-916c-0800200c9a66";
-        ble.ROWING_SUMMARY_CHARACTERISIC = "ce060039-43e5-11e4-916c-0800200c9a66";
-        ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC = "ce06003a-43e5-11e4-916c-0800200c9a66";
-        ble.HEART_RATE_BELT_INFO_CHARACTERISIC = "ce06003b-43e5-11e4-916c-0800200c9a66";
-        ble.MULTIPLEXED_INFO_CHARACTERISIC = "ce060080-43e5-11e4-916c-0800200c9a66";
-        ble.NOTIFICATION_DESCRIPTOR = "00002902-0000-1000-8000-00805f9b34fb";
-        ble.PACKET_SIZE = 20;
-        ;
-        ;
-        ;
-    })(ble = ergometer.ble || (ergometer.ble = {}));
-})(ergometer || (ergometer = {}));
 var ergometer;
 (function (ergometer) {
     var usb;
@@ -1697,6 +1649,54 @@ var ergometer;
         }());
         usb.DriverWebHid = DriverWebHid;
     })(usb = ergometer.usb || (ergometer.usb = {}));
+})(ergometer || (ergometer = {}));
+/**
+ * Created by tijmen on 16-01-16.
+ */
+/** @internal */
+var ergometer;
+/**
+ * Created by tijmen on 16-01-16.
+ */
+/** @internal */
+(function (ergometer) {
+    var ble;
+    (function (ble) {
+        /** @internal */
+        ble.PMDEVICE = "ce060000-43e5-11e4-916c-0800200c9a66";
+        // Service UUIDs
+        ble.PMDEVICE_INFO_SERVICE = "ce060010-43e5-11e4-916c-0800200c9a66";
+        ble.PMCONTROL_SERVICE = "ce060020-43e5-11e4-916c-0800200c9a66";
+        ble.PMROWING_SERVICE = "ce060030-43e5-11e4-916c-0800200c9a66";
+        // Characteristic UUIDs for PM device info service
+        ble.MODELNUMBER_CHARACTERISIC = "ce060011-43e5-11e4-916c-0800200c9a66";
+        ble.SERIALNUMBER_CHARACTERISTIC = "ce060012-43e5-11e4-916c-0800200c9a66";
+        ble.HWREVISION_CHARACTERISIC = "ce060013-43e5-11e4-916c-0800200c9a66";
+        ble.FWREVISION_CHARACTERISIC = "ce060014-43e5-11e4-916c-0800200c9a66";
+        ble.MANUFNAME_CHARACTERISIC = "ce060015-43e5-11e4-916c-0800200c9a66";
+        ble.MACHINETYPE_CHARACTERISIC = "ce060016-43e5-11e4-916c-0800200c9a66";
+        // Characteristic UUIDs for PM control service
+        ble.TRANSMIT_TO_PM_CHARACTERISIC = "ce060021-43e5-11e4-916c-0800200c9a66";
+        ble.RECEIVE_FROM_PM_CHARACTERISIC = "ce060022-43e5-11e4-916c-0800200c9a66";
+        // Characteristic UUIDs for rowing service
+        ble.ROWING_STATUS_CHARACTERISIC = "ce060031-43e5-11e4-916c-0800200c9a66";
+        ble.EXTRA_STATUS1_CHARACTERISIC = "ce060032-43e5-11e4-916c-0800200c9a66";
+        ble.EXTRA_STATUS2_CHARACTERISIC = "ce060033-43e5-11e4-916c-0800200c9a66";
+        ble.ROWING_STATUS_SAMPLE_RATE_CHARACTERISIC = "ce060034-43e5-11e4-916c-0800200c9a66";
+        ble.STROKE_DATA_CHARACTERISIC = "ce060035-43e5-11e4-916c-0800200c9a66";
+        ble.EXTRA_STROKE_DATA_CHARACTERISIC = "ce060036-43e5-11e4-916c-0800200c9a66";
+        ble.SPLIT_INTERVAL_DATA_CHARACTERISIC = "ce060037-43e5-11e4-916c-0800200c9a66";
+        ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC = "ce060038-43e5-11e4-916c-0800200c9a66";
+        ble.ROWING_SUMMARY_CHARACTERISIC = "ce060039-43e5-11e4-916c-0800200c9a66";
+        ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC = "ce06003a-43e5-11e4-916c-0800200c9a66";
+        ble.HEART_RATE_BELT_INFO_CHARACTERISIC = "ce06003b-43e5-11e4-916c-0800200c9a66";
+        ble.MULTIPLEXED_INFO_CHARACTERISIC = "ce060080-43e5-11e4-916c-0800200c9a66";
+        ble.NOTIFICATION_DESCRIPTOR = "00002902-0000-1000-8000-00805f9b34fb";
+        ble.PACKET_SIZE = 20;
+        ;
+        ;
+        ;
+    })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
 /**
  * Created by tijmen on 16-01-16.
@@ -4822,4 +4822,170 @@ var ergometer;
     }(ergometer.PerformanceMonitorBase));
     ergometer.PerformanceMonitorBle = PerformanceMonitorBle;
 })(ergometer || (ergometer = {}));
-//# sourceMappingURL=ergometer.js.map
+/**
+ * Demo of Concept 2 ergometer Performance Monitor
+ *
+ * This will will work with the PM5
+ *
+ * This unit contains some demo code which can both run on electron and cordova
+ *
+ * Created by tijmen on 01-06-15.
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+var Demo = /** @class */ (function () {
+    function Demo() {
+        this.initialize();
+    }
+    Object.defineProperty(Demo.prototype, "performanceMonitor", {
+        get: function () {
+            return this._performanceMonitor;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /**
+     * Print debug info to console and application UI.
+     */
+    Demo.prototype.showInfo = function (info) {
+        this.addText("data", info);
+    };
+    Demo.prototype.addText = function (id, text) {
+        var ctrl = $("#" + id);
+        var txtCtrl = $("<p/>");
+        txtCtrl.text(text);
+        ctrl.prepend(txtCtrl);
+    };
+    Demo.prototype.showData = function (data) {
+        this.addText("data", data);
+    };
+    Demo.prototype.initialize = function () {
+        var _this = this;
+        this._performanceMonitor = new ergometer.PerformanceMonitorUsb();
+        //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
+        //this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
+        this.performanceMonitor.logEvent.sub(this, this.onLog);
+        this.performanceMonitor.connectionStateChangedEvent.sub(this, this.onConnectionStateChanged);
+        //connect to the rowing
+        this.performanceMonitor.strokeStateEvent.sub(this, function (oldState, newState) {
+            _this.showInfo("New state:" + newState.toString());
+        });
+        this.performanceMonitor.trainingDataEvent.sub(this, function (data) {
+            _this.showInfo("training data :" + JSON.stringify(data, null, "  "));
+        });
+        this.performanceMonitor.strokeDataEvent.sub(this, function (data) {
+            _this.showInfo("stroke data:" + JSON.stringify(data, null, "  "));
+        });
+        this.performanceMonitor.powerCurveEvent.sub(this, function (data) {
+            _this.showInfo("power curve data:" + JSON.stringify(data, null, "  "));
+        });
+        $("#StartScan").click(function () {
+            _this.connectToDevice();
+        });
+        $("#getinfo").click(this.csafeTest.bind(this));
+        if (!ergometer.PerformanceMonitorUsb.canUseUsb()) {
+            $('#info').text("Your browser does not support web blue tooth or web blue tooth is not enabled.");
+            $("#StartScan").hide();
+        }
+    };
+    Demo.prototype.onLog = function (info, logLevel) {
+        this.showData(info);
+    };
+    Demo.prototype.csafeTest = function () {
+        var _this = this;
+        this.performanceMonitor.csafeBuffer
+            .clear()
+            .getStrokeState({
+            onDataReceived: function (strokeState) {
+                _this.showData("stroke state: " + strokeState);
+            }
+        })
+            .getVersion({
+            onDataReceived: function (version) {
+                _this.showData("Version hardware " + version.HardwareVersion + " software:" + version.FirmwareVersion);
+            }
+        })
+            .setProgram({ value: 1 /* StandardList1 */ })
+            .send()
+            .then(function () {
+            console.log("send done, you can send th next");
+        }).catch(function (e) {
+            console.log("Error on top level:" + e);
+        });
+    };
+    Demo.prototype.onConnectionStateChanged = function (oldState, newState) {
+        if (newState == ergometer.MonitorConnectionState.readyForCommunication) {
+            //this.performanceMonitor.sampleRate=SampleRate.rate250ms;
+            this.showData(JSON.stringify(this._performanceMonitor.device));
+            //send two commands and show the results in a jquery way
+            this.csafeTest();
+        }
+    };
+    Demo.prototype.connectToDevice = function () {
+        var _this = this;
+        this.performanceMonitor.requestDevics().then(function (devices) {
+            if (devices.length > 0)
+                _this.performanceMonitor.connectToDevice(devices[0]);
+        });
+    };
+    Demo.prototype.pageLoaded = function () {
+    };
+    return Demo;
+}());
+/**
+ * Demo of Concept 2 ergometer Performance Monitor for Cordova
+ *
+ * This unit contains cordova specific code
+ *
+ * This will will work with the PM5
+ *
+ * Created by tijmen on 01-06-15.
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/// <reference path="demo.ts"/>
+var App = /** @class */ (function () {
+    function App() {
+        var _this = this;
+        $().ready(function () {
+            _this._demo = new Demo();
+            _this.demo.pageLoaded();
+        });
+    }
+    Object.defineProperty(App.prototype, "demo", {
+        get: function () {
+            return this._demo;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return App;
+}());
+var app = new App();
+//# sourceMappingURL=app.js.map

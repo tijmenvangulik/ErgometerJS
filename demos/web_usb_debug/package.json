@@ -1,0 +1,24 @@
+{
+  "name": "ergometer-web-hid",
+  "version": "1.0.0",
+  "description": "A minimal ergometer application for web hid (usb)",
+  "main": "main.js",
+  "scripts": {
+    "build": "../../node_modules/.bin/tsc -p .",
+    "watch": "../../node_modules/.bin/tsc --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tijmenvangulik/MobileErgometer"
+  },
+  "keywords": [
+
+    "ergometer",
+    "demo",
+    "usb"
+  ],
+  
+  "author": "GitHub",
+  "license": "Apache-2.0"
+  
+}

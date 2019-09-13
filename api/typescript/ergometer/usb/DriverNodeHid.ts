@@ -20,10 +20,11 @@ namespace ergometer.usb {
             if (this._onError)
               this._onError(err);
         }
-        public open(disconnect : DisconnectFunc,error : (err:any)=>void) : Promise<void> {
+        private _receiveData : (data:DataView)=>void;
+        public open(disconnect : DisconnectFunc,error : (err:any)=>void,receiveData : (data:DataView)=>void) : Promise<void> {
             
             this._hid= new nodehid.HID(this._deviceInfo.path);
-     
+            this._receiveData=receiveData;
             //there is no disconnect in hid api?
             //shoud fix this another way
             this._onError=error;
@@ -58,7 +59,10 @@ namespace ergometer.usb {
                     
                     if(written!=WRITE_BUF_SIZE)
                         throw `Only ${written} bytes written to usb device. it should be ${WRITE_BUF_SIZE}`;
-                    resolve();  
+                    //resolve the send
+                    resolve();
+                    //start listening to the result
+                    this.readData();
                 } catch (error) {
                     this.callError(error);
                     reject(error); 
@@ -67,12 +71,12 @@ namespace ergometer.usb {
                 
             });
         }
-        public readData() : Promise<DataView> {
-            return new Promise<DataView>((resolve,reject)=>{
-                try {
-                    
-                    this._hid.read((err,inputData)=>{
-                        if (err) reject(err);
+        public readData() {
+           
+            try {    
+                this._hid.read((err,inputData)=>{
+                    if (err) this.callError(err);
+                    else {
                         if (inputData && inputData.length==WRITE_BUF_SIZE && inputData[0]==REPORT_TYPE) {
                             //copy all results into a buffer of 121
                             var endByte=WRITE_BUF_SIZE-1;
@@ -83,17 +87,19 @@ namespace ergometer.usb {
                                 ar.set(inputData,0);
                                 //return the the data except for the first byte
                                 var view=new DataView(ar.buffer,1,endByte);
-                                resolve(view);
+                                this._receiveData(view);
                             }
-                            else reject("end csafe frame not found");
+                            else this.callError("end csafe frame not found");
                         }
-                        else reject("nothing read");
-                    });
-                } catch (error) {
-                    this.callError(error);
-                    reject(error); 
-                }
-            });
+                        else this.callError("nothing read");
+                    }
+                });
+    
+            } catch (error) {
+                this.callError(error);
+            
+            }
+          
         }
     }
     
@@ -106,7 +112,7 @@ namespace ergometer.usb {
             var devices = nodehid.devices();
             devices.forEach((device)=>{
                 //add all concept 2 devices
-                if (device.vendorId==6052) {
+                if (device.vendorId==CONCEPT2_VENDOR_ID) {
                     var deviceInfo= new DeviceNodeHid(device);
                     deviceInfo.serialNumber=device.serialNumber;
                     deviceInfo.productId=device.productId;

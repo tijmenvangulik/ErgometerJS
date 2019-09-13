@@ -90,7 +90,11 @@ You only need to change the javascript included file
    * Upgraded Electron demo. The demo does not use web bluetooth instead of noble.
 - 1.0.1
    * Fixed bugs in Usb part
-   *   
+- 1.1.0
+  * Added WebHid support
+  * The promise of the send function is now resolved after receiving all the data. (for both usb and ble)
+  * Error handling and conenction Stablity enhancements   
+
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
@@ -456,3 +460,13 @@ An example how to connect to an older PM3-4 monitor using usb. Blue tooth native
 Version which includes all the ergometer js source for debuging purpose.
 
 [demos/usb_electron_debug](demos/usb_electron_debug/README.md)
+
+
+## Web hid example
+
+Future versions will support web hid. With this you can connect using usb to your pm5 directly from chrome. The feature is not yet stable but 
+it works in in chrome canary. with experimental features turned on.
+
+https://github.com/robatwilliams/awesome-webhid#status
+
+[demos/web_usb_debug](demos/web_usb_debug/README.md)
