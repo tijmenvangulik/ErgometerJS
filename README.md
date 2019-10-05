@@ -481,4 +481,4 @@ for cordova I have created an usb hid plugin which needs to be installed
 The demo compiles by including the original source code. This is good for debugging. It is better to
 include the lib when you only the lib.
 
-[demos/usb_cordova_debug](demos/usb_cordova_debug/README.md)
+[demos/usb_cordova_debug](demos/usb_cordova_debug/ReadMe.md)
