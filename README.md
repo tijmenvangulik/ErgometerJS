@@ -94,7 +94,7 @@ You only need to change the javascript included file
   * Added WebHid support
   * The promise of the send function is now resolved after receiving all the data. (for both usb and ble)
   * Error handling and connection stability enhancements   
-- 2.3.0
+- 1.2.0
   * Cordova android usb support
     
 # Project features
