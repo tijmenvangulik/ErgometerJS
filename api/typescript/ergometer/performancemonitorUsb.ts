@@ -50,15 +50,15 @@ namespace ergometer {
     export class StrokeData {
         dragFactor =0;
         workDistance =0 ; 
-	      workTime =0;
+	    workTime =0;
         splitTime=0;
-	      power =0;
-	      strokesPerMinuteAverage =0;
-	      strokesPerMinute =0;
+	    power =0;
+	    strokesPerMinuteAverage =0;
+	    strokesPerMinute =0;
         distance =0;
 	      //time =0;  //does not yet work remove for now
         totCalories =0; // accumulated calories burned  CSAFE_GETCALORIES_CMD
-	      caloriesPerHour =0;  // calories/Hr derived from pace (GETPACE)
+	    caloriesPerHour =0;  // calories/Hr derived from pace (GETPACE)
         heartRate =0;
     }
     export class TrainingData 
@@ -127,14 +127,21 @@ namespace ergometer {
         static canUseWebHid() : boolean {
             return typeof navigator.hid!="undefined"
         }
+        static canUseCordovaHid() : boolean {
+            return typeof cordova!="undefined" && typeof cordova.plugins!="undefined" && typeof cordova.plugins.UsbHid!="undefined"
+        }
         static canUseUsb() : boolean {
             return PerformanceMonitorUsb.canUseNodeHid() || 
-                    PerformanceMonitorUsb.canUseWebHid();
+                    PerformanceMonitorUsb.canUseWebHid() ||
+                    PerformanceMonitorUsb.canUseCordovaHid();
         }
         protected initialize() {
             super.initialize();
             if (PerformanceMonitorUsb.canUseNodeHid()) {
                 this._driver= new ergometer.usb.DriverNodeHid();
+            }
+            else if (PerformanceMonitorUsb.canUseCordovaHid()) {
+                this._driver= new ergometer.usb.DriverCordovaHid();
             }
             else if (PerformanceMonitorUsb.canUseWebHid()) {
                 this._driver= new ergometer.usb.DriverWebHid();
@@ -153,12 +160,16 @@ namespace ergometer {
         protected driver_write( data:ArrayBufferView) :Promise<void> {
             if (this.connectionState!=ergometer.MonitorConnectionState.readyForCommunication)
               return Promise.reject("Can not write, erogmeter is not connected");
-            var result=this._device.sendData(data.buffer);
-            result.catch((err)=>{
-                //the usb has not an disconnect event, assume an error is an disconnect
-                this.disconnected();
+            return new Promise((resolve,reject)=>{
+                this._device.sendData(data.buffer)
+                .then(resolve) 
+                .catch((err)=>{
+                    //the usb has not an disconnect event, assume an error is an disconnect
+                    this.disconnected();
+                    reject(err);
+                })
             })
-            return result;
+            
         }
         private receiveData(data:DataView) {
             this.resetStartCsafe();

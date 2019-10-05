@@ -379,7 +379,7 @@ declare namespace ergometer.usb {
         productId: number;
         productName: string;
         serialNumber: string;
-        constructor(deviceInfo: webhid.HIDDevice);
+        constructor(deviceInfo: any);
         callError(err: any): void;
         private disconnected(device);
         private received;
@@ -388,13 +388,30 @@ declare namespace ergometer.usb {
         private detachDisconnect();
         close(): Promise<void>;
         sendData(data: ArrayBuffer): Promise<void>;
-        private receivedReportd(ev);
-        private _waitingForRead;
-        private _waitingForReadReject;
-        private _readDataQueue;
-        readData(): Promise<DataView>;
+        private receivedReport(ev);
     }
     class DriverWebHid implements IDriver {
+        requestDevics(): Promise<Devices>;
+    }
+}
+declare namespace ergometer.usb {
+    class DeviceCordovaHid implements IDevice {
+        private _device;
+        private _disconnect;
+        private _onError;
+        vendorId: number;
+        productId: number;
+        productName: string;
+        serialNumber: string;
+        constructor(device: any);
+        callError(err: any): void;
+        private disconnected(device);
+        private _receiveData;
+        open(disconnect: DisconnectFunc, error: (err: any) => void, receiveData: (data: DataView) => void): Promise<void>;
+        close(): Promise<void>;
+        sendData(data: ArrayBuffer): Promise<void>;
+    }
+    class DriverCordovaHid implements IDriver {
         requestDevics(): Promise<Devices>;
     }
 }
@@ -1655,6 +1672,7 @@ declare namespace ergometer {
         readonly strokeDataEvent: pubSub.Event<StrokeDataEvent>;
         static canUseNodeHid(): boolean;
         static canUseWebHid(): boolean;
+        static canUseCordovaHid(): boolean;
         static canUseUsb(): boolean;
         protected initialize(): void;
         driver: ergometer.usb.IDriver;

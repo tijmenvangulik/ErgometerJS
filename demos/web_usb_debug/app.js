@@ -1551,7 +1551,6 @@ var ergometer;
     (function (usb) {
         var DeviceWebHid = /** @class */ (function () {
             function DeviceWebHid(deviceInfo) {
-                this._readDataQueue = [];
                 this._deviceInfo = deviceInfo;
             }
             DeviceWebHid.prototype.callError = function (err) {
@@ -1570,7 +1569,7 @@ var ergometer;
                 if (!this._deviceInfo.opened) {
                     this._disconnect = disconnect;
                     this._receiveData = receiveData;
-                    this._deviceInfo.oninputreport = this.receivedReportd.bind(this);
+                    this._deviceInfo.oninputreport = this.receivedReport.bind(this);
                     //this._deviceInfo.addEventListener('oninputreport', this.receivedReportd.bind(this));
                     //navigator.hid.ondisconnect=this.disconnected.bind(this);
                     //navigator.hid.addEventListener('ondisconnect', this.disconnected.bind(this));
@@ -1593,15 +1592,16 @@ var ergometer;
                 view.set(new Int8Array(data), 0);
                 return this._deviceInfo.sendReport(usb.REPORT_TYPE, buf);
             };
-            DeviceWebHid.prototype.receivedReportd = function (ev) {
+            DeviceWebHid.prototype.receivedReport = function (ev) {
                 var inputData = ev.data;
+                //todo chack on ev.reportId==REPORT_TYPE
                 if (inputData && inputData.byteLength == usb.USB_CSAVE_SIZE) {
                     //copy all results into a buffer of 120
                     var endByte = usb.USB_CSAVE_SIZE - 1;
                     while (endByte >= 0 && inputData.getUint8(endByte) == 0)
                         endByte--;
                     if (endByte >= 0 && inputData.getUint8(endByte) == ergometer.csafe.defs.FRAME_END_BYTE) {
-                        //return the the data except for the first byte
+                        //return the the data 
                         var view = new DataView(inputData.buffer, 0, endByte);
                         this._receiveData(view);
                     }
@@ -1611,15 +1611,6 @@ var ergometer;
                 else
                     this.callError("nothing read");
             };
-            DeviceWebHid.prototype.readData = function () {
-                var _this = this;
-                return new Promise(function (resolve, reject) {
-                    _this._readDataQueue.unshift({
-                        resolve: resolve,
-                        reject: reject
-                    });
-                });
-            };
             return DeviceWebHid;
         }());
         usb.DeviceWebHid = DeviceWebHid;
@@ -1628,10 +1619,9 @@ var ergometer;
             }
             DriverWebHid.prototype.requestDevics = function () {
                 return new Promise(function (resolve, reject) {
+                    //     vendorId: CONCEPT2_VENDOR_ID,
                     try {
-                        navigator.hid.requestDevice({ filters: [{
-                                    vendorId: usb.CONCEPT2_VENDOR_ID,
-                                }] }).then(function (device) {
+                        navigator.hid.requestDevice({ filters: [{}] }).then(function (device) {
                             var deviceInfo = new DeviceWebHid(device);
                             //deviceInfo.serialNumber=device.;
                             deviceInfo.productId = device.productId;
@@ -1648,6 +1638,112 @@ var ergometer;
             return DriverWebHid;
         }());
         usb.DriverWebHid = DriverWebHid;
+    })(usb = ergometer.usb || (ergometer.usb = {}));
+})(ergometer || (ergometer = {}));
+var ergometer;
+(function (ergometer) {
+    var usb;
+    (function (usb) {
+        var DeviceCordovaHid = /** @class */ (function () {
+            function DeviceCordovaHid(device) {
+                this._device = device;
+            }
+            DeviceCordovaHid.prototype.callError = function (err) {
+                if (this._onError)
+                    this._onError(err);
+            };
+            DeviceCordovaHid.prototype.disconnected = function (device) {
+                if (this._disconnect) {
+                    this._disconnect();
+                }
+            };
+            DeviceCordovaHid.prototype.open = function (disconnect, error, receiveData) {
+                var _this = this;
+                this._disconnect = disconnect;
+                this._receiveData = receiveData;
+                return new Promise(function (resolve, reject) {
+                    //cordova.plugins.UsbHid.registerReadCallback(this.receivedData.bind(this)).then(() => {
+                    cordova.plugins.UsbHid.requestPermission(_this._device)
+                        .then(function () {
+                        return cordova.plugins.UsbHid.open({
+                            packetSize: usb.WRITE_BUF_SIZE,
+                            timeout: 1000,
+                            skippFirstByteZero: true
+                        });
+                    }).then(resolve, reject);
+                    //   }).catch(reject);
+                });
+            };
+            DeviceCordovaHid.prototype.close = function () {
+                return cordova.plugins.UsbHid.close();
+            };
+            DeviceCordovaHid.prototype.sendData = function (data) {
+                var _this = this;
+                if (data.byteLength > usb.USB_CSAVE_SIZE)
+                    return Promise.reject("Trying to send to much data, the buffer must be smaller or equal to " + usb.USB_CSAVE_SIZE + " and is " + data.byteLength);
+                return new Promise(function (resolve, reject) {
+                    try {
+                        var buf = new ArrayBuffer(usb.WRITE_BUF_SIZE);
+                        var view = new Int8Array(buf);
+                        view.set([usb.REPORT_TYPE], 0);
+                        view.set(new Int8Array(data), 1);
+                        cordova.plugins.UsbHid.writeRead(buf).then(function (data) {
+                            if (data && data.byteLength == usb.WRITE_BUF_SIZE) {
+                                var inputData = new DataView(data);
+                                var endByte = usb.WRITE_BUF_SIZE - 1;
+                                while (endByte >= 1 && inputData.getUint8(endByte) == 0)
+                                    endByte--;
+                                if (endByte >= 1 && inputData.getUint8(endByte) == ergometer.csafe.defs.FRAME_END_BYTE) {
+                                    resolve();
+                                    //return the the data except for the first byte
+                                    var view = new DataView(inputData.buffer, 1, endByte - 1);
+                                    _this._receiveData(view);
+                                }
+                                else
+                                    reject("end csafe frame not found");
+                            }
+                            else
+                                reject("nothing read");
+                        }).catch(reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            return DeviceCordovaHid;
+        }());
+        usb.DeviceCordovaHid = DeviceCordovaHid;
+        var DriverCordovaHid = /** @class */ (function () {
+            function DriverCordovaHid() {
+            }
+            DriverCordovaHid.prototype.requestDevics = function () {
+                return new Promise(function (resolve, reject) {
+                    try {
+                        cordova.plugins.UsbHid.enumerateDevices().then(function (cordovaDevices) {
+                            var result = [];
+                            cordovaDevices.forEach(function (device) {
+                                //add all concept 2 devices
+                                if (device.vendorId == usb.CONCEPT2_VENDOR_ID.toString()) {
+                                    var deviceInfo = new DeviceCordovaHid(device);
+                                    deviceInfo.serialNumber = device.serialNumber;
+                                    deviceInfo.productId = parseInt(device.productId);
+                                    deviceInfo.vendorId = parseInt(device.vendorId);
+                                    deviceInfo.productName = device.productName;
+                                    result.push(deviceInfo);
+                                }
+                            });
+                            resolve(result);
+                        }, reject);
+                    }
+                    catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+            return DriverCordovaHid;
+        }());
+        usb.DriverCordovaHid = DriverCordovaHid;
     })(usb = ergometer.usb || (ergometer.usb = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -2945,14 +3041,21 @@ var ergometer;
         PerformanceMonitorUsb.canUseWebHid = function () {
             return typeof navigator.hid != "undefined";
         };
+        PerformanceMonitorUsb.canUseCordovaHid = function () {
+            return typeof cordova != "undefined" && typeof cordova.plugins != "undefined" && typeof cordova.plugins.UsbHid != "undefined";
+        };
         PerformanceMonitorUsb.canUseUsb = function () {
             return PerformanceMonitorUsb.canUseNodeHid() ||
-                PerformanceMonitorUsb.canUseWebHid();
+                PerformanceMonitorUsb.canUseWebHid() ||
+                PerformanceMonitorUsb.canUseCordovaHid();
         };
         PerformanceMonitorUsb.prototype.initialize = function () {
             _super.prototype.initialize.call(this);
             if (PerformanceMonitorUsb.canUseNodeHid()) {
                 this._driver = new ergometer.usb.DriverNodeHid();
+            }
+            else if (PerformanceMonitorUsb.canUseCordovaHid()) {
+                this._driver = new ergometer.usb.DriverCordovaHid();
             }
             else if (PerformanceMonitorUsb.canUseWebHid()) {
                 this._driver = new ergometer.usb.DriverWebHid();
@@ -2974,12 +3077,15 @@ var ergometer;
             var _this = this;
             if (this.connectionState != ergometer.MonitorConnectionState.readyForCommunication)
                 return Promise.reject("Can not write, erogmeter is not connected");
-            var result = this._device.sendData(data.buffer);
-            result.catch(function (err) {
-                //the usb has not an disconnect event, assume an error is an disconnect
-                _this.disconnected();
+            return new Promise(function (resolve, reject) {
+                _this._device.sendData(data.buffer)
+                    .then(resolve)
+                    .catch(function (err) {
+                    //the usb has not an disconnect event, assume an error is an disconnect
+                    _this.disconnected();
+                    reject(err);
+                });
             });
-            return result;
         };
         PerformanceMonitorUsb.prototype.receiveData = function (data) {
             this.resetStartCsafe();

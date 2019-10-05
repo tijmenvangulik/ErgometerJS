@@ -93,8 +93,10 @@ You only need to change the javascript included file
 - 1.1.0
   * Added WebHid support
   * The promise of the send function is now resolved after receiving all the data. (for both usb and ble)
-  * Error handling and conenction Stablity enhancements   
-
+  * Error handling and connection stability enhancements   
+- 2.3.0
+  * Cordova android usb support
+    
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
@@ -127,8 +129,8 @@ Components
 
 |            | pm3-5 usb   | Blue tooth |
 |------------|-------------|------------|    
-|Web         | comming     | yes        |
-|Cordova     | investigate | yes        |
+|Web         | beta        | yes        |
+|Cordova     | android     | yes        |
 |Electron    | yes         | yes        |
 |React native|             | *          |
 
@@ -137,8 +139,7 @@ Components
 
 
 # Todo
-
-* Usb support for web (webhid) and cordova
+* usb ios support
 * Add more commands
 
 # Known problems
@@ -470,3 +471,14 @@ it works in in chrome canary. with experimental features turned on.
 https://github.com/robatwilliams/awesome-webhid#status
 
 [demos/web_usb_debug](demos/web_usb_debug/README.md)
+
+## cordova usb example.
+
+for cordova I have created an usb hid plugin which needs to be installed
+
+  https://github.com/tijmenvangulik/cordova-usb-hid
+
+The demo compiles by including the original source code. This is good for debugging. It is better to
+include the lib when you only the lib.
+
+[demos/usb_cordova_debug](demos/usb_cordova_debug/README.md)

@@ -1,0 +1,39 @@
+{
+    "name": "org.vangulik.demo.hid",
+    "displayName": "HelloCordova",
+    "version": "1.0.0",
+    "description": "A sample Apache Cordova application that responds to the deviceready event.",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "prepare": "cordova prepare",
+        "uninstallplugin": "plugman uninstall --platform android --project platforms/android --plugin /Users/tijmen/Code/CordovaUsbHidPlugin",
+        "installplugin": "plugman install --platform android --project platforms/android --plugin /Users/tijmen/Code/CordovaUsbHidPlugin",
+        "reinstallplugin": "npm run  uninstallplugin && npm run  installplugin ",
+        "pluginupdate": "npm run  reinstallplugin && npm run  prepare",
+        "adb_tcp": "adb tcpip 5555",
+        "adb_debug": "adb connect 192.168.1.17",
+        "build": "tsc"
+    },
+    "author": "Apache Cordova Team",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "@types/cordova": "0.0.34",
+        "@types/jquery": "^3.3.31",
+        "cordova-android": "^7.1.4",
+        "cordova-plugin-whitelist": "^1.3.4",
+        "org.vangulik.usb.hid": "git+https://github.com/tijmenvangulik/cordova-usb-hid.git"
+    },
+    "cordova": {
+        "plugins": {
+            "cordova-plugin-whitelist": {},
+            "org.vangulik.usb.hid": {}
+        },
+        "platforms": [
+            "android"
+        ]
+    },
+    "devDependencies": {
+        "typescript": "^3.6.3"
+    }
+}

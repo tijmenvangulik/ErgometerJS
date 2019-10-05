@@ -1,9 +1,4 @@
 namespace ergometer.usb {
-    
-    interface QueuedPromise {
-        resolve : (data : DataView)=>void
-        reject : (err)=>void;
-    }
 
     export class DeviceWebHid implements IDevice {
         
@@ -17,7 +12,7 @@ namespace ergometer.usb {
         public  productName : string;
         public serialNumber : string;
 
-        constructor (deviceInfo : webhid.HIDDevice) {
+        constructor (deviceInfo) {
             
             this._deviceInfo=deviceInfo;
         }
@@ -41,7 +36,7 @@ namespace ergometer.usb {
             if (!this._deviceInfo.opened) {
                 this._disconnect=disconnect;
                 this._receiveData=receiveData;
-                this._deviceInfo.oninputreport= this.receivedReportd.bind(this);
+                this._deviceInfo.oninputreport= this.receivedReport.bind(this);
                 //this._deviceInfo.addEventListener('oninputreport', this.receivedReportd.bind(this));
                 //navigator.hid.ondisconnect=this.disconnected.bind(this);
                 //navigator.hid.addEventListener('ondisconnect', this.disconnected.bind(this));
@@ -66,17 +61,16 @@ namespace ergometer.usb {
           view.set(new Int8Array(data),0);
           return this._deviceInfo.sendReport(REPORT_TYPE, buf);
         }
-        private receivedReportd(ev: webhid.HIDInputReportEvent) {
+        private receivedReport(ev: webhid.HIDInputReportEvent) {
             var inputData= ev.data;    
-            if (inputData && inputData.byteLength==USB_CSAVE_SIZE) {
-            
-            
+            //todo chack on ev.reportId==REPORT_TYPE
+            if (inputData && inputData.byteLength==USB_CSAVE_SIZE) {         
                 //copy all results into a buffer of 120
                 var endByte=USB_CSAVE_SIZE-1;
                 while (endByte>=0 && inputData.getUint8(endByte)==0) endByte--;
                 if (endByte>=0 && inputData.getUint8(endByte)==csafe.defs.FRAME_END_BYTE) {
                     
-                    //return the the data except for the first byte
+                    //return the the data 
                     var view=new DataView(inputData.buffer,0,endByte);
                     this._receiveData(view);
                 }
@@ -86,20 +80,6 @@ namespace ergometer.usb {
             
         }
         
-        private _waitingForRead : (data : DataView)=>void;
-        private _waitingForReadReject : (err)=>void;
-        private _readDataQueue : QueuedPromise[] = [];
-        public readData() : Promise<DataView> {
-            
-            return new Promise<DataView>((resolve,reject)=>{
-                this._readDataQueue.unshift({
-                    resolve:resolve,
-                    reject:reject
-                });
-                
-               
-            });
-        }
     }
     
 

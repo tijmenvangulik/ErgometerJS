@@ -18,6 +18,8 @@
     "typescript/typings/simpleBLE.d.ts",
     "typescript/typings/nodehid.d.ts",
     "typescript/typings/webhid.d.ts",
+    "typescript/typings/cordova.d.ts",
+    "typescript/typings/UsbHid.d.ts",
     "typescript/ergometer/utils.ts",
     "typescript/ergometer/functionQueue.ts",
     "typescript/ergometer/pubsub.ts",
@@ -32,6 +34,7 @@
     "typescript/ergometer/usb/Driver.ts",
     "typescript/ergometer/usb/DriverNodeHid.ts",
     "typescript/ergometer/usb/DriverWebHid.ts",
+    "typescript/ergometer/usb/DriverCordovaHid.ts",
     "typescript/ergometer/csafe/typedefinitions.ts",
     "typescript/ergometer/csafe/command_core.ts",
     "typescript/ergometer/csafe/long_commands.ts",
@@ -41,6 +44,6 @@
     "typescript/ergometer/performancemonitorBase.ts",
     "typescript/ergometer/performancemonitorUsb.ts",
     "typescript/ergometer/performancemonitorBle.ts"
-  ],
+  ]
  
 }

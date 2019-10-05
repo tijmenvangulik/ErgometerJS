@@ -7,7 +7,7 @@
   },
   "devDependencies": {
     "copyfiles": ">=0.2.1",
-    "typescript": "2.6.2"
+    "typescript": "^2.6.2"
   },
   "license": "Apache-2.0",
   "keywords": [
@@ -21,7 +21,8 @@
     "HID",
     "PM3",
     "PM4",
-    "PM5"
+    "PM5",
+    "WebHid"
   ],
   "scripts": {
     "build:api": "node_modules/.bin/tsc -p api",
@@ -44,7 +45,7 @@
     "build:usb_electron": "node_modules/.bin/tsc -p demos/usb_electron ",
     "build:usb_electron_debug": "node_modules/.bin/tsc -p demos/usb_electron_debug ",
     "build": "npm run build:api && npm run build:copy_api && npm run build:simplecordova && npm run build:simple_electron  && npm run build:recording && npm run build:webbluetooth && npm run build:usb_electron && npm run build:usb_electron_debug",
-    "watch:usb_electron_debug":"node_modules/.bin/tsc  -p demos/usb_electron_debug --watch ",
+    "watch:usb_electron_debug": "node_modules/.bin/tsc  -p demos/usb_electron_debug --watch ",
     "build:copy_api_webapp": "npm run build:copy_api_copytowebapp && npm run build:copy_api_copytowebapp_ts && npm run build:copy_api_copytowebapp_ts2"
   },
   "repository": {
