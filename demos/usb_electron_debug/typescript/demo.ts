@@ -41,14 +41,17 @@ class Demo {
     }
     public showInfo(info : string)
     {       
+        //console.log(info);
         this.addText("data",info);
     }
     public showError(error : string) {
+      //  console.log(error);
         this.addText("data",error);
     }
 
     public showData(data : string)
     {
+       // console.log(data);
         this.addText("data",data);
     }
 
@@ -104,8 +107,7 @@ class Demo {
     }
     public getInfo() {
         //send an csafe command to get some info
-        this.performanceMonitor.csafeBuffer
-        .clear()
+        this.performanceMonitor.newCsafeBuffer()
         .getStrokeState({
             onDataReceived: (strokeState : ergometer.StrokeState) =>{
                 this.showData(`stroke state: ${strokeState}`);

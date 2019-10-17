@@ -719,8 +719,7 @@
 
                 if (data.strokeState ==StrokeState.recoveryState) {
                     //send a power curve request
-                    this.csafeBuffer
-                        .clear()
+                    this.newCsafeBuffer()
                         .getPowerCurve({
                             onDataReceived: (curve : number[]) =>{
                                 this.powerCurveEvent.pub(curve);
@@ -741,6 +740,7 @@
         protected initialize() {
             super.initialize();
             this._splitCommandsWhenToBig=true;
+            this._receivePartialBuffers=true;
             /*document.addEventListener(
                 'deviceready',
                  ()=> {

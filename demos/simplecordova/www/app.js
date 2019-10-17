@@ -67,7 +67,7 @@ var Demo = /** @class */ (function () {
     Demo.prototype.initialize = function () {
         this._performanceMonitor = new ergometer.PerformanceMonitorBle();
         //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
-        this.performanceMonitor.logLevel = ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
+        //this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
         this.performanceMonitor.logEvent.sub(this, this.onLog);
         this.performanceMonitor.connectionStateChangedEvent.sub(this, this.onConnectionStateChanged);
         //connect to the rowing
@@ -127,8 +127,7 @@ var Demo = /** @class */ (function () {
             //this.performanceMonitor.sampleRate=SampleRate.rate250ms;
             this.showData(JSON.stringify(this._performanceMonitor.deviceInfo));
             //send two commands and show the results in a jquery way
-            this.performanceMonitor.csafeBuffer
-                .clear()
+            this.performanceMonitor.newCsafeBuffer()
                 .getStrokeState({
                 onDataReceived: function (strokeState) {
                     _this.showData("stroke state: " + strokeState);

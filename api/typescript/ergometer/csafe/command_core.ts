@@ -19,16 +19,10 @@ namespace ergometer.csafe {
         data? : number[];  //you can skipp the length for this property, this is auto calculated
         onDataReceived? : (data : DataView)=>void;
         onError?: ErrorHandler;
-        /** @internal */
-        _timestamp? : number;// only for internal use
-        /** @internal */
-        _resolve? : ()=>void;// only for internal use
-        /** @internal */
-        _reject? : (e : any)=>void;// only for internal use
+
     }
     export interface IBuffer {
         rawCommands : IRawCommand[];
-        clear() : IBuffer;
         addRawCommand(info : IRawCommand);
         send(success? : ()=>void,error? : ErrorHandler) : Promise<void>;
 

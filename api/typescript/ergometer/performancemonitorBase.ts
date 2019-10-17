@@ -61,6 +61,91 @@ namespace ergometer {
     export interface PowerCurveEvent extends pubSub.ISubscription {
         (data : number[]) : void;
     }
+    export class WaitResponseBuffer {
+        
+        
+        private _monitor : PerformanceMonitorBase;
+        private _commands : csafe.IRawCommand[] = [];
+
+        public _resolve : ()=>void;// only for internal use
+        /** @internal */
+        public _reject : (e : any)=>void;// only for internal use 
+        public _responseState: number;
+        private _timeOutHandle: number;
+
+        public get commands() : csafe.IRawCommand[]   {
+            return this._commands
+        }
+        removeRemainingCommands() {
+            this._commands.forEach(command=>{
+                if (this._monitor.logLevel>=LogLevel.error)
+                   this._monitor.handleError(`command removed without result command=${command.command} detial= ${command.detailCommand}`);
+                if (command.onError) command.onError("command removed without result");
+
+            });
+            this._commands=[];
+        }
+        private timeOut() {
+            this.removeRemainingCommands();
+            this.remove();
+            if (this._reject)
+               this._reject("Time out buffer");
+            if (this._monitor.logLevel>=LogLevel.error)
+                  this._monitor.handleError("buffer time out");
+        }
+        constructor (monitor : PerformanceMonitorBase,
+              resolve : ()=>void, reject : (e)=>void,
+              commands : csafe.IRawCommand[],
+              timeOut : number) {          
+            this._monitor = monitor;
+            this._resolve=resolve;
+            this._reject=reject;
+            this._timeOutHandle= setTimeout(this.timeOut.bind(this),timeOut);
+            commands.forEach((command : IRawCommand)=> {
+                
+                if (command.waitForResponse)
+                    this._commands.push(command);
+            });
+        }
+        
+        public remove() {
+            if (this._timeOutHandle) {
+                clearTimeout(this._timeOutHandle);
+                this._timeOutHandle=null;
+            }
+            this._monitor.removeResponseBuffer(this);  
+        }
+        public processedBuffer() {
+            this.removeRemainingCommands();
+            this.remove();
+            if (this._resolve)
+               this._resolve();
+            
+        }
+        public receivedCSaveCommand(parsed : ParsedCSafeCommand) {
+            if (this._monitor.logLevel==LogLevel.trace)
+              this._monitor.traceInfo("received command:"+JSON.stringify(parsed));
+            //check on all the commands which where send and
+            for(let i=0;i<this._commands.length;i++){
+                let command=this._commands[i];
+                if (command.command==parsed.command &&
+                    ( command.detailCommand==parsed.detailCommand ||
+                      (!command.detailCommand && !parsed.detailCommand) )
+                   )  {
+                    if (command.onDataReceived) {
+                        var dataView= new DataView(parsed.data.buffer);
+                        this._monitor.traceInfo("call received");
+                        command.onDataReceived(dataView);
+                    }
+                    
+                    this._commands.splice(i,1);//remove the item from the send list
+                    break;
+                }
+
+            }
+        }
+    }
+
     type EmptyResolveFunc = ()=>void;
     /**
      *
@@ -92,23 +177,26 @@ namespace ergometer {
      */
     export class PerformanceMonitorBase {
         
+        
         private _logEvent= new pubSub.Event<LogEvent>();
         private _logLevel : LogLevel = LogLevel.error;
-        private _csafeBuffer : csafe.IBuffer = null;
-        private _waitResponseCommands : csafe.IRawCommand[] = [];
+
+        private _waitResonseBuffers : WaitResponseBuffer[] = [];
+        
         protected _connectionState : MonitorConnectionState = MonitorConnectionState.inactive;
         protected _powerCurve : number[];
         
         protected _splitCommandsWhenToBig : boolean;
 
-        protected _checkFrameEnding : boolean;
+        protected _receivePartialBuffers : boolean;
 
         //events
         private _connectionStateChangedEvent = new pubSub.Event<ConnectionStateChangedEvent>();      
         private _powerCurveEvent: pubSub.Event<PowerCurveEvent>;
 
         private _checksumCheckEnabled =false;
-
+        protected _commandTimeout: number;
+        
         public constructor() {
             
             this.initialize();
@@ -119,9 +207,14 @@ namespace ergometer {
             this._powerCurveEvent = new pubSub.Event<PowerCurveEvent>();
             this._powerCurveEvent.registerChangedEvent(this.enableDisableNotification.bind(this));
             this._splitCommandsWhenToBig=false;
-            this._checkFrameEnding=false;
+            this._receivePartialBuffers=false;
+            this._commandTimeout=1000;
         }
-
+        removeResponseBuffer(buffer: WaitResponseBuffer) {
+            var i= this._waitResonseBuffers.indexOf(buffer);
+            if (i>=0)
+            this._waitResonseBuffers.splice(i,1);
+        }
         protected enableDisableNotification() {
 
         }
@@ -233,7 +326,7 @@ namespace ergometer {
                 this._connectionState=value;
                 this.connectionStateChangedEvent.pub(oldValue,value);
                 if (value==MonitorConnectionState.connected) {
-                    this.clearWaitResponseCommands();
+                    this.clearWaitResponseBuffers();
                     this.connected();
                 }
                   
@@ -253,24 +346,12 @@ namespace ergometer {
         /* ***************************************************************************************
          *                               csafe
          *****************************************************************************************  */
-         protected clearWaitResponseCommands(){
-            this._waitResponseCommands=[];
+        
+         protected clearWaitResponseBuffers() {
+            var list=this._waitResonseBuffers;
+            list.forEach(b=>b.remove());
+            this._waitResonseBuffers=[];
          }
-         protected removeOldSendCommands() {
-            for (var i=this._waitResponseCommands.length-1;i>=0;i--) {
-                var command : IRawCommand = this._waitResponseCommands[i];
-                var currentTime= utils.getTime();
-                //more than 20 seconds in the buffer
-                if (currentTime-command._timestamp>20000 ) {
-                    if (command.onError) {
-                        command.onError("Nothing returned in 20 seconds");
-                        this.handleError(`Nothing returned in 20 seconds from command ${command.command} ${command.detailCommand}`);
-                    }
-                    if (command._reject) command._reject("Command time out");
-                    this._waitResponseCommands.splice(i,1);
-                }
-            }
-        }
 
         protected driver_write( data:ArrayBufferView) :Promise<void> {
             return Promise.reject("not implemented");
@@ -283,11 +364,10 @@ namespace ergometer {
          * @param error
          * @returns {Promise<void>|Promise} use promis instead of success and error function
          */
-        public sendCSafeBuffer() : Promise<void>{
+        public sendCSafeBuffer(csafeBuffer : ergometer.csafe.IBuffer) : Promise<void>{
             return new Promise((resolve,reject)=>{
-                this.removeOldSendCommands();
                 //prepare the array to be send
-                var rawCommandBuffer = this.csafeBuffer.rawCommands;
+                var rawCommandBuffer = csafeBuffer.rawCommands;
                 var commandArray : number[] = [];
                 rawCommandBuffer.forEach((command : IRawCommand)=>{
     
@@ -315,35 +395,16 @@ namespace ergometer {
                     }
     
                 });
-                var waitingForResult=false;
-                //the  last command which waits for result will resolve when the last result is received
-                if (rawCommandBuffer.length>0) {
-                    for (let index = rawCommandBuffer.length-1; index >=0 ; index--) {
-                        const lastCommand = rawCommandBuffer[index];
-                        if (lastCommand.waitForResponse) {
-                            lastCommand._reject=reject;
-                            lastCommand._resolve=resolve;
-                            waitingForResult=true;
-                            break;
-                        }
-                    }
-                    
-                    
-                }
-                this.csafeBuffer.clear();
+                
                 //send all the csafe commands in one go
                  this.sendCsafeCommands(commandArray)
                    .then(()=>{
-                    rawCommandBuffer.forEach((command : IRawCommand)=> {
-                        command._timestamp = new Date().getTime();
-                        if (command.waitForResponse)
-                            this._waitResponseCommands.push(command);
-                    });
-                    //when not waiting for results, resolve directly, no need for delay
-                    if (!waitingForResult) resolve();
+                    var waitBuffer=new WaitResponseBuffer(this,resolve,reject,rawCommandBuffer,this._commandTimeout);
+                    this._waitResonseBuffers.push(waitBuffer);
+                    
                     },(e)=>{
                             rawCommandBuffer.forEach((command : IRawCommand)=>{
-                            if (command.onError) command.onError(e);
+                               if (command.onError) command.onError(e);
                             });
                             reject(e);
                         }
@@ -367,6 +428,8 @@ namespace ergometer {
                     if (this._splitCommandsWhenToBig && bytesToSend.length>this.getPacketSize())
                       reject(`Csafe commands with length ${bytesToSend.length} does not fit into buffer with size ${this.getPacketSize()} `)
                     else {
+                        //reset the state to prepare for the command
+                        this._csafeState.frameState=FrameState.initial;
                         var sendBytesIndex=0;
                         //continue while not all bytes are send
                         while (sendBytesIndex<bytesToSend.length) {
@@ -381,7 +444,9 @@ namespace ergometer {
                                 sendBytesIndex++;
                                 bufferIndex++;
                             }
-                            this.traceInfo("send csafe: "+utils.typedArrayToHexString(buffer));
+                            if (this.logLevel==LogLevel.trace)
+                              this.traceInfo("send csafe: "+utils.typedArrayToHexString(buffer));
+                            
                             this.driver_write(dataView).then(
                                 ()=>{
                                     this.traceInfo("csafe command send");
@@ -393,7 +458,8 @@ namespace ergometer {
                                 })
                             .catch( (e)=> { 
                                 sendBytesIndex=bytesToSend.length;//stop the loop
-                                reject(e);});;
+                                reject(e);
+                            });
                         }
                     }
                       //send in packages of max 20 bytes (ble.PACKET_SIZE)
@@ -405,51 +471,51 @@ namespace ergometer {
         }
 
 
-        protected receivedCSaveCommand(parsed : ParsedCSafeCommand) {
-
-            //check on all the commands which where send and
-            for(let i=0;i<this._waitResponseCommands.length;i++){
-                let command=this._waitResponseCommands[i];
-                if (command.command==parsed.command &&
-                    ( command.detailCommand==parsed.detailCommand ||
-                      (!command.detailCommand && !parsed.detailCommand) )
-                   )  {
-                    if (command.onDataReceived) {
-                        var dataView= new DataView(parsed.data.buffer);
-                        command.onDataReceived(dataView);
-                    }
-                    if (command._resolve) command._resolve();
-                    this._waitResponseCommands.splice(i,1);//remove the item from the send list
-                    
-                       
-                    break;
-                }
-
-            }
-        }
+        
         
         private _csafeState =new CSaveParseState();
         protected resetStartCsafe() {
             this._csafeState.frameState=FrameState.initial;//only needed for usb
+        }
+
+        protected moveToNextBuffer() : WaitResponseBuffer{
+            var result : WaitResponseBuffer=null;
+            if (this.logLevel==LogLevel.trace)
+              this.traceInfo("next buffer: count="+this._waitResonseBuffers.length);
+            if (this._waitResonseBuffers.length>0) {
+                var waitBuffer=this._waitResonseBuffers[0];
+                //if the first then do not wait any more                               
+                waitBuffer.processedBuffer();
+                
+            }
+            if (this._waitResonseBuffers.length>0) {
+                result=this._waitResonseBuffers[0];;
+            }
+            this._csafeState.frameState == FrameState.initial;
+            return result;
         }
         //because of the none blocking nature, the receive
         //function tries to match the send command with the received command
         //if they are not in the same order this routine tries to match them
         public handeReceivedDriverData(dataView : DataView) {
             //skipp empty 0 ble blocks
-            if (dataView.byteLength!=1 || dataView.getUint8(0)!=0  ) {
+            
+
+            if (this._waitResonseBuffers.length>0 && (dataView.byteLength!=1 || dataView.getUint8(0)!=0)  ) {
+                var waitBuffer=this._waitResonseBuffers[0];
                 if ( this._csafeState.frameState == FrameState.initial)  {
                     this._csafeState.commandData = null;
                     this._csafeState.commandDataIndex=0;
-                    this._csafeState.frameState = FrameState.initial;
                     this._csafeState.nextDataLength = 0;
                     this._csafeState.detailCommand =0;
                     this._csafeState.calcCheck=0;
+
                 }
-                this.traceInfo("continious receive csafe: "+utils.typedArrayToHexString(dataView.buffer));
+                if (this.logLevel==LogLevel.trace)
+                   this.traceInfo("continious receive csafe: "+utils.typedArrayToHexString(dataView.buffer));
                 var i=0;
                 var stop=false;
-
+                var movedToNext=false;
                 while (i<dataView.byteLength &&!stop) {
                     var currentByte= dataView.getUint8(i);
                     if (this._csafeState.frameState!=FrameState.initial) {
@@ -473,6 +539,7 @@ namespace ergometer {
                         {   //skipp this one
                             this._csafeState.frameState= FrameState.parseCommand;
                             this._csafeState.skippByte=currentByte;
+                            waitBuffer._responseState=currentByte;
                             break;
                         }
 
@@ -490,7 +557,9 @@ namespace ergometer {
                             //this? some kind of status??
                             if (this._csafeState.skippByte==this._csafeState.command && currentByte==csafe.defs.FRAME_END_BYTE) {
                                 this._csafeState.command=0; //do not check checksum
-                                this._csafeState.frameState=FrameState.initial; //start again from te beginning
+                                this.moveToNextBuffer() ;//start again from te beginning
+                                stop=true;
+                                movedToNext=true;
                             }
                             else if (i==dataView.byteLength-1 && currentByte==csafe.defs.FRAME_END_BYTE ) {
                                 var checksum=this._csafeState.command;
@@ -502,7 +571,8 @@ namespace ergometer {
                                 if (this._checksumCheckEnabled && checksum!=this._csafeState.calcCheck) 
                                   this.handleError(`Wrong checksum ${utils.toHexString(checksum,1)} expected ${utils.toHexString(this._csafeState.calcCheck,1) } `);
                                 this._csafeState.command=0; //do not check checksum
-                                this._csafeState.frameState=FrameState.initial; //start again from te beginning
+                                this.moveToNextBuffer(); //end is reached
+                                movedToNext=true;
                             }
                             else if (i<dataView.byteLength) {
                                 this._csafeState.nextDataLength= currentByte;
@@ -536,7 +606,7 @@ namespace ergometer {
                             if (this._csafeState.nextDataLength==0) {
                                 this._csafeState.frameState= FrameState.parseCommand;
                                 try {
-                                    this.receivedCSaveCommand({
+                                    waitBuffer.receivedCSaveCommand({
                                         command:this._csafeState.command,
                                         detailCommand:this._csafeState.detailCommand,
                                         data:this._csafeState.commandData});
@@ -557,10 +627,20 @@ namespace ergometer {
                         this.traceInfo(`parse: ${i}: ${utils.toHexString(currentByte,1)} state: ${this._csafeState.frameState} checksum:${utils.toHexString(this._csafeState.calcCheck,1)} `);
                     i++;
                 }
-                //when something went wrong, the bluetooth block is endend but the frame not
-                if (this._checkFrameEnding && dataView.byteLength!=this.getPacketSize() && this._csafeState.frameState!=FrameState.initial) {
-                    this._csafeState.frameState=FrameState.initial;
-                    this.handleError("wrong csafe frame ending.");
+                
+                if (this._receivePartialBuffers ) {
+                    //when something went wrong, the bluetooth block is endend but the frame not
+                    //this is for blue tooth
+                    if ( dataView.byteLength!=this.getPacketSize() && this._csafeState.frameState!=FrameState.initial) {
+                        waitBuffer=this.moveToNextBuffer();
+                        this.handleError("wrong csafe frame ending.");
+                    }
+                    
+                }
+                else {
+                    //for usb all should be processd, move to the next if not done
+                    if (!movedToNext) 
+                      this.moveToNextBuffer();
                 }
 
             }
@@ -569,33 +649,29 @@ namespace ergometer {
             throw "getPacketSize not implemented"
         }
 
-        get csafeBuffer():ergometer.csafe.IBuffer {
+        public newCsafeBuffer() : ergometer.csafe.IBuffer {
             //init the buffer when needed
-            if (!this._csafeBuffer) {
-                this._csafeBuffer = <any> {
-                    commands: [],
-                    clear: ():csafe.IBuffer=> {
-                        this.csafeBuffer.rawCommands = [];
-                        return this.csafeBuffer;
-                    },
-                    send: (sucess? : ()=>void,error? : ErrorHandler) : Promise<void> => {
-                        return this.sendCSafeBuffer()
-                          .then(sucess)
-                          .catch(e=>{
-                              this.handleError(e);
-                              if (error) error(e);
-                              return Promise.reject(e);
-                            });
-                    },
-                    addRawCommand: (info:csafe.IRawCommand):csafe.IBuffer=> {
-                        this.csafeBuffer.rawCommands.push(info);
-                        return this.csafeBuffer;
-                    }
-
-                };
-                csafe.commandManager.apply(this.csafeBuffer, this);
+            var csafeBuffer = <any> {
+                rawCommands: []
             }
-            return this._csafeBuffer;
+            
+            csafeBuffer.send= (sucess? : ()=>void,error? : ErrorHandler) => {
+                return this.sendCSafeBuffer(csafeBuffer)
+                  .then(sucess)
+                  .catch(e=>{
+                      this.handleError(e);
+                      if (error) error(e);
+                      return Promise.reject(e);
+                    });
+            }
+            csafeBuffer.addRawCommand=(info:csafe.IRawCommand):csafe.IBuffer=> {
+                csafeBuffer.rawCommands.push(info);
+                return csafeBuffer;
+            }   
+              
+            csafe.commandManager.apply(csafeBuffer, this);
+            
+            return csafeBuffer;
         }
 
     }

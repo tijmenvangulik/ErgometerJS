@@ -132,10 +132,10 @@ namespace ergometer.csafe {
     export interface IBuffer {
         getPowerCurve(params: ICommandPowerCurve): IBuffer;
     }
-
+    var receivePowerCurvePart: number[] = [];
+    var currentPowerCurve: number[] = [];
     commandManager.register((buffer: IBuffer, monitor: PerformanceMonitorBase) => {
-        var receivePowerCurvePart: number[] = [];
-        var currentPowerCurve: number[] = [];
+        
         buffer.getPowerCurve = function (params: ICommandPowerCurve): IBuffer {
 
             buffer.addRawCommand({
@@ -156,9 +156,13 @@ namespace ergometer.csafe {
                                 receivePowerCurvePart.push(value);
                             }
                             monitor.traceInfo("received part :" + JSON.stringify(receivePowerCurvePart));
-
-                            //try to get another one till it is empty and there is nothing more
-                            buffer.clear().getPowerCurve({ onDataReceived: params.onDataReceived }).send();
+                            setTimeout(()=>{
+                                //try to get another one till it is empty and there is nothing more
+                                monitor.newCsafeBuffer()
+                                .getPowerCurve({ onDataReceived: params.onDataReceived })
+                                .send();
+                            },0); 
+                            
                         }
                         else {
                             if (receivePowerCurvePart.length > 0) {

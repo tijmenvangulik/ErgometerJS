@@ -101,8 +101,7 @@ class Demo {
     }
     public getInfo() {
         //send an csafe command to get some info
-        this.performanceMonitor.csafeBuffer
-        .clear()
+        this.performanceMonitor.newCsafeBuffer()
         .getStrokeState({
             onDataReceived: (strokeState : ergometer.StrokeState) =>{
                 this.showData(`stroke state: ${strokeState}`);

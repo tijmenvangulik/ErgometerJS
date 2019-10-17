@@ -143,8 +143,7 @@ var Demo = /** @class */ (function () {
     Demo.prototype.getInfo = function () {
         var _this = this;
         //send an csafe command to get some info
-        this.performanceMonitor.csafeBuffer
-            .clear()
+        this.performanceMonitor.newCsafeBuffer()
             .getStrokeState({
             onDataReceived: function (strokeState) {
                 _this.showData("stroke state: " + strokeState);

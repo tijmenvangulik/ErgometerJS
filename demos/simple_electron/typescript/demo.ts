@@ -133,8 +133,7 @@ class Demo {
             //send two commands and show the results in a jquery way
 
 
-            this.performanceMonitor.csafeBuffer
-                .clear()
+            this.performanceMonitor.newCsafeBuffer()
                 .getStrokeState({
                     onDataReceived: (strokeState : ergometer.StrokeState) =>{
                         this.showData(`stroke state: ${strokeState}`);

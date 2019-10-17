@@ -902,7 +902,6 @@ declare namespace ergometer.csafe {
     }
     interface IBuffer {
         rawCommands: IRawCommand[];
-        clear(): IBuffer;
         addRawCommand(info: IRawCommand): any;
         send(success?: () => void, error?: ErrorHandler): Promise<void>;
     }
@@ -1461,6 +1460,20 @@ declare namespace ergometer {
     interface PowerCurveEvent extends pubSub.ISubscription {
         (data: number[]): void;
     }
+    class WaitResponseBuffer {
+        private _monitor;
+        private _commands;
+        _resolve: () => void;
+        _responseState: number;
+        private _timeOutHandle;
+        readonly commands: csafe.IRawCommand[];
+        removeRemainingCommands(): void;
+        private timeOut();
+        constructor(monitor: PerformanceMonitorBase, resolve: () => void, reject: (e) => void, commands: csafe.IRawCommand[], timeOut: number);
+        remove(): void;
+        processedBuffer(): void;
+        receivedCSaveCommand(parsed: ParsedCSafeCommand): void;
+    }
     /**
      *
      * Usage:
@@ -1492,17 +1505,18 @@ declare namespace ergometer {
     class PerformanceMonitorBase {
         private _logEvent;
         private _logLevel;
-        private _csafeBuffer;
-        private _waitResponseCommands;
+        private _waitResonseBuffers;
         protected _connectionState: MonitorConnectionState;
         protected _powerCurve: number[];
         protected _splitCommandsWhenToBig: boolean;
-        protected _checkFrameEnding: boolean;
+        protected _receivePartialBuffers: boolean;
         private _connectionStateChangedEvent;
         private _powerCurveEvent;
         private _checksumCheckEnabled;
+        protected _commandTimeout: number;
         constructor();
         protected initialize(): void;
+        removeResponseBuffer(buffer: WaitResponseBuffer): void;
         protected enableDisableNotification(): void;
         /**
          * returns error and other log information. Some errors can only be received using the logEvent
@@ -1565,8 +1579,7 @@ declare namespace ergometer {
         * @returns {pubSub.Event<ConnectionStateChangedEvent>}
         */
         readonly connectionStateChangedEvent: pubSub.Event<ConnectionStateChangedEvent>;
-        protected clearWaitResponseCommands(): void;
-        protected removeOldSendCommands(): void;
+        protected clearWaitResponseBuffers(): void;
         protected driver_write(data: ArrayBufferView): Promise<void>;
         /**
          *  send everyt thing which is put into the csave buffer
@@ -1575,14 +1588,14 @@ declare namespace ergometer {
          * @param error
          * @returns {Promise<void>|Promise} use promis instead of success and error function
          */
-        sendCSafeBuffer(): Promise<void>;
+        sendCSafeBuffer(csafeBuffer: ergometer.csafe.IBuffer): Promise<void>;
         protected sendCsafeCommands(byteArray: number[]): Promise<void>;
-        protected receivedCSaveCommand(parsed: ParsedCSafeCommand): void;
         private _csafeState;
         protected resetStartCsafe(): void;
+        protected moveToNextBuffer(): WaitResponseBuffer;
         handeReceivedDriverData(dataView: DataView): void;
         protected getPacketSize(): number;
-        readonly csafeBuffer: ergometer.csafe.IBuffer;
+        newCsafeBuffer(): ergometer.csafe.IBuffer;
     }
 }
 /**
@@ -1678,7 +1691,7 @@ declare namespace ergometer {
         driver: ergometer.usb.IDriver;
         protected driver_write(data: ArrayBufferView): Promise<void>;
         private receiveData(data);
-        sendCSafeBuffer(): Promise<void>;
+        sendCSafeBuffer(csafeBuffer: ergometer.csafe.IBuffer): Promise<void>;
         requestDevics(): Promise<UsbDevices>;
         disconnect(): void;
         private disconnected();

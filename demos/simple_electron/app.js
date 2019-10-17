@@ -172,8 +172,7 @@ var Demo = /** @class */ (function () {
             //this.performanceMonitor.sampleRate=SampleRate.rate250ms;
             this.showData(JSON.stringify(this._performanceMonitor.deviceInfo));
             //send two commands and show the results in a jquery way
-            this.performanceMonitor.csafeBuffer
-                .clear()
+            this.performanceMonitor.newCsafeBuffer()
                 .getStrokeState({
                 onDataReceived: function (strokeState) {
                     _this.showData("stroke state: " + strokeState);

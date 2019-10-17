@@ -96,7 +96,12 @@ You only need to change the javascript included file
   * Error handling and connection stability enhancements   
 - 1.2.0
   * Cordova android usb support
-    
+- 1.3.0 
+  * Refactored internals for better stability of the usb csafe commands (csafe command processing could stop after some time.) 
+  * Breaking change: the csafebuffer is not a property of the monitor any more. It is replaced by a function newCsafeBuffer() which creates a new buffer on every call. This prevents potential async problems.
+  * the clear function of the csafebuffer is removed. (it is not needed any more because newCsafeBuffer creates every time an empty buffer )
+  * 
+
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
@@ -256,8 +261,7 @@ success and error parameters of the send function to start with the next command
 next command when data is received.
 
 
-    this.performanceMonitor.csafeBuffer
-                .clear()
+    this.performanceMonitor.newCsafeBuffer()
                 .getStrokeState({
                     received: (strokeState : ergometer.StrokeState) =>{
                         this.showData(`stroke state: ${strokeState}`);
@@ -274,8 +278,7 @@ next command when data is received.
 
 It is not required to chain the commands. You can also write code the classic way:
 
-    var buffer=this.performanceMonitor.csafeBuffer;
-    buffer.clear();
+    var buffer=this.performanceMonitor.newCsafeBuffer();
     buffer.setProgram({program:2}); 
     buffer.send();
     
@@ -316,7 +319,7 @@ There are many commands, I have not yet found time to add all the commands. If y
 please commit them to github. When you not care about writing a user friendly command wrapper you can
 allways send raw commands. For example
 
-    this.performanceMonitor.csafeBuffer.clear()
+    this.performanceMonitor.newCsafeBuffer()
         .addRawCommand({
                         waitForResponse:true,
                         command : csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
@@ -403,7 +406,7 @@ The power curve. When you connect to this event the data will be retreived. (sam
 Csafe communication is done the same way as the ble commnunication.
 See the csafe paragraph of the previous chapter how to do csafe commands.
 
-    this.performanceMonitor.csafeBuffer
+    this.performanceMonitor.newCsafeBuffer()
 
 # Examples
                   

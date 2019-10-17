@@ -147,7 +147,7 @@ namespace ergometer {
                 this._driver= new ergometer.usb.DriverWebHid();
             }
             this._splitCommandsWhenToBig=false;
-            this._checkFrameEnding=false;  
+            this._receivePartialBuffers=false;  
         }
 
         public get driver():ergometer.usb.IDriver {
@@ -177,7 +177,7 @@ namespace ergometer {
             this._csafeBuzy=false;
         }
 
-        public sendCSafeBuffer() : Promise<void> {
+        public sendCSafeBuffer(csafeBuffer : ergometer.csafe.IBuffer) : Promise<void> {
             
             if (this.connectionState!=ergometer.MonitorConnectionState.readyForCommunication)
               return Promise.reject("can not send data, not connected"); 
@@ -193,9 +193,9 @@ namespace ergometer {
                     this._csafeBuzy=true; 
                     
                     this.traceInfo("buzy");
-                    this.traceInfo("send "+JSON.stringify(this.csafeBuffer.rawCommands));
+                    this.traceInfo("send "+JSON.stringify(csafeBuffer.rawCommands));
                     //the send will resolve when all is received
-                    super.sendCSafeBuffer().then(()=>{
+                    super.sendCSafeBuffer(csafeBuffer).then(()=>{
                         this._csafeBuzy=false;
                         this.traceInfo("end buzy");
                         resolve();
@@ -270,10 +270,10 @@ namespace ergometer {
         }
 
         protected highResolutionUpdate() : Promise<void> {
+            this.traceInfo("start high res update");
             var previousStrokeState = this.strokeState;
             return new Promise((resolve,reject)=>{
-                this.csafeBuffer
-                .clear()
+                this.newCsafeBuffer()
                 .getStrokeState({
                     onDataReceived: (strokeState : ergometer.StrokeState) =>{
                         // Update the stroke phase.
@@ -284,26 +284,42 @@ namespace ergometer {
                 
                 .send()
                 .then(()=>{  //send returns a promise
-        
+                    this.traceInfo("end high res update");
                     if (this.strokeState != previousStrokeState)
                     {	
                         // If this is the dwell, complete the power curve.
                         //if (_previousStrokePhase == StrokePhase_Drive)
                         if (this.strokeState == StrokeState.recoveryState)
                         {   
-                            
+                            this.traceInfo("Start low res update");
                             this.lowResolutionUpdate().then(()=>{
                                 if (this.powerCurveEvent.count>0) {
-                                    this.handlePowerCurve().then(resolve).catch(reject); 
+                                    this.traceInfo("start power curveupdate");
+                                    this.handlePowerCurve().then(()=>{
+                                        this.traceInfo("end power curve and end low res update");
+                                        this.traceInfo("resolve high");
+                                        resolve()
+                                    }).catch(reject); 
                                 }
-                                else resolve();
+                                else {
+                                    this.traceInfo("end low res update");
+                                    this.traceInfo("resolve high");
+                                    resolve();
+                                }
                                    	
                             }).catch(reject);	
                             				
                         }
-                        else resolve();
+                        else { 
+                            this.traceInfo("resolve high");
+                            resolve();
+                            
+                        }
                     }
-                    else resolve();  
+                    else { 
+                        this.traceInfo("resolve high");
+                        resolve();  
+                    }
                 })
                 .catch(reject);
             })
@@ -311,8 +327,7 @@ namespace ergometer {
             
         }
         private handlePowerCurve() : Promise<void>{
-            return this.csafeBuffer
-                .clear()
+            return this.newCsafeBuffer()
                 .getPowerCurve({
                     onDataReceived: (curve : number[]) =>{
                         this.powerCurveEvent.pub(curve);
@@ -337,7 +352,7 @@ namespace ergometer {
         }
         protected autoUpdate(first=true) {
             
-            
+            this.traceInfo("auto update :"+first);
             //check on start if any one is listening, if not then
             //do not start the auto updating llop
             if (first && (this.strokeStateEvent.count==0 && 
@@ -373,10 +388,12 @@ namespace ergometer {
               }
            }
            else {
+            this.traceInfo("no auto update")
              this._autoUpdating=false;
            }
         }
         protected nextAutoUpdate() {
+            this.traceInfo("nextAutoUpdate");
             const waitingStates= [WorkoutState.waitToBegin,
                 WorkoutState.workoutEnd,
                 WorkoutState.terminate,
@@ -401,8 +418,15 @@ namespace ergometer {
                     
                     //when work out is buzy update every second, before update every 200 ms
                     if ( ( this.trainingData.workoutState!=WorkoutState.workoutRow && diff>200) ||
-                        ( this.trainingData.workoutState==WorkoutState.workoutRow && diff>1000) )
-                        this.trainingDataUpdate().then(resolve,reject);
+                        ( this.trainingData.workoutState==WorkoutState.workoutRow && diff>1000) ) {
+                            this.traceInfo("start training update")
+                            this.trainingDataUpdate().then(
+                                ()=>{
+                                    this.traceInfo("resolved training update")
+                                    resolve();
+                                },reject);
+                        }
+                        
                     else resolve();
                 }).catch(reject);
             })
@@ -430,8 +454,7 @@ namespace ergometer {
         protected lowResolutionUpdate() : Promise<void> {
         
 
-            return this.csafeBuffer
-            .clear()
+            return this.newCsafeBuffer()
             .getDragFactor({
                 onDataReceived: (value : number) => {
                     this.strokeData.dragFactor=value;
@@ -505,6 +528,7 @@ namespace ergometer {
             })
             .send()
             .then(()=>{
+                this.traceInfo("after low res update");
                 this.strokeDataEvent.pub(this.strokeData);
             });
         }
@@ -529,8 +553,7 @@ namespace ergometer {
             var actualTime=0;
             var duration=0;
             var distance=0;
-            return this.csafeBuffer
-                .clear()              
+            return this.newCsafeBuffer()             
                 .getWorkoutType(
                     {onDataReceived: (value) => {
                         if (this.trainingData.workoutType!=value)	{
