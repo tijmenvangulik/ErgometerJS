@@ -491,207 +491,214 @@
         /**
          *
          */
-        protected enableMultiplexNotification() {
+        protected enableMultiplexNotification() :Promise<void> {
+            var result : Promise<void>;
             if (this._multiplexSubscribeCount==0)
-                this.driver.enableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC,
+                result=this.driver.enableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC,
                     (data:ArrayBuffer) => { this.handleDataCallbackMulti(data);})
                     .catch( this.getErrorHandlerFunc("Can not enable multiplex"));
+            else result= Promise.resolve();
             this._multiplexSubscribeCount++;
+            return result;
         }
 
         /**
          *
          */
-        protected disableMultiPlexNotification() {
+        protected disableMultiPlexNotification() :Promise<void> {
+            var result : Promise<void>;
             this._multiplexSubscribeCount--;
             if (this._multiplexSubscribeCount==0)
-                this.driver.disableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC)
+              result=this.driver.disableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC)
                   .catch( this.getErrorHandlerFunc("can not disable multiplex"));
+            else result= Promise.resolve();
+            return result;      
         }
 
         /**
          *
          */
-        protected enableDisableNotification() {
+        protected enableDisableNotification() : Promise<void> {
             super.enableDisableNotification();
+            var promises : Promise<void>[] =[];
             if (this.connectionState>=MonitorConnectionState.servicesFound) {
                 if (this.rowingGeneralStatusEvent.count > 0) {
                     if (this.multiplex) {
-                       this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC,
+                        promises.push(this.driver.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingGeneralStatus);
-                            }).catch(this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc("")));
                     }
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC)
-                        .catch(this.getErrorHandlerFunc(""));
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
+                    else promises.push(this.driver.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC)
+                        .catch(this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingAdditionalStatus1Event.count > 0) {
                     if (this.multiplex) {
-                        this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC,
+                        promises.push(this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStatus1);
-                            }).catch(this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc("")));
                     }
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC)
-                       .catch(this.getErrorHandlerFunc(""));
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
+                    else promises.push(this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC)
+                       .catch(this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingAdditionalStatus2Event.count > 0) {
                     if (this.multiplex) {
-                        this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC,
+                        promises.push(this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStatus2);
-                            }).catch(this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc("")));
                     }
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC)
-                        .catch( this.getErrorHandlerFunc(""));
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
+                    else promises.push(this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC)
+                        .catch( this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingStrokeDataEvent.count > 0) {
                     if (this.multiplex) {
-                        this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC,
+                        promises.push(this.driver.enableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingStrokeData);
-                            }).catch(this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc("")));
                     }
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC)
-                        .catch( this.getErrorHandlerFunc(""));
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
+                    else promises.push(this.driver.disableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC)
+                        .catch( this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingAdditionalStrokeDataEvent.count > 0) {
                     if (this.multiplex) {
-                        this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC,
+                        promises.push(this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalStrokeData);
-                            }).catch(this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc("")));
                     }
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC)
-                        .catch(this.getErrorHandlerFunc(""));
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
+                    else promises.push(this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC)
+                        .catch(this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingSplitIntervalDataEvent.count > 0) {
                     if (this.multiplex) {
-                        this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC,
+                        promises.push(this.driver.enableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingSplitIntervalData);
-                            }).catch(this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc("")));
                     }
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC)
-                        .catch(this.getErrorHandlerFunc(""));
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
+                    else promises.push(this.driver.disableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC)
+                        .catch(this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingAdditionalSplitIntervalDataEvent.count > 0) {
                     if (this.multiplex) {
-                        this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC,
+                        promises.push(this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleRowingAdditionalSplitIntervalData);
-                            }).catch(this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc("")));
                     }
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC)
-                        .catch( this.getErrorHandlerFunc(""));
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
+                    else promises.push(this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC)
+                        .catch( this.getErrorHandlerFunc("")));
                 }
 
                 if (this.workoutSummaryDataEvent.count > 0) {
                     if (this.multiplex) {
-                        this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC,
+                        promises.push(this.driver.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleWorkoutSummaryData);
-                            }).catch(this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc("")));
                     }
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC)
-                        .catch(this.getErrorHandlerFunc(""));
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
+                    else promises.push(this.driver.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC)
+                        .catch(this.getErrorHandlerFunc("")));
                 }
 
                 if (this.additionalWorkoutSummaryDataEvent.count > 0) {
                     if (this.multiplex) {
-                        this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC,
+                        promises.push(this.driver.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleAdditionalWorkoutSummaryData);
-                            }).catch(this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc("")));
                     }
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC )
-                        .catch( this.getErrorHandlerFunc(""));
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
+                    else promises.push(this.driver.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC )
+                        .catch( this.getErrorHandlerFunc("")));
                 }
                 if (this.additionalWorkoutSummaryData2Event.count > 0) {
                     if (this.multiplex) {
-                        this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     //this data is only available for multi ples
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
                 }
 
                 if (this.heartRateBeltInformationEvent.count > 0) {
                     if (this.multiplex) {
-                        this.enableMultiplexNotification();
+                        promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        this.driver.enableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC,
+                        promises.push(this.driver.enableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC,
                             (data:ArrayBuffer) => {
                                 this.handleDataCallback(data, this.handleHeartRateBeltInformation);
-                            }).catch(this.getErrorHandlerFunc(""));
+                            }).catch(this.getErrorHandlerFunc("")));
                     }
                 }
                 else {
-                    if (this.multiplex) this.disableMultiPlexNotification();
-                    else this.driver.disableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC)
-                        .catch( this.getErrorHandlerFunc(""));
+                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
+                    else promises.push(this.driver.disableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC)
+                        .catch( this.getErrorHandlerFunc("")));
                 }
                 if (this.powerCurveEvent.count>0) {
                     //when the status changes collect the power info
@@ -709,6 +716,8 @@
 
                 }
             }
+            return Promise.all(promises).then(()=>{
+                return Promise.resolve()});   
         }
 
         protected onPowerCurveRowingGeneralStatus(data : ergometer.RowingGeneralStatus) {
@@ -716,7 +725,7 @@
 
             //test to receive the power curve
             if (this.rowingGeneralStatus && this.rowingGeneralStatus.strokeState!=data.strokeState) {
-
+               
                 if (data.strokeState ==StrokeState.recoveryState) {
                     //send a power curve request
                     this.newCsafeBuffer()
@@ -1358,17 +1367,22 @@
             //handle to the notification
 
             this.changeConnectionState(MonitorConnectionState.servicesFound);
-            this.enableDisableNotification();
+            //first enable all notifications and wait till they are active
+            //and then set the connection state to ready           
+            this.enableDisableNotification().then(()=>{
+                return this.handleCSafeNotifications()
+            }).then(()=>{
+                this.changeConnectionState(MonitorConnectionState.readyForCommunication);                
+            });
 
             //allways connect to csafe
-            this.handleCSafeNotifications();
-            this.changeConnectionState(MonitorConnectionState.readyForCommunication);
+            
         }
 
-        public handleCSafeNotifications() {
+        public handleCSafeNotifications(): Promise<void> {
             
             this.traceInfo("enable notifications csafe");
-            this.driver.enableNotification(ble.PMCONTROL_SERVICE,ble.RECEIVE_FROM_PM_CHARACTERISIC,
+            return this.driver.enableNotification(ble.PMCONTROL_SERVICE,ble.RECEIVE_FROM_PM_CHARACTERISIC,
                 (data:ArrayBuffer) => {
                     var dataView = new DataView(data);
                     this.handeReceivedDriverData(dataView);

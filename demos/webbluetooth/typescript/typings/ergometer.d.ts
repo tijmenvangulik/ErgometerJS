@@ -1517,7 +1517,7 @@ declare namespace ergometer {
         constructor();
         protected initialize(): void;
         removeResponseBuffer(buffer: WaitResponseBuffer): void;
-        protected enableDisableNotification(): void;
+        protected enableDisableNotification(): Promise<void>;
         /**
          * returns error and other log information. Some errors can only be received using the logEvent
          * @returns {pubSub.Event<LogEvent>}
@@ -2023,15 +2023,15 @@ declare namespace ergometer {
         /**
          *
          */
-        protected enableMultiplexNotification(): void;
+        protected enableMultiplexNotification(): Promise<void>;
         /**
          *
          */
-        protected disableMultiPlexNotification(): void;
+        protected disableMultiPlexNotification(): Promise<void>;
         /**
          *
          */
-        protected enableDisableNotification(): void;
+        protected enableDisableNotification(): Promise<void>;
         protected onPowerCurveRowingGeneralStatus(data: ergometer.RowingGeneralStatus): void;
         currentDriverIsWebBlueTooth(): boolean;
         /**
@@ -2145,7 +2145,7 @@ declare namespace ergometer {
          * @param data
          */
         protected handleHeartRateBeltInformation(data: DataView): void;
-        handleCSafeNotifications(): void;
+        handleCSafeNotifications(): Promise<void>;
         /**
          *
          * @param data

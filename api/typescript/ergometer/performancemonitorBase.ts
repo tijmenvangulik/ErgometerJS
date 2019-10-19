@@ -215,8 +215,8 @@ namespace ergometer {
             if (i>=0)
             this._waitResonseBuffers.splice(i,1);
         }
-        protected enableDisableNotification() {
-
+        protected enableDisableNotification() : Promise<void> {
+            return Promise.resolve()
         }
         /**
          * returns error and other log information. Some errors can only be received using the logEvent
@@ -428,8 +428,6 @@ namespace ergometer {
                     if (this._splitCommandsWhenToBig && bytesToSend.length>this.getPacketSize())
                       reject(`Csafe commands with length ${bytesToSend.length} does not fit into buffer with size ${this.getPacketSize()} `)
                     else {
-                        //reset the state to prepare for the command
-                        this._csafeState.frameState=FrameState.initial;
                         var sendBytesIndex=0;
                         //continue while not all bytes are send
                         while (sendBytesIndex<bytesToSend.length) {
@@ -491,7 +489,7 @@ namespace ergometer {
             if (this._waitResonseBuffers.length>0) {
                 result=this._waitResonseBuffers[0];;
             }
-            this._csafeState.frameState == FrameState.initial;
+            this._csafeState.frameState = FrameState.initial;
             return result;
         }
         //because of the none blocking nature, the receive
@@ -573,6 +571,7 @@ namespace ergometer {
                                 this._csafeState.command=0; //do not check checksum
                                 this.moveToNextBuffer(); //end is reached
                                 movedToNext=true;
+
                             }
                             else if (i<dataView.byteLength) {
                                 this._csafeState.nextDataLength= currentByte;
