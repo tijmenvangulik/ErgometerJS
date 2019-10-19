@@ -118,6 +118,7 @@
 			},
 			function(error) {
 				if (errorFn) { errorFn(error); }
+				if (error==19) disconnectFn();
 			});
 	};
 
