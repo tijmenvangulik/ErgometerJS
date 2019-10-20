@@ -7,7 +7,26 @@
  *
  */
 namespace ergometer.csafe {
+    export const enum SlaveState {
 
+        ERROR,
+        READY,
+        IDLE,
+        HAVEID,
+        INUSE,
+        PAUZED,
+        FINISHED,
+        MANUAL,
+        OFFLINE
+                                   //CTRL_CMD_SHORT_MIN
+    }
+    export const enum PrevFrameState  {
+       OK,
+       REJECT,
+       BAD,
+       NOT_READY
+
+    }
     export interface ICommandParamsBase {
         onError? : ErrorHandler;
         onDataReceived? : (data : any)=>void;
@@ -20,6 +39,8 @@ namespace ergometer.csafe {
         onDataReceived? : (data : DataView)=>void;
         onError?: ErrorHandler;
 
+        responseBuffer? : IResponseBuffer;
+
     }
     export interface IBuffer {
         rawCommands : IRawCommand[];
@@ -27,7 +48,11 @@ namespace ergometer.csafe {
         send(success? : ()=>void,error? : ErrorHandler) : Promise<void>;
 
     }
-
+    export interface IResponseBuffer {
+        monitorStatus : ergometer.csafe.SlaveState;
+        prevFrameState : ergometer.csafe.PrevFrameState;
+        commands : csafe.IRawCommand[];
+    }
     export interface ICommand {
         (buffer : IBuffer,monitor : PerformanceMonitorBase) :void
     }

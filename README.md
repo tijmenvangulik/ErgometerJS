@@ -100,7 +100,10 @@ You only need to change the javascript included file
   * Refactored internals for better stability of the usb csafe commands (csafe command processing could stop after some time.) 
   * Breaking change: the csafebuffer is not a property of the monitor any more. It is replaced by a function newCsafeBuffer() which creates a new buffer on every call. This prevents potential async problems.
   * the clear function of the csafebuffer is removed. (it is not needed any more because newCsafeBuffer creates every time an empty buffer )
-  * 
+- 1.3.1
+  * Added csafe state to the receive buffer and access from the command to the receive buffer
+  * more async refactorings for better stabliity
+  * Small bug fixes 
 
 # Project features
 

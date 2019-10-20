@@ -172,7 +172,6 @@ namespace ergometer {
             
         }
         private receiveData(data:DataView) {
-            this.resetStartCsafe();
             this.handeReceivedDriverData(data);
             this._csafeBuzy=false;
         }

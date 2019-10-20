@@ -888,6 +888,23 @@ declare namespace ergometer.csafe.defs {
  *
  */
 declare namespace ergometer.csafe {
+    const enum SlaveState {
+        ERROR = 0,
+        READY = 1,
+        IDLE = 2,
+        HAVEID = 3,
+        INUSE = 4,
+        PAUZED = 5,
+        FINISHED = 6,
+        MANUAL = 7,
+        OFFLINE = 8,
+    }
+    const enum PrevFrameState {
+        OK = 0,
+        REJECT = 1,
+        BAD = 2,
+        NOT_READY = 3,
+    }
     interface ICommandParamsBase {
         onError?: ErrorHandler;
         onDataReceived?: (data: any) => void;
@@ -899,11 +916,17 @@ declare namespace ergometer.csafe {
         data?: number[];
         onDataReceived?: (data: DataView) => void;
         onError?: ErrorHandler;
+        responseBuffer?: IResponseBuffer;
     }
     interface IBuffer {
         rawCommands: IRawCommand[];
         addRawCommand(info: IRawCommand): any;
         send(success?: () => void, error?: ErrorHandler): Promise<void>;
+    }
+    interface IResponseBuffer {
+        monitorStatus: ergometer.csafe.SlaveState;
+        prevFrameState: ergometer.csafe.PrevFrameState;
+        commands: csafe.IRawCommand[];
     }
     interface ICommand {
         (buffer: IBuffer, monitor: PerformanceMonitorBase): void;
@@ -1445,6 +1468,15 @@ declare namespace ergometer {
         detailCommand: number;
         data: Uint8Array;
     }
+    const enum FrameState {
+        initial = 0,
+        statusByte = 1,
+        parseCommand = 2,
+        parseCommandLength = 3,
+        parseDetailCommand = 4,
+        parseDetailCommandLength = 5,
+        parseCommandData = 6,
+    }
     enum MonitorConnectionState {
         inactive = 0,
         deviceReady = 1,
@@ -1460,7 +1492,17 @@ declare namespace ergometer {
     interface PowerCurveEvent extends pubSub.ISubscription {
         (data: number[]): void;
     }
-    class WaitResponseBuffer {
+    class WaitResponseBuffer implements ergometer.csafe.IResponseBuffer {
+        command: number;
+        commandDataIndex: number;
+        commandData: Uint8Array;
+        frameState: FrameState;
+        nextDataLength: number;
+        detailCommand: number;
+        statusByte: number;
+        monitorStatus: ergometer.csafe.SlaveState;
+        prevFrameState: ergometer.csafe.PrevFrameState;
+        calcCheck: number;
         private _monitor;
         private _commands;
         _resolve: () => void;
@@ -1590,8 +1632,6 @@ declare namespace ergometer {
          */
         sendCSafeBuffer(csafeBuffer: ergometer.csafe.IBuffer): Promise<void>;
         protected sendCsafeCommands(byteArray: number[]): Promise<void>;
-        private _csafeState;
-        protected resetStartCsafe(): void;
         protected moveToNextBuffer(): WaitResponseBuffer;
         handeReceivedDriverData(dataView: DataView): void;
         protected getPacketSize(): number;

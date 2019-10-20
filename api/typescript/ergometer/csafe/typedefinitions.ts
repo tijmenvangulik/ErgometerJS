@@ -6,6 +6,7 @@
 
 namespace ergometer.csafe.defs {
 
+    
     /* Frame contents */
     export const EXT_FRAME_START_BYTE          =0xF0;
     export const FRAME_START_BYTE              =0xF1;
