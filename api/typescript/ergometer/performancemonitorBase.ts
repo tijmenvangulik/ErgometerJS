@@ -507,9 +507,12 @@ namespace ergometer {
                 var moveToNextBuffer=false;
                 while (i<dataView.byteLength && !moveToNextBuffer) {
                     var currentByte= dataView.getUint8(i);
+                    
                     if (waitBuffer.frameState!=FrameState.initial) {
                         waitBuffer.calcCheck=waitBuffer.calcCheck ^ currentByte; //xor for a simple crc check
                     }
+                    if (this.logLevel==LogLevel.trace)
+                        this.traceInfo(`parse: ${i}: ${utils.toHexString(currentByte,1)} state: ${waitBuffer.frameState} checksum:${utils.toHexString(waitBuffer.calcCheck,1)} `);
 
                     switch(waitBuffer.frameState) {
                         case FrameState.initial : {
@@ -622,8 +625,6 @@ namespace ergometer {
                         }
 
                     }
-                    if (this.logLevel==LogLevel.trace)
-                        this.traceInfo(`parse: ${i}: ${utils.toHexString(currentByte,1)} state: ${waitBuffer.frameState} checksum:${utils.toHexString(waitBuffer.calcCheck,1)} `);
                     i++;
                 }
                 

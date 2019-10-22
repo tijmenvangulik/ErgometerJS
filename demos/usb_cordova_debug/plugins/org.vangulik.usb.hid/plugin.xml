@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="org.vangulik.usb.hid" version="0.0.1" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+<name>UsbHid</name><js-module name="UsbHid" src="www/UsbHid.js">
+<clobbers target="cordova.plugins.UsbHid" />
+</js-module><platform name="android">
+<config-file parent="/*" target="res/xml/config.xml">
+<feature name="UsbHid"><param name="android-package" value="org.vangulik.usb.hid.UsbHid" />
+</feature>
+</config-file>
+<config-file parent="/*" target="AndroidManifest.xml">
+</config-file>
+<source-file src="src/android/UsbHid.java" target-dir="src/org/vangulik/usb/hid" />
+<source-file src="src/android/UsbBroadcastReceiver.java" target-dir="src/org/vangulik/usb/hid" />
+</platform>
+</plugin>

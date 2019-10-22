@@ -2772,6 +2772,8 @@ var ergometer;
                     if (waitBuffer.frameState != 0 /* initial */) {
                         waitBuffer.calcCheck = waitBuffer.calcCheck ^ currentByte; //xor for a simple crc check
                     }
+                    if (this.logLevel == LogLevel.trace)
+                        this.traceInfo("parse: " + i + ": " + ergometer.utils.toHexString(currentByte, 1) + " state: " + waitBuffer.frameState + " checksum:" + ergometer.utils.toHexString(waitBuffer.calcCheck, 1) + " ");
                     switch (waitBuffer.frameState) {
                         case 0 /* initial */: {
                             //expect a start frame
@@ -2876,8 +2878,6 @@ var ergometer;
                             break;
                         }
                     }
-                    if (this.logLevel == LogLevel.trace)
-                        this.traceInfo("parse: " + i + ": " + ergometer.utils.toHexString(currentByte, 1) + " state: " + waitBuffer.frameState + " checksum:" + ergometer.utils.toHexString(waitBuffer.calcCheck, 1) + " ");
                     i++;
                 }
                 if (this._receivePartialBuffers) {

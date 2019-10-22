@@ -1,0 +1,53 @@
+{
+  "_from": "git+https://github.com/tijmenvangulik/cordova-usb-hid.git",
+  "_id": "org.vangulik.usb.hid@0.0.1",
+  "_inBundle": false,
+  "_integrity": "",
+  "_location": "/org.vangulik.usb.hid",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "git",
+    "raw": "https://github.com/tijmenvangulik/cordova-usb-hid.git",
+    "rawSpec": "https://github.com/tijmenvangulik/cordova-usb-hid.git",
+    "saveSpec": "git+https://github.com/tijmenvangulik/cordova-usb-hid.git",
+    "fetchSpec": "https://github.com/tijmenvangulik/cordova-usb-hid.git",
+    "gitCommittish": null
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "git+https://github.com/tijmenvangulik/cordova-usb-hid.git#ee7c69025df088e1ce59da734b62539bfb3be6ee",
+  "_spec": "https://github.com/tijmenvangulik/cordova-usb-hid.git",
+  "_where": "/Users/tijmen/Code/MobileErgometer/demos/usb_cordova",
+  "author": {
+    "name": "Tijmen van Gulik"
+  },
+  "bundleDependencies": false,
+  "cordova": {
+    "id": "org.vangulik.usb hid",
+    "platforms": [
+      "android"
+    ]
+  },
+  "dependencies": {
+    "@types/cordova": "0.0.34"
+  },
+  "deprecated": false,
+  "description": "cordova usb hid",
+  "devDependencies": {
+    "typescript": "^3.6.3"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android",
+    "usb",
+    "hid"
+  ],
+  "license": "Apache 2.0",
+  "name": "org.vangulik.usb.hid",
+  "scripts": {
+    "build": "tsc"
+  },
+  "version": "0.0.1"
+}
