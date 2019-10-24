@@ -9,15 +9,15 @@
 namespace ergometer.csafe {
     export const enum SlaveState {
 
-        ERROR,
-        READY,
-        IDLE,
-        HAVEID,
-        INUSE,
-        PAUZED,
-        FINISHED,
-        MANUAL,
-        OFFLINE
+        ERROR =0,
+        READY =1,
+        IDLE = 2,
+        HAVEID =3,
+        INUSE = 5,
+        PAUZED = 6,
+        FINISHED= 7,
+        MANUAL = 8,
+        OFFLINE = 9
                                    //CTRL_CMD_SHORT_MIN
     }
     export const enum PrevFrameState  {

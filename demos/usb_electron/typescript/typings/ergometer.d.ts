@@ -893,11 +893,11 @@ declare namespace ergometer.csafe {
         READY = 1,
         IDLE = 2,
         HAVEID = 3,
-        INUSE = 4,
-        PAUZED = 5,
-        FINISHED = 6,
-        MANUAL = 7,
-        OFFLINE = 8,
+        INUSE = 5,
+        PAUZED = 6,
+        FINISHED = 7,
+        MANUAL = 8,
+        OFFLINE = 9,
     }
     const enum PrevFrameState {
         OK = 0,
@@ -1508,6 +1508,7 @@ declare namespace ergometer {
         _resolve: () => void;
         _responseState: number;
         private _timeOutHandle;
+        stuffByteActive: boolean;
         readonly commands: csafe.IRawCommand[];
         removeRemainingCommands(): void;
         private timeOut();

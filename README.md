@@ -104,6 +104,8 @@ You only need to change the javascript included file
   * Added csafe state to the receive buffer and access from the command to the receive buffer
   * more async refactorings for better stabliity
   * Small bug fixes 
+- 1.3.2
+  * Add missing stuffing
 
 # Project features
 

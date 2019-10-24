@@ -2375,6 +2375,7 @@ var ergometer;
             this.calcCheck = 0;
             //commands where we are waiting for
             this._commands = [];
+            this.stuffByteActive = false;
             this._monitor = monitor;
             this._resolve = resolve;
             this._reject = reject;
@@ -2701,6 +2702,18 @@ var ergometer;
                     var checksum = 0;
                     for (var i = 0; i < byteArray.length; i++)
                         checksum = checksum ^ byteArray[i];
+                    var newArray = [];
+                    for (var i = 0; i < byteArray.length; i++) {
+                        var value = byteArray[i];
+                        if (value >= 0xF0 && value <= 0xF3) {
+                            newArray.push(0xF3);
+                            newArray.push(value - 0xF0);
+                            if (_this.logLevel == LogLevel.trace)
+                                _this.traceInfo("stuffed to byte:" + value);
+                        }
+                        else
+                            newArray.push(value);
+                    }
                     //prepare all the data to be send in one array
                     //begin with a start byte ad end with a checksum and an end byte
                     var bytesToSend = ([ergometer.csafe.defs.FRAME_START_BYTE].concat(byteArray)).concat([checksum, ergometer.csafe.defs.FRAME_END_BYTE]);
@@ -2769,113 +2782,118 @@ var ergometer;
                 var moveToNextBuffer = false;
                 while (i < dataView.byteLength && !moveToNextBuffer) {
                     var currentByte = dataView.getUint8(i);
-                    if (waitBuffer.frameState != 0 /* initial */) {
-                        waitBuffer.calcCheck = waitBuffer.calcCheck ^ currentByte; //xor for a simple crc check
+                    if (waitBuffer.stuffByteActive && currentByte <= 3) {
+                        currentByte = 0xF0 + currentByte; //unstuff
+                        if (this.logLevel == LogLevel.trace)
+                            this.traceInfo("unstuffed to byte:" + currentByte);
+                        waitBuffer.stuffByteActive = false;
                     }
-                    if (this.logLevel == LogLevel.trace)
-                        this.traceInfo("parse: " + i + ": " + ergometer.utils.toHexString(currentByte, 1) + " state: " + waitBuffer.frameState + " checksum:" + ergometer.utils.toHexString(waitBuffer.calcCheck, 1) + " ");
-                    switch (waitBuffer.frameState) {
-                        case 0 /* initial */: {
-                            //expect a start frame
-                            if (currentByte != ergometer.csafe.defs.FRAME_START_BYTE) {
-                                moveToNextBuffer = true;
-                                if (this.logLevel == LogLevel.trace)
-                                    this.traceInfo("stop byte " + ergometer.utils.toHexString(currentByte, 1));
-                            }
-                            else
-                                waitBuffer.frameState = 1 /* statusByte */;
-                            waitBuffer.calcCheck = 0;
-                            break;
+                    else {
+                        waitBuffer.stuffByteActive = (currentByte == 0xF3);
+                        if (waitBuffer.stuffByteActive && this.logLevel == LogLevel.trace)
+                            this.traceInfo("start stuff byte");
+                    }
+                    //when stuffbyte is active then move to the next
+                    if (!waitBuffer.stuffByteActive) {
+                        if (waitBuffer.frameState != 0 /* initial */) {
+                            waitBuffer.calcCheck = waitBuffer.calcCheck ^ currentByte; //xor for a simple crc check
                         }
-                        case 1 /* statusByte */:
-                            {
-                                waitBuffer.frameState = 2 /* parseCommand */;
-                                waitBuffer.statusByte = currentByte;
-                                waitBuffer.monitorStatus = currentByte & ergometer.csafe.defs.SLAVESTATE_MSK;
-                                waitBuffer.prevFrameState = ((currentByte & ergometer.csafe.defs.PREVFRAMESTATUS_MSK) >> 4);
-                                if (this.logLevel == LogLevel.trace)
-                                    this.traceInfo("monitor status: " + waitBuffer.monitorStatus + ",prev frame state: " + waitBuffer.prevFrameState);
-                                waitBuffer._responseState = currentByte;
-                                break;
-                            }
-                        case 2 /* parseCommand */: {
-                            //when  at the end the command is the crc and it can be
-                            //any number store it in the command and process it at the next
-                            if (i == dataView.byteLength - 2 &&
-                                dataView.getUint8(dataView.byteLength - 1) == ergometer.csafe.defs.FRAME_END_BYTE) {
-                                waitBuffer.command = currentByte;
-                                waitBuffer.frameState = 3 /* parseCommandLength */;
-                            }
-                            else if (currentByte >= 16 /* IDDIGITS_CMD */) {
-                                waitBuffer.command = currentByte;
-                                waitBuffer.frameState = 3 /* parseCommandLength */;
-                            } //if less than this skipp it there is some times a 0x09 inserted which is not an command and
-                            //the real command follows so skip this 
-                            break;
-                        }
-                        case 3 /* parseCommandLength */: {
-                            //first work arround strange results where the status byte is the same
-                            //as the the command and the frame directly ends, What is the meaning of
-                            //this? some kind of status??
-                            if (waitBuffer.statusByte == waitBuffer.command && currentByte == ergometer.csafe.defs.FRAME_END_BYTE) {
-                                waitBuffer.command = 0; //do not check checksum
-                                moveToNextBuffer = true;
-                            }
-                            else if (i == dataView.byteLength - 1 && currentByte == ergometer.csafe.defs.FRAME_END_BYTE) {
-                                var checksum = waitBuffer.command;
-                                //remove the last 2 bytes from the checksum which was added too much
-                                waitBuffer.calcCheck = waitBuffer.calcCheck ^ currentByte;
-                                waitBuffer.calcCheck = waitBuffer.calcCheck ^ waitBuffer.command;
-                                //check the calculated with the message checksum
-                                if (this._checksumCheckEnabled && checksum != waitBuffer.calcCheck)
-                                    this.handleError("Wrong checksum " + ergometer.utils.toHexString(checksum, 1) + " expected " + ergometer.utils.toHexString(waitBuffer.calcCheck, 1) + " ");
-                                waitBuffer.command = 0; //do not check checksum
-                                moveToNextBuffer = true;
-                            }
-                            else if (i < dataView.byteLength) {
-                                waitBuffer.nextDataLength = currentByte;
-                                if (waitBuffer.command >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN) {
-                                    waitBuffer.frameState = 6 /* parseCommandData */;
+                        if (this.logLevel == LogLevel.trace)
+                            this.traceInfo("parse: " + i + ": " + ergometer.utils.toHexString(currentByte, 1) + " state: " + waitBuffer.frameState + " checksum:" + ergometer.utils.toHexString(waitBuffer.calcCheck, 1) + " ");
+                        switch (waitBuffer.frameState) {
+                            case 0 /* initial */: {
+                                //expect a start frame
+                                if (currentByte != ergometer.csafe.defs.FRAME_START_BYTE) {
+                                    moveToNextBuffer = true;
+                                    if (this.logLevel == LogLevel.trace)
+                                        this.traceInfo("stop byte " + ergometer.utils.toHexString(currentByte, 1));
                                 }
                                 else
-                                    waitBuffer.frameState = 4 /* parseDetailCommand */;
+                                    waitBuffer.frameState = 1 /* statusByte */;
+                                waitBuffer.calcCheck = 0;
+                                break;
                             }
-                            break;
-                        }
-                        case 4 /* parseDetailCommand */: {
-                            waitBuffer.detailCommand = currentByte;
-                            waitBuffer.frameState = 5 /* parseDetailCommandLength */;
-                            break;
-                        }
-                        case 5 /* parseDetailCommandLength */: {
-                            waitBuffer.nextDataLength = currentByte;
-                            waitBuffer.frameState = 6 /* parseCommandData */;
-                            break;
-                        }
-                        case 6 /* parseCommandData */: {
-                            if (!waitBuffer.commandData) {
-                                waitBuffer.commandDataIndex = 0;
-                                waitBuffer.commandData = new Uint8Array(waitBuffer.nextDataLength);
-                            }
-                            waitBuffer.commandData[waitBuffer.commandDataIndex] = currentByte;
-                            waitBuffer.nextDataLength--;
-                            waitBuffer.commandDataIndex++;
-                            if (waitBuffer.nextDataLength == 0) {
-                                waitBuffer.frameState = 2 /* parseCommand */;
-                                try {
-                                    waitBuffer.receivedCSaveCommand({
-                                        command: waitBuffer.command,
-                                        detailCommand: waitBuffer.detailCommand,
-                                        data: waitBuffer.commandData
-                                    });
+                            case 1 /* statusByte */:
+                                {
+                                    waitBuffer.frameState = 2 /* parseCommand */;
+                                    waitBuffer.statusByte = currentByte;
+                                    waitBuffer.monitorStatus = currentByte & ergometer.csafe.defs.SLAVESTATE_MSK;
+                                    waitBuffer.prevFrameState = ((currentByte & ergometer.csafe.defs.PREVFRAMESTATUS_MSK) >> 4);
+                                    if (this.logLevel == LogLevel.trace)
+                                        this.traceInfo("monitor status: " + waitBuffer.monitorStatus + ",prev frame state: " + waitBuffer.prevFrameState);
+                                    waitBuffer._responseState = currentByte;
+                                    break;
                                 }
-                                catch (e) {
-                                    this.handleError(e); //never let the receive crash the main loop
-                                }
-                                waitBuffer.commandData = null;
-                                waitBuffer.detailCommand = 0;
+                            case 2 /* parseCommand */: {
+                                waitBuffer.command = currentByte;
+                                waitBuffer.frameState = 3 /* parseCommandLength */;
+                                //the real command follows so skip this 
+                                break;
                             }
-                            break;
+                            case 3 /* parseCommandLength */: {
+                                //first work arround strange results where the status byte is the same
+                                //as the the command and the frame directly ends, What is the meaning of
+                                //this? some kind of status??
+                                if (waitBuffer.statusByte == waitBuffer.command && currentByte == ergometer.csafe.defs.FRAME_END_BYTE) {
+                                    waitBuffer.command = 0; //do not check checksum
+                                    moveToNextBuffer = true;
+                                }
+                                else if (i == dataView.byteLength - 1 && currentByte == ergometer.csafe.defs.FRAME_END_BYTE) {
+                                    var checksum = waitBuffer.command;
+                                    //remove the last 2 bytes from the checksum which was added too much
+                                    waitBuffer.calcCheck = waitBuffer.calcCheck ^ currentByte;
+                                    waitBuffer.calcCheck = waitBuffer.calcCheck ^ waitBuffer.command;
+                                    //check the calculated with the message checksum
+                                    if (this._checksumCheckEnabled && checksum != waitBuffer.calcCheck)
+                                        this.handleError("Wrong checksum " + ergometer.utils.toHexString(checksum, 1) + " expected " + ergometer.utils.toHexString(waitBuffer.calcCheck, 1) + " ");
+                                    waitBuffer.command = 0; //do not check checksum
+                                    moveToNextBuffer = true;
+                                }
+                                else if (i < dataView.byteLength) {
+                                    waitBuffer.nextDataLength = currentByte;
+                                    if (waitBuffer.command >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN) {
+                                        waitBuffer.frameState = 6 /* parseCommandData */;
+                                    }
+                                    else
+                                        waitBuffer.frameState = 4 /* parseDetailCommand */;
+                                }
+                                break;
+                            }
+                            case 4 /* parseDetailCommand */: {
+                                waitBuffer.detailCommand = currentByte;
+                                waitBuffer.frameState = 5 /* parseDetailCommandLength */;
+                                break;
+                            }
+                            case 5 /* parseDetailCommandLength */: {
+                                waitBuffer.nextDataLength = currentByte;
+                                waitBuffer.frameState = 6 /* parseCommandData */;
+                                break;
+                            }
+                            case 6 /* parseCommandData */: {
+                                if (!waitBuffer.commandData) {
+                                    waitBuffer.commandDataIndex = 0;
+                                    waitBuffer.commandData = new Uint8Array(waitBuffer.nextDataLength);
+                                }
+                                waitBuffer.commandData[waitBuffer.commandDataIndex] = currentByte;
+                                waitBuffer.nextDataLength--;
+                                waitBuffer.commandDataIndex++;
+                                if (waitBuffer.nextDataLength == 0) {
+                                    waitBuffer.frameState = 2 /* parseCommand */;
+                                    try {
+                                        waitBuffer.receivedCSaveCommand({
+                                            command: waitBuffer.command,
+                                            detailCommand: waitBuffer.detailCommand,
+                                            data: waitBuffer.commandData
+                                        });
+                                    }
+                                    catch (e) {
+                                        this.handleError(e); //never let the receive crash the main loop
+                                    }
+                                    waitBuffer.commandData = null;
+                                    waitBuffer.detailCommand = 0;
+                                }
+                                break;
+                            }
                         }
                     }
                     i++;
