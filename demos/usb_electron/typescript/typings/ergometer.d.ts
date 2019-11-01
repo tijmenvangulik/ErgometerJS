@@ -1716,6 +1716,7 @@ declare namespace ergometer {
         private _strokeState;
         private _lastTrainingTime;
         private _csafeBuzy;
+        private _lastLowResUpdate;
         readonly csafeBuzy: boolean;
         readonly strokeData: StrokeData;
         readonly trainingData: TrainingData;

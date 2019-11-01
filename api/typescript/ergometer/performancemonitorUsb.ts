@@ -34,9 +34,10 @@ namespace ergometer {
     }
     export type UsbDevices = UsbDevice[];
     
-    const WAIT_TIME_MEASURING = 80;//min ms when actively getting data when rowing or starting to row
+    const WAIT_TIME_MEASURING = 30;//min ms when actively getting data when rowing or starting to row
     const WAIT_TIME_INIT = 500;//min ms
-    
+    const WAIT_TIME_LOW_RES = 200;
+
     export interface StrokeStateChangedEvent extends pubSub.ISubscription {
         (oldState : StrokeState,newState : StrokeState, duration : number) : void;
     }
@@ -93,6 +94,8 @@ namespace ergometer {
         private _lastTrainingTime = new Date().getTime();
 
         private _csafeBuzy = false;
+        private _lastLowResUpdate: number =null;
+
         //sending and reading
         public get csafeBuzy() {
             return this._csafeBuzy;
@@ -288,11 +291,16 @@ namespace ergometer {
                     {	
                         // If this is the dwell, complete the power curve.
                         //if (_previousStrokePhase == StrokePhase_Drive)
-                        if (this.strokeState == StrokeState.recoveryState)
+                        var now= new Date().getTime();
+                        var doPowerCurveUpdate=this.strokeState == StrokeState.recoveryState;
+                        if (  doPowerCurveUpdate||
+                            this._lastLowResUpdate==null ||
+                            (now-this._lastLowResUpdate)>WAIT_TIME_LOW_RES )
                         {   
+                            this._lastLowResUpdate=now;
                             this.traceInfo("Start low res update");
                             this.lowResolutionUpdate().then(()=>{
-                                if (this.powerCurveEvent.count>0) {
+                                if (doPowerCurveUpdate && this.powerCurveEvent.count>0) {
                                     this.traceInfo("start power curveupdate");
                                     this.handlePowerCurve().then(()=>{
                                         this.traceInfo("end power curve and end low res update");

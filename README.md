@@ -106,6 +106,8 @@ You only need to change the javascript included file
   * Small bug fixes 
 - 1.3.2
   * Add missing stuffing
+- 1.3.3
+  * Increased accuracy of usb 
 
 # Project features
 

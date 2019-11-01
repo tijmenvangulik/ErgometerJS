@@ -2999,8 +2999,9 @@ var ergometer;
         return UsbDevice;
     }());
     ergometer.UsbDevice = UsbDevice;
-    var WAIT_TIME_MEASURING = 80; //min ms when actively getting data when rowing or starting to row
+    var WAIT_TIME_MEASURING = 30; //min ms when actively getting data when rowing or starting to row
     var WAIT_TIME_INIT = 500; //min ms
+    var WAIT_TIME_LOW_RES = 200;
     var StrokeData = /** @class */ (function () {
         function StrokeData() {
             this.dragFactor = 0;
@@ -3046,6 +3047,7 @@ var ergometer;
             _this._trainingData = new TrainingData();
             _this._lastTrainingTime = new Date().getTime();
             _this._csafeBuzy = false;
+            _this._lastLowResUpdate = null;
             _this._autoUpdating = false;
             _this._startPhaseTime = 0;
             return _this;
@@ -3265,10 +3267,15 @@ var ergometer;
                     if (_this.strokeState != previousStrokeState) {
                         // If this is the dwell, complete the power curve.
                         //if (_previousStrokePhase == StrokePhase_Drive)
-                        if (_this.strokeState == 4 /* recoveryState */) {
+                        var now = new Date().getTime();
+                        var doPowerCurveUpdate = _this.strokeState == 4 /* recoveryState */;
+                        if (doPowerCurveUpdate ||
+                            _this._lastLowResUpdate == null ||
+                            (now - _this._lastLowResUpdate) > WAIT_TIME_LOW_RES) {
+                            _this._lastLowResUpdate = now;
                             _this.traceInfo("Start low res update");
                             _this.lowResolutionUpdate().then(function () {
-                                if (_this.powerCurveEvent.count > 0) {
+                                if (doPowerCurveUpdate && _this.powerCurveEvent.count > 0) {
                                     _this.traceInfo("start power curveupdate");
                                     _this.handlePowerCurve().then(function () {
                                         _this.traceInfo("end power curve and end low res update");
