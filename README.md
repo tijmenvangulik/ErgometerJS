@@ -113,7 +113,7 @@ You only need to change the javascript included file
 
 * The project is open source and and it is based on open source project. (appache 2 license) 
 * Uses low power bluetooth (BLE) connection (only PM5).
-* Experimental usb (hid) support for PM3/4/5
+* Usb (hid) support for PM3/4/5
 * Written in typescript which is compiled to javascript. You can use the driver without typescript.
 * Platform independent (mobile / desktop / web ) I have not yet been able to test all platforms but it should work on:
   
