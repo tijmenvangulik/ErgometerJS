@@ -25,31 +25,36 @@
     "WebHid"
   ],
   "scripts": {
-    "build:api": "node_modules/.bin/tsc -p api",
-    "build:copy_api_copytowebapp": "node_modules/.bin/copyfiles -f api/lib/ergometer.js ../WebErgometer/WebApp/html/script/lib",
-    "build:copy_api_copytowebapp_ts": "node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts ../WebErgometer/WebApp/html/typescripts",
-    "build:copy_api_copytowebapp_ts2": "node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts ../WebErgometer/WebApp/src/lib",
-    "build:copy_api_electron": "node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/simple_electron/libs",
-    "build:copy_api_electron_ts": "node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/simple_electron/typescript/typings",
-    "build:copy_api_cordova": "node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/simplecordova/www/libs",
-    "build:copy_api_cordova_ts": "node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/simplecordova/www/typescript/typings",
-    "build:copy_api_webbluetooth": "node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/webbluetooth/libs",
-    "build:copy_api_webbluetooth_ts": "node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/webbluetooth/typescript/typings",
-    "build:copy_usb_electron": "node_modules/.bin/copyfiles -f api/lib/ergometer.js demos/usb_electron/libs",
-    "build:copy_usb_electron_ts": "node_modules/.bin/copyfiles -f api/lib/ergometer.d.ts demos/usb_electron/typescript/typings",
+    "build:api": "tsc -p api && npm run build:compress",
+    "build:compress": "uglifyjs -c --output api/lib/ergometer.min.js api/lib/ergometer.js",
+    "build:copy_api_copytowebapp": "copyfiles -f api/lib/ergometer.js ../WebErgometer/WebApp/html/script/lib",
+    "build:copy_api_copytowebapp_min": "copyfiles -f api/lib/ergometer.min.js ../WebErgometer/WebApp/html/script/lib",
+    "build:copy_api_copytowebapp_ts": "copyfiles -f api/lib/ergometer.d.ts ../WebErgometer/WebApp/html/typescripts",
+    "build:copy_api_copytowebapp_ts2": "copyfiles -f api/lib/ergometer.d.ts ../WebErgometer/WebApp/src/lib",
+    "build:copy_api_electron": "copyfiles -f api/lib/ergometer.js demos/simple_electron/libs",
+    "build:copy_api_electron_ts": "copyfiles -f api/lib/ergometer.d.ts demos/simple_electron/typescript/typings",
+    "build:copy_api_cordova": "copyfiles -f api/lib/ergometer.js demos/simplecordova/www/libs",
+    "build:copy_api_cordova_ts": "copyfiles -f api/lib/ergometer.d.ts demos/simplecordova/www/typescript/typings",
+    "build:copy_api_webbluetooth": "copyfiles -f api/lib/ergometer.js demos/webbluetooth/libs",
+    "build:copy_api_webbluetooth_ts": "copyfiles -f api/lib/ergometer.d.ts demos/webbluetooth/typescript/typings",
+    "build:copy_usb_electron": "copyfiles -f api/lib/ergometer.js demos/usb_electron/libs",
+    "build:copy_usb_electron_ts": "copyfiles -f api/lib/ergometer.d.ts demos/usb_electron/typescript/typings",
     "build:copy_api": "npm run build:copy_api_electron && npm run build:copy_api_electron_ts && npm run build:copy_api_cordova && npm run build:copy_api_cordova_ts && npm run build:copy_api_webbluetooth && npm run build:copy_api_webbluetooth_ts && npm run build:copy_usb_electron  && npm run build:copy_usb_electron_ts",
-    "build:simplecordova": "node_modules/.bin/tsc -p demos/simplecordova ",
-    "build:simple_electron": "node_modules/.bin/tsc -p demos/simple_electron ",
-    "build:recording": "node_modules/.bin/tsc -p demos/recording ",
-    "build:webbluetooth": "node_modules/.bin/tsc -p demos/webbluetooth ",
-    "build:usb_electron": "node_modules/.bin/tsc -p demos/usb_electron ",
-    "build:usb_electron_debug": "node_modules/.bin/tsc -p demos/usb_electron_debug ",
+    "build:simplecordova": "tsc -p demos/simplecordova ",
+    "build:simple_electron": "tsc -p demos/simple_electron ",
+    "build:recording": "tsc -p demos/recording ",
+    "build:webbluetooth": "tsc -p demos/webbluetooth ",
+    "build:usb_electron": "tsc -p demos/usb_electron ",
+    "build:usb_electron_debug": "tsc -p demos/usb_electron_debug ",
     "build": "npm run build:api && npm run build:copy_api && npm run build:simplecordova && npm run build:simple_electron  && npm run build:recording && npm run build:webbluetooth && npm run build:usb_electron && npm run build:usb_electron_debug",
-    "watch:usb_electron_debug": "node_modules/.bin/tsc  -p demos/usb_electron_debug --watch ",
-    "build:copy_api_webapp": "npm run build:copy_api_copytowebapp && npm run build:copy_api_copytowebapp_ts && npm run build:copy_api_copytowebapp_ts2"
+    "watch:usb_electron_debug": "tsc  -p demos/usb_electron_debug --watch ",
+    "build:copy_api_webapp": "npm run build:copy_api_copytowebapp && npm run build:copy_api_copytowebapp_min && npm run build:copy_api_copytowebapp_ts && npm run build:copy_api_copytowebapp_ts2"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/tijmenvangulik/MobileErgometer"
+  },
+  "dependencies": {
+    "uglify-js": "^3.6.7"
   }
 }
