@@ -93,13 +93,9 @@ namespace ergometer {
         private _strokeState: ergometer.StrokeState;
         private _lastTrainingTime = new Date().getTime();
 
-        private _csafeBuzy = false;
         private _lastLowResUpdate: number =null;
 
         //sending and reading
-        public get csafeBuzy() {
-            return this._csafeBuzy;
-        }
         public get strokeData() : StrokeData{
             return this._strokeData;
         }
@@ -176,7 +172,6 @@ namespace ergometer {
         }
         private receiveData(data:DataView) {
             this.handeReceivedDriverData(data);
-            this._csafeBuzy=false;
         }
 
         public sendCSafeBuffer(csafeBuffer : ergometer.csafe.IBuffer) : Promise<void> {
@@ -192,20 +187,14 @@ namespace ergometer {
                 }
                 else*/ 
                 {
-                    this._csafeBuzy=true; 
-                    
-                    this.traceInfo("buzy");
                     this.traceInfo("send "+JSON.stringify(csafeBuffer.rawCommands));
                     //the send will resolve when all is received
                     super.sendCSafeBuffer(csafeBuffer).then(()=>{
-                        this._csafeBuzy=false;
-                        this.traceInfo("end buzy");
                         resolve();
                         
                     }).catch( (e)=>{
                         this.disconnected();//the usb has not an disconnect event, assume an error is an disconnect
                         this.handleError(e);
-                        this._csafeBuzy=false;
                         this.traceInfo("end buzy");
                         reject(e);
                     })
@@ -243,7 +232,6 @@ namespace ergometer {
         }
         private disconnected() {
             
-            this._csafeBuzy=false;
             if (this._device) {
                 this.changeConnectionState(MonitorConnectionState.deviceReady )        
                 this._device=null;
@@ -260,7 +248,6 @@ namespace ergometer {
                 this.handleError.bind(this),
                 this.receiveData.bind(this));
             result.then(()=>{
-                this._csafeBuzy=false;
                 this.changeConnectionState(MonitorConnectionState.connected);
                 this.changeConnectionState(MonitorConnectionState.readyForCommunication);
             })
@@ -295,7 +282,7 @@ namespace ergometer {
                         var doPowerCurveUpdate=this.strokeState == StrokeState.recoveryState;
                         if (  doPowerCurveUpdate||
                             this._lastLowResUpdate==null ||
-                            (now-this._lastLowResUpdate)>WAIT_TIME_LOW_RES )
+                            (!this.isWaiting && (now-this._lastLowResUpdate)>WAIT_TIME_LOW_RES ))
                         {   
                             this._lastLowResUpdate=now;
                             this.traceInfo("Start low res update");
@@ -375,41 +362,39 @@ namespace ergometer {
               //do not update while an csafe read write action is active
               //it is possible but you can get unexpected results because it may
               //change the order of things
-              if (this.csafeBuzy) {
-                this.nextAutoUpdate();
-              }
-              else {
+             
                 //ensure that allways an next update is called
-                try {
-                    
-                    this.update().then(()=>{                
-                        this.nextAutoUpdate();
-                    }).catch(error=>{
-                        this.handleError(error);  
-                        this.nextAutoUpdate();
-                    });
-                  } catch (error) {
-                      this.handleError(error);
-                      this.nextAutoUpdate();
-                  }
-              }
+            try {
+                
+                this.update().then(()=>{                
+                    this.nextAutoUpdate();
+                }).catch(error=>{
+                    this.handleError(error);  
+                    this.nextAutoUpdate();
+                });
+            } catch (error) {
+                this.handleError(error);
+                this.nextAutoUpdate();
+            }
+              
            }
            else {
             this.traceInfo("no auto update")
              this._autoUpdating=false;
            }
         }
-        protected nextAutoUpdate() {
-            this.traceInfo("nextAutoUpdate");
+        protected isWaiting() : boolean{
             const waitingStates= [WorkoutState.waitToBegin,
                 WorkoutState.workoutEnd,
                 WorkoutState.terminate,
                 WorkoutState.workoutLogged,
                 WorkoutState.rearm];
-            var waiting=(this.strokeState== StrokeState.waitingForWheelToReachMinSpeedState)
-                && waitingStates.indexOf(this.trainingData.workoutState)>=0;
-              
-            var waitTime=waiting?WAIT_TIME_INIT:WAIT_TIME_MEASURING;
+            return (this.strokeState== StrokeState.waitingForWheelToReachMinSpeedState)
+            && waitingStates.indexOf(this.trainingData.workoutState)>=0;
+        }
+        protected nextAutoUpdate() {
+            this.traceInfo("nextAutoUpdate");
+            var waitTime=this.isWaiting()?WAIT_TIME_INIT:WAIT_TIME_MEASURING;
             if (this.connectionState==MonitorConnectionState.readyForCommunication) {
                 setTimeout(()=>{this.autoUpdate(false)},waitTime);
             }

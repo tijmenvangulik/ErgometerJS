@@ -108,6 +108,12 @@ You only need to change the javascript included file
   * Add missing stuffing
 - 1.3.3
   * Increased accuracy of usb 
+- 1.3.4
+  * added minified version of ergometer.js
+  * Merge long config commands when they are directly after each other
+  * Added sortCommands property (by default switched off) This sorts the commands so they can be merged for efficiency.
+  * Refactored sending commands (added an extra buffer and removed wait state)
+  * Reduced calls when not yet rowing  
 
 # Project features
 
@@ -340,6 +346,11 @@ allways send raw commands. For example
            console.log("send done, you can send th next")
          }); 
 
+Command merging
+Long config commands can be merged into one command for efficency when they are directly after each other in the buffer.
+
+When you set sortCommands to true the commands are sorted so they can be merged without caring about the the order in which you add the commands. 
+  
 # Usage for Usb
 
 An usb device has a quicker way of finding devices but does not have all the concept2 BLE events. So the api is a bit different. The csafe part is exactly the same as for the ble device.

@@ -34,7 +34,12 @@ namespace ergometer {
     export interface LogEvent extends pubSub.ISubscription {
         (text : string,logLevel : LogLevel) : void;
     }
-    
+    export interface SendBufferQueued {
+        commandArray: number[],
+        resolve : ()=>void, 
+        reject : (e)=>void,
+        rawCommandBuffer: IRawCommand[]
+    }
     export interface ParsedCSafeCommand {
         command: number;
         detailCommand : number;
@@ -80,6 +85,7 @@ namespace ergometer {
         public _responseState: number;
         private _timeOutHandle: number;
         stuffByteActive: boolean = false;
+        endCommand: number;
 
         public get commands() : csafe.IRawCommand[]   {
             return this._commands
@@ -129,6 +135,13 @@ namespace ergometer {
             if (this._resolve)
                this._resolve();
             
+        }
+        public removedWithError(e : any) {
+            this._commands.forEach((command : IRawCommand)=>{
+                if (command.onError) command.onError(e);
+            });
+            if (this._reject)
+               this._reject(e);
         }
         public receivedCSaveCommand(parsed : ParsedCSafeCommand) {
             if (this._monitor.logLevel==LogLevel.trace)
@@ -206,6 +219,9 @@ namespace ergometer {
         private _checksumCheckEnabled =false;
         protected _commandTimeout: number;
         
+        public sortCommands : boolean = false;
+        private _sendBufferQueue: SendBufferQueued[]=[];
+
         public constructor() {
             
             this.initialize();
@@ -221,8 +237,7 @@ namespace ergometer {
         }
         removeResponseBuffer(buffer: WaitResponseBuffer) {
             var i= this._waitResonseBuffers.indexOf(buffer);
-            if (i>=0)
-            this._waitResonseBuffers.splice(i,1);
+            if (i>=0)  this._waitResonseBuffers.splice(i,1);
         }
         protected enableDisableNotification() : Promise<void> {
             return Promise.resolve()
@@ -336,6 +351,7 @@ namespace ergometer {
                 this.connectionStateChangedEvent.pub(oldValue,value);
                 if (value==MonitorConnectionState.connected) {
                     this.clearWaitResponseBuffers();
+                    this._sendBufferQueue=[];
                     this.connected();
                 }
                   
@@ -374,14 +390,22 @@ namespace ergometer {
          * @returns {Promise<void>|Promise} use promis instead of success and error function
          */
         public sendCSafeBuffer(csafeBuffer : ergometer.csafe.IBuffer) : Promise<void>{
+             
             return new Promise((resolve,reject)=>{
                 //prepare the array to be send
                 var rawCommandBuffer = csafeBuffer.rawCommands;
                 var commandArray : number[] = [];
+                var prevCommand=-1;
+                var prevCommandIndex=-1;
+                if (this.sortCommands)
+                   rawCommandBuffer.sort((first,next)=>{return first.command-next.command;});
+               
                 rawCommandBuffer.forEach((command : IRawCommand)=>{
-    
-                    commandArray.push(command.command);
+                    var commandMerged=false;
+                    
+                    var commandIndex=commandArray.length;
                     if (command.command>= csafe.defs.CTRL_CMD_SHORT_MIN)  {
+                        commandArray.push(command.command);
                         //it is an short command
                         if (command.detailCommand|| command.data) {
                             throw "short commands can not contain data or a detail command"
@@ -389,40 +413,92 @@ namespace ergometer {
                     }
                     else {
                         if (command.detailCommand) {
-                            var dataLength=1;
-                            if (command.data  && command.data.length>0)
-                                dataLength=dataLength+command.data.length+1;
-                            commandArray.push(dataLength); //length for the short command
+                            if (prevCommand===command.command) {
+                                //add it to the last command if it is the same command
+                                //this is more efficent
+                                var dataLength=1;
+                                if (command.data  && command.data.length>0)
+                                    dataLength+=command.data.length;
+                                commandArray[prevCommandIndex+1]+=dataLength;
+                                commandMerged=true;
+                            }
+                            else {
+                                commandArray.push(command.command);
+                                var dataLength=1;
+                                if (command.data  && command.data.length>0)
+                                    dataLength+=command.data.length+1;
+                                commandArray.push(dataLength);
+                            }
+                             //length for the short command
                             //the detail command
                             commandArray.push(command.detailCommand);
                         }
+                        else commandArray.push(command.command);
                         //the data
                         if (command.data && command.data.length>0) {
                             commandArray.push(command.data.length);
                             commandArray=commandArray.concat(command.data);
                         }
                     }
-    
-                });
-                
-                //send all the csafe commands in one go
-                 this.sendCsafeCommands(commandArray)
-                   .then(()=>{
-                    var waitBuffer=new WaitResponseBuffer(this,resolve,reject,rawCommandBuffer,this._commandTimeout);
-                    this._waitResonseBuffers.push(waitBuffer);
+                    if (!commandMerged) {
+                        prevCommand=command.command;
+                        prevCommandIndex=commandIndex;
+                    }
                     
-                    },(e)=>{
-                            rawCommandBuffer.forEach((command : IRawCommand)=>{
-                               if (command.onError) command.onError(e);
-                            });
-                            reject(e);
-                        }
-                   );
+                });
+
+                this._sendBufferQueue.push({
+                    commandArray: commandArray,
+                    resolve: resolve,
+                    reject: reject,
+                    rawCommandBuffer: rawCommandBuffer
+                });
+                this.checkSendBuffer();
+                //send all the csafe commands in one go
+                
             })
             
         }
 
-        
+        protected checkSendBufferAtEnd() {
+            if (this._sendBufferQueue.length>0)
+              setTimeout(this.checkSendBuffer.bind(this),0);
+        }
+        protected checkSendBuffer() {
+            //make sure that only one buffer is send/received at a time
+            //when something to send and all received then send the next
+            if (this._waitResonseBuffers.length==0 && this._sendBufferQueue.length>0) {
+                //directly add a wait buffer so no others can send commands
+                
+                //extract the send data 
+                var sendData : SendBufferQueued=this._sendBufferQueue.shift();
+                this.sendBufferFromQueue(sendData);
+            }
+            
+        }
+        protected sendBufferFromQueue(sendData : SendBufferQueued) {
+            var resolve=()=>{
+                if (sendData.resolve) sendData.resolve();
+                this.checkSendBufferAtEnd();
+              }
+              var reject=(err)=>{ 
+                if (sendData.reject) sendData.reject(err);
+                this.checkSendBufferAtEnd();
+              }
+
+            var waitBuffer=new WaitResponseBuffer(this,resolve,reject,sendData.rawCommandBuffer,this._commandTimeout);
+            this._waitResonseBuffers.push(waitBuffer);                
+            //then send the data
+                         
+            this.sendCsafeCommands(sendData.commandArray)
+            .catch((e)=>{ 
+                //When it could not be send remove it
+                this.removeResponseBuffer(waitBuffer); 
+                //send the error to all items
+                waitBuffer.removedWithError(e);
+                this.checkSendBufferAtEnd();
+            });
+        }
         protected sendCsafeCommands(byteArray : number[]) : Promise<void> {
             return new Promise<void>((resolve, reject) => {
                 //is there anything to send?
@@ -598,6 +674,7 @@ namespace ergometer {
      
                                 }
                                 else if (i<dataView.byteLength) {
+                                    waitBuffer.endCommand=i+currentByte;
                                     waitBuffer.nextDataLength= currentByte;
                                     if (waitBuffer.command>= csafe.defs.CTRL_CMD_SHORT_MIN) {
                                         waitBuffer.frameState= FrameState.parseCommandData;
@@ -627,7 +704,10 @@ namespace ergometer {
                                 waitBuffer.nextDataLength--;
                                 waitBuffer.commandDataIndex++;
                                 if (waitBuffer.nextDataLength==0) {
-                                    waitBuffer.frameState= FrameState.parseCommand;
+                                    if (waitBuffer.command< csafe.defs.CTRL_CMD_SHORT_MIN 
+                                        && i<waitBuffer.endCommand)
+                                        waitBuffer.frameState= FrameState.parseDetailCommand;
+                                    else waitBuffer.frameState= FrameState.parseCommand;
                                     try {
                                         waitBuffer.receivedCSaveCommand({
                                             command:waitBuffer.command,

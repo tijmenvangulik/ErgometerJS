@@ -1451,6 +1451,7 @@ declare namespace ergometer {
  * limitations under the License.
  */
 declare namespace ergometer {
+    import IRawCommand = ergometer.csafe.IRawCommand;
     interface ErrorHandler {
         (e: any): void;
     }
@@ -1462,6 +1463,12 @@ declare namespace ergometer {
     }
     interface LogEvent extends pubSub.ISubscription {
         (text: string, logLevel: LogLevel): void;
+    }
+    interface SendBufferQueued {
+        commandArray: number[];
+        resolve: () => void;
+        reject: (e) => void;
+        rawCommandBuffer: IRawCommand[];
     }
     interface ParsedCSafeCommand {
         command: number;
@@ -1509,12 +1516,14 @@ declare namespace ergometer {
         _responseState: number;
         private _timeOutHandle;
         stuffByteActive: boolean;
+        endCommand: number;
         readonly commands: csafe.IRawCommand[];
         removeRemainingCommands(): void;
         private timeOut();
         constructor(monitor: PerformanceMonitorBase, resolve: () => void, reject: (e) => void, commands: csafe.IRawCommand[], timeOut: number);
         remove(): void;
         processedBuffer(): void;
+        removedWithError(e: any): void;
         receivedCSaveCommand(parsed: ParsedCSafeCommand): void;
     }
     /**
@@ -1557,6 +1566,8 @@ declare namespace ergometer {
         private _powerCurveEvent;
         private _checksumCheckEnabled;
         protected _commandTimeout: number;
+        sortCommands: boolean;
+        private _sendBufferQueue;
         constructor();
         protected initialize(): void;
         removeResponseBuffer(buffer: WaitResponseBuffer): void;
@@ -1632,6 +1643,9 @@ declare namespace ergometer {
          * @returns {Promise<void>|Promise} use promis instead of success and error function
          */
         sendCSafeBuffer(csafeBuffer: ergometer.csafe.IBuffer): Promise<void>;
+        protected checkSendBufferAtEnd(): void;
+        protected checkSendBuffer(): void;
+        protected sendBufferFromQueue(sendData: SendBufferQueued): void;
         protected sendCsafeCommands(byteArray: number[]): Promise<void>;
         protected moveToNextBuffer(): WaitResponseBuffer;
         handeReceivedDriverData(dataView: DataView): void;
@@ -1715,9 +1729,7 @@ declare namespace ergometer {
         private _trainingData;
         private _strokeState;
         private _lastTrainingTime;
-        private _csafeBuzy;
         private _lastLowResUpdate;
-        readonly csafeBuzy: boolean;
         readonly strokeData: StrokeData;
         readonly trainingData: TrainingData;
         readonly strokeState: StrokeState;
@@ -1745,6 +1757,7 @@ declare namespace ergometer {
         private _autoUpdating;
         private listeningToEvents();
         protected autoUpdate(first?: boolean): void;
+        protected isWaiting(): boolean;
         protected nextAutoUpdate(): void;
         protected update(): Promise<void>;
         private _startPhaseTime;
