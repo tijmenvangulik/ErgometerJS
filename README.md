@@ -513,4 +513,4 @@ include the lib when you only the lib.
 
 Blue tooth example using cordova for mobile platforms.
 
-[demos/ble_cordova_debug](demos/usb_cordova_debug/README.md)
+[demos/ble_cordova_debug](demos/ble_cordova_debug/README.md)
