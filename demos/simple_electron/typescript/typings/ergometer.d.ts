@@ -196,6 +196,20 @@ declare namespace ergometer.ble {
         disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
     }
 }
+declare namespace bleCentral {
+    function available(): boolean;
+    class DriverBleCentral implements ergometer.ble.IDriver {
+        private _device;
+        connect(device: ergometer.ble.IDevice, disconnectFn: () => void): Promise<void>;
+        disconnect(): void;
+        startScan(foundFn?: ergometer.ble.IFoundFunc): Promise<void>;
+        stopScan(): Promise<void>;
+        writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
+        readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
+        enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
+        disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
+    }
+}
 /**
  * Created by tijmen on 17-07-16.
  */
@@ -1621,6 +1635,7 @@ declare namespace ergometer {
          */
         readonly connectionState: MonitorConnectionState;
         protected connected(): void;
+        protected clearAllBuffers(): void;
         /**
          *
          * @param value
@@ -1898,12 +1913,12 @@ declare namespace ergometer {
         private _generalStatusEventAttachedByPowerCurve;
         private _recording;
         protected readonly recordingDriver: ergometer.ble.RecordingDriver;
+        driver: ble.IDriver;
         recording: boolean;
         readonly replayDriver: ble.ReplayDriver;
         replaying: boolean;
         replay(events: ble.IRecordingItem[]): void;
         recordingEvents: ble.IRecordingItem[];
-        protected readonly driver: ergometer.ble.IDriver;
         /**
          * when the connection is lost re-connect
          * @returns {boolean}
@@ -2075,6 +2090,7 @@ declare namespace ergometer {
          * disconnect the current connected device
          */
         disconnect(): void;
+        protected clearAllBuffers(): void;
         /**
          *
          */
@@ -2083,6 +2099,10 @@ declare namespace ergometer {
          *
          */
         protected disableMultiPlexNotification(): Promise<void>;
+        private _registeredGuids;
+        protected clearRegisterdGuids(): void;
+        protected enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
+        protected disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
         /**
          *
          */

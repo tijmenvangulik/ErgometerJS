@@ -114,6 +114,10 @@ You only need to change the javascript included file
   * Added sortCommands property (by default switched off) This sorts the commands so they can be merged for efficiency.
   * Refactored sending commands (added an extra buffer and removed wait state)
   * Reduced calls when not yet rowing  
+- 1.3.5
+  * New Ble central driver for cordova + demo.  Currently bleat + evo things ble was used on cordova. This driver is not supported any more and there where a lot of errors in the log. So I replaced it by the popular ble central.
+  * For ble the notification enable/disable was called too many times. This fix can prevent initial connection problems on some ble drivers.
+  * Expose the driver property so it can be set.
 
 # Project features
 
@@ -428,8 +432,9 @@ See the csafe paragraph of the previous chapter how to do csafe commands.
 
 # Examples
                   
-## Simple Cordova
+## Simple Cordova (obsolete)
 
+ ! this demo is obsolete because it uses an very old ble driver , check the demo ble_cordova demo  which uses an new ble driver !
 Use cordova when you want to write a mobile app using html5.
 
 [demos/simplecordova](demos/simplecordova/README.md)                 
@@ -502,4 +507,4 @@ for cordova I have created an usb hid plugin which needs to be installed
 The demo compiles by including the original source code. This is good for debugging. It is better to
 include the lib when you only the lib.
 
-[demos/usb_cordova_debug](demos/usb_cordova_debug/ReadMe.md)
+[demos/ble_cordova_debug](demos/usb_cordova_debug/README.md)

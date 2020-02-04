@@ -95,4 +95,12 @@
       export function getTime() : number {
             return new Date().getTime();
       }
+      export function promiseAllSync(promisses : Promise<void>[]) : Promise<void> {
+        var first=promisses.shift();
+        if (typeof first =="undefined" || !first) return Promise.resolve();
+        return first.then( ()=>{
+            return promiseAllSync(promisses);
+        },e=>console.error(e));
+        
+      }    
 }

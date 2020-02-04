@@ -3,16 +3,19 @@
     "module": "system",
     "target": "es5",
     "sourceMap": true,
-    "outFile": "app.js",
+    "outFile": "www/js/app.js",
     "lib": [
       "es5",
       "es2015",
-      "dom"]
+      "dom"],
+      "typeRoots" : ["./typescript/typings"]
   },
+  
   "exclude": [
     "node_modules"
   ],
   "filesGlob": [
+
   ],
   "files": [
     "../../api/typescript/typings/bleat.classic.d.ts",
@@ -49,7 +52,7 @@
     "../../api/typescript/ergometer/performancemonitorUsb.ts",
     "../../api/typescript/ergometer/performancemonitorBle.ts",
     "typescript/typings/jquery.d.ts",
-    "typescript/app.ts",
-    "typescript/demo.ts"
+    "typescript/demo.ts",
+    "typescript/app.ts"
   ]
 }

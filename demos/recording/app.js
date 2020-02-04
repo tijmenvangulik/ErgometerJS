@@ -121,6 +121,15 @@ var ergometer;
             return new Date().getTime();
         }
         utils.getTime = getTime;
+        function promiseAllSync(promisses) {
+            var first = promisses.shift();
+            if (typeof first == "undefined" || !first)
+                return Promise.resolve();
+            return first.then(function () {
+                return promiseAllSync(promisses);
+            }, function (e) { return console.error(e); });
+        }
+        utils.promiseAllSync = promiseAllSync;
     })(utils = ergometer.utils || (ergometer.utils = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -1156,6 +1165,67 @@ var ergometer;
         ble.DriverSimpleBLE = DriverSimpleBLE;
     })(ble = ergometer.ble || (ergometer.ble = {}));
 })(ergometer || (ergometer = {}));
+var bleCentral;
+(function (bleCentral) {
+    function available() {
+        return typeof ble !== 'undefined' && typeof ble.connectedPeripheralsWithServices == "function";
+    }
+    bleCentral.available = available;
+    var DriverBleCentral = /** @class */ (function () {
+        function DriverBleCentral() {
+        }
+        DriverBleCentral.prototype.connect = function (device, disconnectFn) {
+            var _this = this;
+            return new Promise(function (resolve, reject) {
+                ble.connect(device.address, function (periferalData) {
+                    _this._device = periferalData;
+                    resolve();
+                }, disconnectFn);
+            });
+        };
+        DriverBleCentral.prototype.disconnect = function () {
+            ble.disconnect(this._device.id);
+        };
+        DriverBleCentral.prototype.startScan = function (foundFn) {
+            return new Promise(function (resolve, reject) {
+                ble.startScan([ergometer.ble.PMDEVICE], function (foundData) {
+                    if (foundFn)
+                        foundFn({
+                            address: foundData.id,
+                            name: foundData.name,
+                            rssi: foundData.rssi,
+                            _internalDevice: foundData
+                        });
+                }, reject);
+                resolve();
+            });
+        };
+        DriverBleCentral.prototype.stopScan = function () {
+            return ble.withPromises.stopScan();
+        };
+        DriverBleCentral.prototype.writeCharacteristic = function (serviceUIID, characteristicUUID, data) {
+            return ble.withPromises.write(this._device.id, serviceUIID, characteristicUUID, data.buffer);
+        };
+        DriverBleCentral.prototype.readCharacteristic = function (serviceUIID, characteristicUUID) {
+            return ble.withPromises.read(this._device.id, serviceUIID, characteristicUUID);
+        };
+        DriverBleCentral.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+            var _this = this;
+            return new Promise(function (resolve, reject) {
+                console.trace("enableNotification " + characteristicUUID);
+                ble.startNotification(_this._device.id, serviceUIID, characteristicUUID, receive, reject);
+                //console.log("resolved enableNotification"+characteristicUUID);
+                resolve();
+            });
+        };
+        DriverBleCentral.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+            //console.trace("disableNotification "+characteristicUUID);
+            return ble.withPromises.stopNotification(this._device.id, serviceUIID, characteristicUUID);
+        };
+        return DriverBleCentral;
+    }());
+    bleCentral.DriverBleCentral = DriverBleCentral;
+})(bleCentral || (bleCentral = {}));
 /**
  * Created by tijmen on 18-02-16.
  */
@@ -2613,6 +2683,10 @@ var ergometer;
         });
         PerformanceMonitorBase.prototype.connected = function () {
         };
+        PerformanceMonitorBase.prototype.clearAllBuffers = function () {
+            this.clearWaitResponseBuffers();
+            this._sendBufferQueue = [];
+        };
         /**
          *
          * @param value
@@ -2621,10 +2695,11 @@ var ergometer;
             if (this._connectionState != value) {
                 var oldValue = this._connectionState;
                 this._connectionState = value;
+                if (value == MonitorConnectionState.connected) {
+                    this.clearAllBuffers();
+                }
                 this.connectionStateChangedEvent.pub(oldValue, value);
                 if (value == MonitorConnectionState.connected) {
-                    this.clearWaitResponseBuffers();
-                    this._sendBufferQueue = [];
                     this.connected();
                 }
             }
@@ -3775,9 +3850,12 @@ var ergometer;
             _this._multiplex = false;
             _this._multiplexSubscribeCount = 0;
             _this._sampleRate = 1 /* rate500ms */;
-            _this._autoReConnect = true;
+            //disabled the auto reconnect, because it reconnects while the connection on the device is switched off
+            //this causes some strange state on the device which breaks communcation after reconnecting
+            _this._autoReConnect = false;
             _this._generalStatusEventAttachedByPowerCurve = false;
             _this._recording = false;
+            _this._registeredGuids = {};
             return _this;
         }
         Object.defineProperty(PerformanceMonitorBle.prototype, "recordingDriver", {
@@ -3786,6 +3864,22 @@ var ergometer;
                     this._recordingDriver = new ergometer.ble.RecordingDriver(this, this._driver);
                 }
                 return this._recordingDriver;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(PerformanceMonitorBle.prototype, "driver", {
+            get: function () {
+                if (this.recording) {
+                    return this.recordingDriver;
+                }
+                else if (this.replaying)
+                    return this.replayDriver;
+                else
+                    return this._driver;
+            },
+            set: function (value) {
+                this._driver = value;
             },
             enumerable: true,
             configurable: true
@@ -3830,19 +3924,6 @@ var ergometer;
             },
             set: function (value) {
                 this.recordingDriver.events = value;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(PerformanceMonitorBle.prototype, "driver", {
-            get: function () {
-                if (this.recording) {
-                    return this.recordingDriver;
-                }
-                else if (this.replaying)
-                    return this.replayDriver;
-                else
-                    return this._driver;
             },
             enumerable: true,
             configurable: true
@@ -4206,6 +4287,9 @@ var ergometer;
                 this.changeConnectionState(ergometer.MonitorConnectionState.deviceReady);
             }
         };
+        PerformanceMonitorBle.prototype.clearAllBuffers = function () {
+            this.clearRegisterdGuids();
+        };
         /**
          *
          */
@@ -4213,7 +4297,7 @@ var ergometer;
             var _this = this;
             var result;
             if (this._multiplexSubscribeCount == 0)
-                result = this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC, function (data) { _this.handleDataCallbackMulti(data); })
+                result = this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC, function (data) { _this.handleDataCallbackMulti(data); })
                     .catch(this.getErrorHandlerFunc("Can not enable multiplex"));
             else
                 result = Promise.resolve();
@@ -4227,11 +4311,27 @@ var ergometer;
             var result;
             this._multiplexSubscribeCount--;
             if (this._multiplexSubscribeCount == 0)
-                result = this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC)
+                result = this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC)
                     .catch(this.getErrorHandlerFunc("can not disable multiplex"));
             else
                 result = Promise.resolve();
             return result;
+        };
+        PerformanceMonitorBle.prototype.clearRegisterdGuids = function () {
+            this._registeredGuids = {};
+        };
+        PerformanceMonitorBle.prototype.enableNotification = function (serviceUIID, characteristicUUID, receive) {
+            if (this._registeredGuids[characteristicUUID] === 1)
+                return Promise.resolve();
+            this._registeredGuids[characteristicUUID] = 1;
+            return this.driver.enableNotification(serviceUIID, characteristicUUID, receive);
+        };
+        PerformanceMonitorBle.prototype.disableNotification = function (serviceUIID, characteristicUUID) {
+            if (this._registeredGuids[characteristicUUID] === 1) {
+                this._registeredGuids[characteristicUUID] = 0;
+                return this.driver.disableNotification(serviceUIID, characteristicUUID);
+            }
+            return Promise.resolve();
         };
         /**
          *
@@ -4246,7 +4346,7 @@ var ergometer;
                         promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        promises.push(this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_CHARACTERISIC, function (data) {
+                        promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingGeneralStatus);
                         }).catch(this.getErrorHandlerFunc("")));
                     }
@@ -4255,7 +4355,7 @@ var ergometer;
                     if (this.multiplex)
                         promises.push(this.disableMultiPlexNotification());
                     else
-                        promises.push(this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_CHARACTERISIC)
+                        promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingAdditionalStatus1Event.count > 0) {
@@ -4263,7 +4363,7 @@ var ergometer;
                         promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        promises.push(this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS1_CHARACTERISIC, function (data) {
+                        promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS1_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingAdditionalStatus1);
                         }).catch(this.getErrorHandlerFunc("")));
                     }
@@ -4272,7 +4372,7 @@ var ergometer;
                     if (this.multiplex)
                         promises.push(this.disableMultiPlexNotification());
                     else
-                        promises.push(this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS1_CHARACTERISIC)
+                        promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS1_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingAdditionalStatus2Event.count > 0) {
@@ -4280,7 +4380,7 @@ var ergometer;
                         promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        promises.push(this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS2_CHARACTERISIC, function (data) {
+                        promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS2_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingAdditionalStatus2);
                         }).catch(this.getErrorHandlerFunc("")));
                     }
@@ -4289,7 +4389,7 @@ var ergometer;
                     if (this.multiplex)
                         promises.push(this.disableMultiPlexNotification());
                     else
-                        promises.push(this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS2_CHARACTERISIC)
+                        promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS2_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingStrokeDataEvent.count > 0) {
@@ -4297,7 +4397,7 @@ var ergometer;
                         promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        promises.push(this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.STROKE_DATA_CHARACTERISIC, function (data) {
+                        promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.STROKE_DATA_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingStrokeData);
                         }).catch(this.getErrorHandlerFunc("")));
                     }
@@ -4306,7 +4406,7 @@ var ergometer;
                     if (this.multiplex)
                         promises.push(this.disableMultiPlexNotification());
                     else
-                        promises.push(this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.STROKE_DATA_CHARACTERISIC)
+                        promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.STROKE_DATA_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingAdditionalStrokeDataEvent.count > 0) {
@@ -4314,7 +4414,7 @@ var ergometer;
                         promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        promises.push(this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STROKE_DATA_CHARACTERISIC, function (data) {
+                        promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STROKE_DATA_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingAdditionalStrokeData);
                         }).catch(this.getErrorHandlerFunc("")));
                     }
@@ -4323,7 +4423,7 @@ var ergometer;
                     if (this.multiplex)
                         promises.push(this.disableMultiPlexNotification());
                     else
-                        promises.push(this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STROKE_DATA_CHARACTERISIC)
+                        promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STROKE_DATA_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingSplitIntervalDataEvent.count > 0) {
@@ -4331,7 +4431,7 @@ var ergometer;
                         promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        promises.push(this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.SPLIT_INTERVAL_DATA_CHARACTERISIC, function (data) {
+                        promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.SPLIT_INTERVAL_DATA_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingSplitIntervalData);
                         }).catch(this.getErrorHandlerFunc("")));
                     }
@@ -4340,7 +4440,7 @@ var ergometer;
                     if (this.multiplex)
                         promises.push(this.disableMultiPlexNotification());
                     else
-                        promises.push(this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.SPLIT_INTERVAL_DATA_CHARACTERISIC)
+                        promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.SPLIT_INTERVAL_DATA_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingAdditionalSplitIntervalDataEvent.count > 0) {
@@ -4348,7 +4448,7 @@ var ergometer;
                         promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        promises.push(this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC, function (data) {
+                        promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleRowingAdditionalSplitIntervalData);
                         }).catch(this.getErrorHandlerFunc("")));
                     }
@@ -4357,7 +4457,7 @@ var ergometer;
                     if (this.multiplex)
                         promises.push(this.disableMultiPlexNotification());
                     else
-                        promises.push(this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC)
+                        promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.workoutSummaryDataEvent.count > 0) {
@@ -4365,7 +4465,7 @@ var ergometer;
                         promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        promises.push(this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_SUMMARY_CHARACTERISIC, function (data) {
+                        promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_SUMMARY_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleWorkoutSummaryData);
                         }).catch(this.getErrorHandlerFunc("")));
                     }
@@ -4374,7 +4474,7 @@ var ergometer;
                     if (this.multiplex)
                         promises.push(this.disableMultiPlexNotification());
                     else
-                        promises.push(this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_SUMMARY_CHARACTERISIC)
+                        promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_SUMMARY_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.additionalWorkoutSummaryDataEvent.count > 0) {
@@ -4382,7 +4482,7 @@ var ergometer;
                         promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        promises.push(this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC, function (data) {
+                        promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleAdditionalWorkoutSummaryData);
                         }).catch(this.getErrorHandlerFunc("")));
                     }
@@ -4391,7 +4491,7 @@ var ergometer;
                     if (this.multiplex)
                         promises.push(this.disableMultiPlexNotification());
                     else
-                        promises.push(this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC)
+                        promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.additionalWorkoutSummaryData2Event.count > 0) {
@@ -4409,7 +4509,7 @@ var ergometer;
                         promises.push(this.enableMultiplexNotification());
                     }
                     else {
-                        promises.push(this.driver.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.HEART_RATE_BELT_INFO_CHARACTERISIC, function (data) {
+                        promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.HEART_RATE_BELT_INFO_CHARACTERISIC, function (data) {
                             _this.handleDataCallback(data, _this.handleHeartRateBeltInformation);
                         }).catch(this.getErrorHandlerFunc("")));
                     }
@@ -4418,7 +4518,7 @@ var ergometer;
                     if (this.multiplex)
                         promises.push(this.disableMultiPlexNotification());
                     else
-                        promises.push(this.driver.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.HEART_RATE_BELT_INFO_CHARACTERISIC)
+                        promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.HEART_RATE_BELT_INFO_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.powerCurveEvent.count > 0) {
@@ -4441,7 +4541,8 @@ var ergometer;
         };
         PerformanceMonitorBle.prototype.onPowerCurveRowingGeneralStatus = function (data) {
             var _this = this;
-            this.traceInfo('RowingGeneralStatus:' + JSON.stringify(data));
+            if (this.logLevel >= ergometer.LogLevel.trace)
+                this.traceInfo('RowingGeneralStatus:' + JSON.stringify(data));
             //test to receive the power curve
             if (this.rowingGeneralStatus && this.rowingGeneralStatus.strokeState != data.strokeState) {
                 if (data.strokeState == 4 /* recoveryState */) {
@@ -4474,7 +4575,9 @@ var ergometer;
                      evothings.scriptsLoaded(()=>{
                          this.onDeviceReady();})},
                 false);   */
-            if ((typeof bleat !== 'undefined') && bleat)
+            if (bleCentral.available())
+                this._driver = new bleCentral.DriverBleCentral();
+            else if ((typeof bleat !== 'undefined') && bleat)
                 this._driver = new ergometer.ble.DriverBleat();
             else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
                 this._driver = new ergometer.ble.DriverSimpleBLE();
@@ -4482,7 +4585,7 @@ var ergometer;
                 this._driver = new ergometer.ble.DriverWebBlueTooth(this);
             else
                 this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.");
-            var enableDisableFunc = function () { _this.enableDisableNotification(); };
+            var enableDisableFunc = function () { _this.enableDisableNotification().catch(_this.handleError); };
             this._rowingGeneralStatusEvent = new ergometer.pubSub.Event();
             this.rowingGeneralStatusEvent.registerChangedEvent(enableDisableFunc);
             this._rowingAdditionalStatus1Event = new ergometer.pubSub.Event();
@@ -4620,9 +4723,13 @@ var ergometer;
                 _this.changeConnectionState(ergometer.MonitorConnectionState.deviceReady);
                 _this.showInfo('Disconnected');
                 if (_this.autoReConnect && !_this.currentDriverIsWebBlueTooth()) {
-                    _this.startScan(function (device) {
-                        return device.name == deviceName;
-                    });
+                    //do not auto connect too quick otherwise it will reconnect when
+                    //the device has triggered a disconenct and it will end up half disconnected
+                    setTimeout(function () {
+                        _this.startScan(function (device) {
+                            return device.name == deviceName;
+                        });
+                    }, 2000);
                 }
             }).then(function () {
                 _this.changeConnectionState(ergometer.MonitorConnectionState.connected);
@@ -4998,14 +5105,15 @@ var ergometer;
             this.enableDisableNotification().then(function () {
                 return _this.handleCSafeNotifications();
             }).then(function () {
+                //fix problem of notifications not completaly ready yet
                 _this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
-            });
+            }).catch(this.handleError);
             //allways connect to csafe
         };
         PerformanceMonitorBle.prototype.handleCSafeNotifications = function () {
             var _this = this;
             this.traceInfo("enable notifications csafe");
-            return this.driver.enableNotification(ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.RECEIVE_FROM_PM_CHARACTERISIC, function (data) {
+            return this.enableNotification(ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.RECEIVE_FROM_PM_CHARACTERISIC, function (data) {
                 var dataView = new DataView(data);
                 _this.handeReceivedDriverData(dataView);
             }).catch(this.getErrorHandlerFunc(""));

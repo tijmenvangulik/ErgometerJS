@@ -340,6 +340,11 @@ namespace ergometer {
         protected connected() {
             
         }
+
+        protected clearAllBuffers() {
+            this.clearWaitResponseBuffers();
+            this._sendBufferQueue=[];
+        }
         /**
          *
          * @param value
@@ -348,10 +353,11 @@ namespace ergometer {
             if (this._connectionState!=value) {
                 var oldValue=this._connectionState;
                 this._connectionState=value;
+                if (value==MonitorConnectionState.connected) {
+                    this.clearAllBuffers();
+                }
                 this.connectionStateChangedEvent.pub(oldValue,value);
                 if (value==MonitorConnectionState.connected) {
-                    this.clearWaitResponseBuffers();
-                    this._sendBufferQueue=[];
                     this.connected();
                 }
                   

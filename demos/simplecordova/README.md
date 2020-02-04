@@ -1,5 +1,7 @@
 # Simple Cordova
 
+! this demo is obsolete because it uses an very old ble driver , check the demo ble_cordova demo  which uses an new ble driver !
+
 first install Cordova
 
     npm install -g cordova
