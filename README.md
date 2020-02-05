@@ -118,7 +118,9 @@ You only need to change the javascript included file
   * New Ble central driver for cordova + demo.  Currently bleat + evo things ble was used on cordova. This driver is not supported any more and there where a lot of errors in the log. So I replaced it by the popular ble central.
   * For ble the notification enable/disable was called too many times. This fix can prevent initial connection problems on some ble drivers.
   * Expose the driver property so it can be set.
-
+- 1.3.6
+  * fixed breaking change in web hid api
+  
 # Project features
 
 * The project is open source and and it is based on open source project. (appache 2 license) 

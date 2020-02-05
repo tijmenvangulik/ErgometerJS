@@ -1692,13 +1692,18 @@ var ergometer;
                     try {
                         navigator.hid.requestDevice({ filters: [{
                                     vendorId: usb.CONCEPT2_VENDOR_ID,
-                                }] }).then(function (device) {
-                            var deviceInfo = new DeviceWebHid(device);
-                            //deviceInfo.serialNumber=device.;
-                            deviceInfo.productId = device.productId;
-                            deviceInfo.vendorId = device.vendorId;
-                            deviceInfo.productName = device.productName;
-                            resolve([deviceInfo]);
+                                }] }).then(function (devices) {
+                            if (devices.length > 0) {
+                                var device = devices[0];
+                                var deviceInfo = new DeviceWebHid(device);
+                                //deviceInfo.serialNumber=device.;
+                                deviceInfo.productId = device.productId;
+                                deviceInfo.vendorId = device.vendorId;
+                                deviceInfo.productName = device.productName;
+                                resolve([deviceInfo]);
+                            }
+                            else
+                                reject("device not found");
                         }).catch(reject);
                     }
                     catch (error) {

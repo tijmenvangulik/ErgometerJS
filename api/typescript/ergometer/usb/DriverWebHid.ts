@@ -91,14 +91,19 @@ namespace ergometer.usb {
                 navigator.hid.requestDevice({ filters: [{
                     vendorId: CONCEPT2_VENDOR_ID,
                     
-                }]}).then((device)=>{
-                    var deviceInfo= new DeviceWebHid(device);
-                    //deviceInfo.serialNumber=device.;
-                    deviceInfo.productId=device.productId;
-                    deviceInfo.vendorId=device.vendorId;
-                    deviceInfo.productName=device.productName;
-                    
-                    resolve([deviceInfo]);  
+                }]}).then((devices)=>{
+                    if (devices.length>0) {
+                        var device=devices[0];
+                        var deviceInfo= new DeviceWebHid(device);
+                        //deviceInfo.serialNumber=device.;
+                        deviceInfo.productId=device.productId;
+                        deviceInfo.vendorId=device.vendorId;
+                        deviceInfo.productName=device.productName;
+                        
+                        resolve([deviceInfo]);
+
+                    }
+                    else reject("device not found");
                 }).catch(reject);                
             } catch (error) {           
                 return Promise.reject(error); 

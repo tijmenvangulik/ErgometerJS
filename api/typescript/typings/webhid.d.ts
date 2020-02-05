@@ -16,7 +16,7 @@ declare namespace webhid {
         ondisconnect : (( ev: HIDConnectionEvent) => any) | null;
         getDevices() : Promise<HIDDevice[]>;
         requestDevice(
-            options : HIDDeviceRequestOptions) : Promise<HIDDevice>;
+            options : HIDDeviceRequestOptions) : Promise<HIDDevice[]>;
     }
     
     
