@@ -64,6 +64,7 @@ class Demo {
     }
 
     protected initialize() {
+        
         this._performanceMonitor= new ergometer.PerformanceMonitorBle();
         //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
         this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
@@ -195,16 +196,43 @@ class Demo {
     public setDevice(name : string) {
 
     }
-
-    public startScan() {
-        this.performanceMonitor.startScan((device : ergometer.DeviceInfo) : boolean => {
-            this.fillDevices();
-            if (!this.lastDeviceName || device.name==this.lastDeviceName) {
-                $('#devices').val(device.name);
-                return true;//this will connect
-            }
-            else return false;
+    public checkBlueToothEnabled(sucess: ()=>void) {
+        ble.isEnabled(()=>{
+            sucess();
+        },()=>{
+           ble.enable(()=>{
+            sucess();
+           }, ()=>{
+            this.showInfo("Blue tooth is not enabled, please enable bluetooth")
+           })
         });
+
+    }
+    public locationServiceWarning(sucess : ()=>void) {
+        ble.isLocationEnabled(()=>{
+            
+            sucess();
+        },()=>{
+            this.showInfo("Location services is not enabled. On some phones you can not find the ergometer device without this option switched on.  If you can not find your device enable location in the privacy settings of your android device.")
+            sucess();
+        });
+
+    }
+    public startScan() {
+        this.checkBlueToothEnabled(()=>{
+            this.locationServiceWarning(()=>{
+                this.performanceMonitor.startScan((device : ergometer.DeviceInfo) : boolean => {
+                    this.fillDevices();
+                    if (!this.lastDeviceName || device.name==this.lastDeviceName) {
+                        $('#devices').val(device.name);
+                        return true;//this will connect
+                    }
+                    else return false;
+                });
+            })
+            
+        });
+        
 
     }
     public start() {

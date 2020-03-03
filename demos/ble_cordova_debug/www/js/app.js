@@ -5393,16 +5393,41 @@ var Demo = /** @class */ (function () {
     };
     Demo.prototype.setDevice = function (name) {
     };
+    Demo.prototype.checkBlueToothEnabled = function (sucess) {
+        var _this = this;
+        ble.isEnabled(function () {
+            sucess();
+        }, function () {
+            ble.enable(function () {
+                sucess();
+            }, function () {
+                _this.showInfo("Blue tooth is not enabled, please enable bluetooth");
+            });
+        });
+    };
+    Demo.prototype.locationServiceWarning = function (sucess) {
+        var _this = this;
+        ble.isLocationEnabled(function () {
+            sucess();
+        }, function () {
+            _this.showInfo("Location services is not enabled. On some phones you can not find the ergometer device without this option switched on. Please enable location in the settings.");
+            sucess();
+        });
+    };
     Demo.prototype.startScan = function () {
         var _this = this;
-        this.performanceMonitor.startScan(function (device) {
-            _this.fillDevices();
-            if (!_this.lastDeviceName || device.name == _this.lastDeviceName) {
-                $('#devices').val(device.name);
-                return true; //this will connect
-            }
-            else
-                return false;
+        this.checkBlueToothEnabled(function () {
+            _this.locationServiceWarning(function () {
+                _this.performanceMonitor.startScan(function (device) {
+                    _this.fillDevices();
+                    if (!_this.lastDeviceName || device.name == _this.lastDeviceName) {
+                        $('#devices').val(device.name);
+                        return true; //this will connect
+                    }
+                    else
+                        return false;
+                });
+            });
         });
     };
     Demo.prototype.start = function () {
