@@ -1190,7 +1190,7 @@
                     peakDriveForce: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO) / 10, //lbs
                     averageDriveForce: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO) / 10, //lbs
                     workPerStroke: null,
-                    strokeCount: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_COUNT_LO)
+                    strokeCount: data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_COUNT_LO)+data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_COUNT_HI) * 256 //PM bug: LSB and MSB are swapped
                 }
 
             }
@@ -1212,7 +1212,7 @@
                 elapsedTime: utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.ELAPSED_TIME_LO) * 10, //in mili seconds
                 strokePower : data.getUint16(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_POWER_LO) ,  //watts
                 strokeCalories : data.getUint16(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_CALORIES_LO), //cal/hr
-                strokeCount :data.getUint16(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_COUNT_LO),
+                strokeCount: data.getUint8(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_COUNT_LO)+data.getUint8(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_COUNT_HI) * 256, //PM bug: LSB and MSB are swapped
                 projectedWorkTime : utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_TIME_LO)*1000, //ms
                 projectedWorkDistance : utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_DIST_LO), //meter
                 workPerStroke : null //filled when multiplexed is true
