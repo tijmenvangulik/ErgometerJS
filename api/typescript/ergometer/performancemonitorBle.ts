@@ -1176,7 +1176,7 @@
                     peakDriveForce: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO) / 10, //lbs
                     averageDriveForce: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO) / 10, //lbs
                     workPerStroke: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO) / 10, //jouls
-                    strokeCount: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.STROKE_COUNT_LO)
+                    strokeCount: data.getUint8(ble.PM_Stroke_Data_BLE_Payload.STROKE_COUNT_LO)+data.getUint8(ble.PM_Stroke_Data_BLE_Payload.STROKE_COUNT_HI) * 256 //PM bug: LSB and MSB are swapped
                 }
             }
             else {
