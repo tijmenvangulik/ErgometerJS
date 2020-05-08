@@ -30,7 +30,10 @@ Basically ErgometerJS needs javascript and a blue tooth driver which can be (nob
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
 
 # Change Log
-
+- 1.3.7
+  * BLE: fix strokes value
+  * BLE: fix power value
+  * USB: Fixed time workout EndDuration/time is now correctly set
 - 1.3.6
   * fixed breaking change in web hid api
 - 1.3.5

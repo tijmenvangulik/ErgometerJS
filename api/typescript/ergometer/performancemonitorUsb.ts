@@ -520,6 +520,12 @@ namespace ergometer {
             })
             .send()
             .then(()=>{
+                /*console.log({
+                    workTime:this.strokeData.workTime,
+                    distance:this.strokeData.distance ,
+                    workDistance: this.strokeData.workDistance
+
+                });*/
                 this.traceInfo("after low res update");
                 this.strokeDataEvent.pub(this.strokeData);
             });
@@ -597,11 +603,17 @@ namespace ergometer {
                 }})                       
                 .send()
                 .then(()=>{
-                    
+                   /* console.log({
+                        duration:duration,
+                        distance:distance,
+                        actualTime:actualTime,
+                        actualDistance:actualDistance,
+                        workoutState:this.trainingData.workoutState
+                    });*/
                     //total time and distance can be changed because the rower is rowing.
                     //the work time and work distance should be 0 for initial change
                     if ( this.strokeState<=StrokeState.waitingForWheelToAccelerateState && 
-                        actualTime==0 && actualDistance==0 ) { 
+                        actualDistance==0 ) { 
                         
                         //we are here just before the rower starts, if there are still values
                         //of the previous race, then reset
@@ -632,23 +644,25 @@ namespace ergometer {
                            (this.trainingData.endDistance===0)) ) {
                         //otherwise the work time does not reflect the last time and distance
                         if ( this.trainingData.workoutType>=WorkoutType.fixedDistanceNoAplits &&
-                            this.trainingData.workoutType<=WorkoutType.fixedTimeNoAplits ) {
+                            this.trainingData.workoutType<=WorkoutType.fixedTimeAplits ) {
                             
-                            if (duration && duration>0) { //doing an fixed distance
+                            if (this.trainingData.duration && this.trainingData.duration>0) { //doing an fixed time
+                                this.strokeData.workTime = this.trainingData.duration;
+                                this.strokeData.workDistance = distance;
+                                //this.strokeData.time=duration;
+                                this.strokeData.distance = distance;
+                                this.trainingData.endDistance= distance;
+                                this.trainingData.endDuration=this.trainingData.duration;
+                                //console.log("Fixed time Send stroke state and training");
+                            }
+                            else if (this.trainingData.distance>0) { //doing a fixed distance
                                 this.strokeData.workTime = duration;
                                 this.strokeData.workDistance = 0;
                                 //this.strokeData.time=duration;
                                 this.strokeData.distance = distance;
                                 this.trainingData.endDistance= this.trainingData.distance;
                                 this.trainingData.endDuration=duration;
-                            }
-                            if (distance && distance>0) { //doing a fixed time
-                                this.strokeData.workDistance = distance;
-                                this.strokeData.workTime = 0;
-                                //this.strokeData.time= duration;
-                                this.strokeData.distance = distance;
-                                this.trainingData.endDistance=distance;
-                                this.trainingData.endDuration=this.trainingData.duration;
+                                //console.log("Fixed distance Send stroke state and training");
                             }
                             strokeDataChanged=true;//send the updated last end time/ duration to the server
                         }

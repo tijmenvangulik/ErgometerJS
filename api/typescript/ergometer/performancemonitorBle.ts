@@ -1210,7 +1210,7 @@
 
             var parsed:RowingAdditionalStrokeData = {
                 elapsedTime: utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.ELAPSED_TIME_LO) * 10, //in mili seconds
-                strokePower : data.getUint16(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_POWER_LO) ,  //watts
+                strokePower : data.getUint8(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_POWER_LO) +data.getUint8(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_POWER_HI) *256,  //watts
                 strokeCalories : data.getUint16(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_CALORIES_LO), //cal/hr
                 strokeCount: data.getUint8(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_COUNT_LO)+data.getUint8(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_COUNT_HI) * 256, //PM bug: LSB and MSB are swapped
                 projectedWorkTime : utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_TIME_LO)*1000, //ms

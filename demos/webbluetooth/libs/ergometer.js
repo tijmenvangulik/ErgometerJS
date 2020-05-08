@@ -3619,6 +3619,12 @@ var ergometer;
             })
                 .send()
                 .then(function () {
+                /*console.log({
+                    workTime:this.strokeData.workTime,
+                    distance:this.strokeData.distance ,
+                    workDistance: this.strokeData.workDistance
+
+                });*/
                 _this.traceInfo("after low res update");
                 _this.strokeDataEvent.pub(_this.strokeData);
             });
@@ -3685,10 +3691,17 @@ var ergometer;
                 } })
                 .send()
                 .then(function () {
+                /* console.log({
+                     duration:duration,
+                     distance:distance,
+                     actualTime:actualTime,
+                     actualDistance:actualDistance,
+                     workoutState:this.trainingData.workoutState
+                 });*/
                 //total time and distance can be changed because the rower is rowing.
                 //the work time and work distance should be 0 for initial change
                 if (_this.strokeState <= 1 /* waitingForWheelToAccelerateState */ &&
-                    actualTime == 0 && actualDistance == 0) {
+                    actualDistance == 0) {
                     //we are here just before the rower starts, if there are still values
                     //of the previous race, then reset
                     if (_this._nSPM != 0) {
@@ -3714,22 +3727,24 @@ var ergometer;
                         (_this.trainingData.endDistance === 0))) {
                     //otherwise the work time does not reflect the last time and distance
                     if (_this.trainingData.workoutType >= 2 /* fixedDistanceNoAplits */ &&
-                        _this.trainingData.workoutType <= 4 /* fixedTimeNoAplits */) {
-                        if (duration && duration > 0) {
+                        _this.trainingData.workoutType <= 5 /* fixedTimeAplits */) {
+                        if (_this.trainingData.duration && _this.trainingData.duration > 0) {
+                            _this.strokeData.workTime = _this.trainingData.duration;
+                            _this.strokeData.workDistance = distance;
+                            //this.strokeData.time=duration;
+                            _this.strokeData.distance = distance;
+                            _this.trainingData.endDistance = distance;
+                            _this.trainingData.endDuration = _this.trainingData.duration;
+                            //console.log("Fixed time Send stroke state and training");
+                        }
+                        else if (_this.trainingData.distance > 0) {
                             _this.strokeData.workTime = duration;
                             _this.strokeData.workDistance = 0;
                             //this.strokeData.time=duration;
                             _this.strokeData.distance = distance;
                             _this.trainingData.endDistance = _this.trainingData.distance;
                             _this.trainingData.endDuration = duration;
-                        }
-                        if (distance && distance > 0) {
-                            _this.strokeData.workDistance = distance;
-                            _this.strokeData.workTime = 0;
-                            //this.strokeData.time= duration;
-                            _this.strokeData.distance = distance;
-                            _this.trainingData.endDistance = distance;
-                            _this.trainingData.endDuration = _this.trainingData.duration;
+                            //console.log("Fixed distance Send stroke state and training");
                         }
                         strokeDataChanged = true; //send the updated last end time/ duration to the server
                     }
@@ -4909,7 +4924,7 @@ var ergometer;
                     peakDriveForce: data.getUint16(12 /* PEAK_DRIVE_FORCE_LO */) / 10,
                     averageDriveForce: data.getUint16(14 /* AVG_DRIVE_FORCE_LO */) / 10,
                     workPerStroke: data.getUint16(16 /* WORK_PER_STROKE_LO */) / 10,
-                    strokeCount: data.getUint16(18 /* STROKE_COUNT_LO */)
+                    strokeCount: data.getUint8(18 /* STROKE_COUNT_LO */) + data.getUint8(19 /* STROKE_COUNT_HI */) * 256 //PM bug: LSB and MSB are swapped
                 };
             }
             else {
@@ -4923,7 +4938,7 @@ var ergometer;
                     peakDriveForce: data.getUint16(12 /* PEAK_DRIVE_FORCE_LO */) / 10,
                     averageDriveForce: data.getUint16(14 /* AVG_DRIVE_FORCE_LO */) / 10,
                     workPerStroke: null,
-                    strokeCount: data.getUint16(16 /* STROKE_COUNT_LO */)
+                    strokeCount: data.getUint8(16 /* STROKE_COUNT_LO */) + data.getUint8(17 /* STROKE_COUNT_HI */) * 256 //PM bug: LSB and MSB are swapped
                 };
             }
             if (JSON.stringify(this.rowingStrokeData) !== JSON.stringify(parsed)) {
@@ -4938,9 +4953,9 @@ var ergometer;
         PerformanceMonitorBle.prototype.handleRowingAdditionalStrokeData = function (data) {
             var parsed = {
                 elapsedTime: ergometer.utils.getUint24(data, 0 /* ELAPSED_TIME_LO */) * 10,
-                strokePower: data.getUint16(3 /* STROKE_POWER_LO */),
+                strokePower: data.getUint8(3 /* STROKE_POWER_LO */) + data.getUint8(4 /* STROKE_POWER_HI */) * 256,
                 strokeCalories: data.getUint16(5 /* STROKE_CALORIES_LO */),
-                strokeCount: data.getUint16(7 /* STROKE_COUNT_LO */),
+                strokeCount: data.getUint8(7 /* STROKE_COUNT_LO */) + data.getUint8(8 /* STROKE_COUNT_HI */) * 256,
                 projectedWorkTime: ergometer.utils.getUint24(data, 9 /* PROJ_WORK_TIME_LO */) * 1000,
                 projectedWorkDistance: ergometer.utils.getUint24(data, 12 /* PROJ_WORK_DIST_LO */),
                 workPerStroke: null //filled when multiplexed is true
