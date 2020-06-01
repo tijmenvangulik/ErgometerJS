@@ -18,13 +18,13 @@ namespace ergometer.ble {
         private _startTime : number;
         private _checkQueueTimerId : number = null;
 
-        private _performanceMonitor : PerformanceMonitorBase;
+        private _performanceMonitor : MonitorBase;
 
         protected getRelativeTime() : number {
             return utils.getTime()-this._startTime
         }
 
-        constructor (performanceMonitor : PerformanceMonitorBase,realDriver : IDriver)  {
+        constructor (performanceMonitor : MonitorBase,realDriver : IDriver)  {
             this._performanceMonitor=performanceMonitor;
             this._realDriver=realDriver;
         }

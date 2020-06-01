@@ -552,11 +552,12 @@ namespace ergometer.csafe.defs {
         PM_GET_INTERNALLOGMEMORY,                                 // 0x6A
         PM_GET_FORCEPLOTDATA,                                     // 0x6B
         PM_GET_HEARTBEATDATA,                                     // 0x6C
-        PM_GET_UI_EVENTS,                                         // 0x6D
-        // Unused,                                                      // 0x6E
+        PM_GET_UI_EVENTS,                                          // 0x6D
+                                               
+        CSAFE_PM_GET_STROKESTATS,                                        // 0x6E
         // Unused,                                                      // 0x6F
-        // Unused,                                                      // 0x70
-        // Unused,                                                      // 0x71
+        CSAFE_PM_GET_DIAGLOG_RECORD_NUM =0x70,                          // 0x70
+        CSAFE_PM_GET_DIAGLOG_RECORD,                                    // 0x71
         // Unused,                                                      // 0x72
         // Unused,                                                      // 0x73
         // Unused,                                                      // 0x74

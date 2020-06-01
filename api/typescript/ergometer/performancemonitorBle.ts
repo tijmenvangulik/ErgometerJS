@@ -22,8 +22,6 @@
  * limitations under the License.
  */
 
- //to fix the problem that the base is not yet declared
-
  namespace ergometer {
 
     import hasWebBlueTooth = ergometer.ble.hasWebBlueTooth;
@@ -785,10 +783,10 @@
                      evothings.scriptsLoaded(()=>{
                          this.onDeviceReady();})},
                 false);   */
-            if (bleCentral.available()) this._driver= new bleCentral.DriverBleCentral()            
+            if (bleCentral.available()) this._driver= new bleCentral.DriverBleCentral([ergometer.ble.PMDEVICE])            
             else if ((typeof bleat !== 'undefined' ) && bleat) this._driver = new ble.DriverBleat();
             else if ((typeof simpleBLE !== 'undefined' ) && simpleBLE ) this._driver = new ble.DriverSimpleBLE();
-            else if (ble.hasWebBlueTooth()) this._driver= new ble.DriverWebBlueTooth(this);
+            else if (ble.hasWebBlueTooth()) this._driver= new ble.DriverWebBlueTooth(this,[ble.PMDEVICE],[ble.PMDEVICE_INFO_SERVICE,ble.PMCONTROL_SERVICE,ble.PMROWING_SERVICE]);
             else this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.") ;
 
             var enableDisableFunc = ()=>{this.enableDisableNotification().catch(this.handleError)};
@@ -1171,7 +1169,7 @@
                     distance: utils.getUint24(data, ble.PM_Stroke_Data_BLE_Payload.DISTANCE_LO) / 10, //meter
                     driveLength: data.getUint8(ble.PM_Stroke_Data_BLE_Payload.DRIVE_LENGTH) / 100, //meters
                     driveTime: data.getUint8(ble.PM_Stroke_Data_BLE_Payload.DRIVE_TIME) * 10, //ms
-                    strokeRecoveryTime: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_LO) * 10, //ms
+                    strokeRecoveryTime: (data.getUint8(ble.PM_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_LO) + data.getUint8(ble.PM_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_HI)*256) * 10, //ms
                     strokeDistance: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.STROKE_DISTANCE_LO) / 100,//meter
                     peakDriveForce: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO) / 10, //lbs
                     averageDriveForce: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO) / 10, //lbs

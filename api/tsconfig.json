@@ -24,6 +24,7 @@
     "typescript/ergometer/utils.ts",
     "typescript/ergometer/functionQueue.ts",
     "typescript/ergometer/pubsub.ts",
+    "typescript/ergometer/monitorBase.ts",
     "typescript/ergometer/ble/Driver.ts",
     "typescript/ergometer/ble/DriverBleat.ts",
     "typescript/ergometer/ble/DriverSimpleBLE.ts",
@@ -45,7 +46,8 @@
     "typescript/ergometer/typedefinitions.ts",
     "typescript/ergometer/performancemonitorBase.ts",
     "typescript/ergometer/performancemonitorUsb.ts",
-    "typescript/ergometer/performancemonitorBle.ts"
+    "typescript/ergometer/performancemonitorBle.ts",
+    "typescript/ergometer/heartratemonitorBle.ts"
   ]
  
 }

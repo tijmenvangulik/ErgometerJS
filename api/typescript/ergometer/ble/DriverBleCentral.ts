@@ -17,7 +17,8 @@ namespace bleCentral {
                 }, disconnectFn)
             })
         }
-
+        constructor (private _scanServices : string[]) {}
+        
         public disconnect() {
             ble.disconnect(this._device.id);
         }
@@ -25,7 +26,7 @@ namespace bleCentral {
         public startScan( foundFn? : ergometer.ble.IFoundFunc ) : Promise<void> {
             
             return  new Promise<void>((resolve, reject) => {
-                ble.startScan([ergometer.ble.PMDEVICE], (foundData)=>{
+                ble.startScan(this._scanServices, (foundData)=>{
                     if (foundFn) foundFn({
                         address: foundData.id,
                         name: foundData.name,

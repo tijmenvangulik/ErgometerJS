@@ -26,6 +26,7 @@
 class Demo {
     
     private _performanceMonitor : ergometer.PerformanceMonitorUsb;
+    private _heartRateMonitor: ergometer.HeartRateMonitorBle;
 
     public get performanceMonitor(): ergometer.PerformanceMonitorUsb {
         return this._performanceMonitor;
@@ -47,6 +48,7 @@ class Demo {
     public showError(error : string) {
       //  console.log(error);
         this.addText("data",error);
+        console.error(error);
     }
 
     public showData(data : string)
@@ -99,9 +101,26 @@ class Demo {
         this.performanceMonitor.powerCurveEvent.sub(this,(data : number[])=>{
             this.showInfo("power curve data:"+JSON.stringify(data,null,"  "));
         })
+        this._heartRateMonitor = new ergometer.HeartRateMonitorBle();
+        this._heartRateMonitor.logLevel=ergometer.LogLevel.trace;
+        this._heartRateMonitor.logEvent.sub(this,this.onLog)
+        
+        this._heartRateMonitor.heartRateDataEvent.sub(this,this.hearRateData);
+        $("#StartScanHearRate").click(()=>{
+            this._heartRateMonitor.startScan((device : ergometer.HeartRateDeviceInfo) => {
+                //in web blue tooth the device selection is done by the user
+                //just return true to to accept the user selection
+                return true;
+            });
+        }); 
+        $("#DisconnectHearRate").click(()=>{
+            this._heartRateMonitor.disconnect();
+        }); 
         
     }
-
+    protected hearRateData(data : ergometer.HeartRateData) {
+        this.showData('heartRateInfo:'+JSON.stringify(data));
+    }
     public connected(){
        this.getInfo(); 
     }

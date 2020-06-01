@@ -465,6 +465,198 @@ var ergometer;
     })(pubSub = ergometer.pubSub || (ergometer.pubSub = {}));
 })(ergometer || (ergometer = {}));
 /**
+ * Concept 2 ergometer Performance Monitor api for Cordova
+ *
+ * This will will work with the PM5
+ *
+ * Created by tijmen on 01-06-15.
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+var ergometer;
+/**
+ * Concept 2 ergometer Performance Monitor api for Cordova
+ *
+ * This will will work with the PM5
+ *
+ * Created by tijmen on 01-06-15.
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+(function (ergometer) {
+    var LogLevel;
+    (function (LogLevel) {
+        LogLevel[LogLevel["error"] = 0] = "error";
+        LogLevel[LogLevel["info"] = 1] = "info";
+        LogLevel[LogLevel["debug"] = 2] = "debug";
+        LogLevel[LogLevel["trace"] = 3] = "trace";
+    })(LogLevel = ergometer.LogLevel || (ergometer.LogLevel = {}));
+    var MonitorConnectionState;
+    (function (MonitorConnectionState) {
+        MonitorConnectionState[MonitorConnectionState["inactive"] = 0] = "inactive";
+        MonitorConnectionState[MonitorConnectionState["deviceReady"] = 1] = "deviceReady";
+        MonitorConnectionState[MonitorConnectionState["scanning"] = 2] = "scanning";
+        MonitorConnectionState[MonitorConnectionState["connecting"] = 3] = "connecting";
+        MonitorConnectionState[MonitorConnectionState["connected"] = 4] = "connected";
+        MonitorConnectionState[MonitorConnectionState["servicesFound"] = 5] = "servicesFound";
+        MonitorConnectionState[MonitorConnectionState["readyForCommunication"] = 6] = "readyForCommunication";
+    })(MonitorConnectionState = ergometer.MonitorConnectionState || (ergometer.MonitorConnectionState = {}));
+    var MonitorBase = /** @class */ (function () {
+        function MonitorBase() {
+            this._logEvent = new ergometer.pubSub.Event();
+            this._logLevel = LogLevel.error;
+            this._connectionStateChangedEvent = new ergometer.pubSub.Event();
+            this._connectionState = MonitorConnectionState.inactive;
+            this.initialize();
+        }
+        Object.defineProperty(MonitorBase.prototype, "logEvent", {
+            /**
+            * By default it the logEvent will return errors if you want more debug change the log level
+            * @returns {LogLevel}
+            */
+            get: function () {
+                return this._logEvent;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        MonitorBase.prototype.initialize = function () {
+        };
+        Object.defineProperty(MonitorBase.prototype, "logLevel", {
+            get: function () {
+                return this._logLevel;
+            },
+            /**
+             * By default it the logEvent will return errors if you want more debug change the log level
+             * @param value
+             */
+            set: function (value) {
+                this._logLevel = value;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        MonitorBase.prototype.disconnect = function () {
+        };
+        Object.defineProperty(MonitorBase.prototype, "connectionState", {
+            /**
+             * read the current connection state
+             * @returns {MonitorConnectionState}
+             */
+            get: function () {
+                return this._connectionState;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        MonitorBase.prototype.connected = function () {
+        };
+        Object.defineProperty(MonitorBase.prototype, "connectionStateChangedEvent", {
+            /**
+             * event which is called when the connection state is changed. For example this way you
+             * can check if the device is disconnected.
+             * connect to the using .sub(this,myFunction)
+             * @returns {pubSub.Event<ConnectionStateChangedEvent>}
+             */
+            get: function () {
+                return this._connectionStateChangedEvent;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        MonitorBase.prototype.debugInfo = function (info) {
+            if (this.logLevel >= LogLevel.debug)
+                this.logEvent.pub(info, LogLevel.debug);
+        };
+        /**
+         *
+         * @param info
+         */
+        MonitorBase.prototype.showInfo = function (info) {
+            if (this.logLevel >= LogLevel.info)
+                this.logEvent.pub(info, LogLevel.info);
+        };
+        /**
+         * Print debug info to console and application UI.
+         * @param info
+         */
+        MonitorBase.prototype.traceInfo = function (info) {
+            if (this.logLevel >= LogLevel.trace)
+                this.logEvent.pub(info, LogLevel.trace);
+        };
+        /**
+         * call the global error hander and call the optional error handler if given
+         * @param error
+         */
+        MonitorBase.prototype.handleError = function (error, errorFn) {
+            if (this.logLevel >= LogLevel.error)
+                this.logEvent.pub(error, LogLevel.error);
+            if (errorFn)
+                errorFn(error);
+        };
+        /**
+         * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
+         * @param errorDescription
+         * @param errorFn
+         */
+        MonitorBase.prototype.getErrorHandlerFunc = function (errorDescription, errorFn) {
+            var _this = this;
+            return function (e) {
+                _this.handleError(errorDescription + ':' + e.toString(), errorFn);
+            };
+        };
+        MonitorBase.prototype.beforeConnected = function () {
+        };
+        /**
+         *
+         * @param value
+         */
+        MonitorBase.prototype.changeConnectionState = function (value) {
+            if (this._connectionState != value) {
+                var oldValue = this._connectionState;
+                this._connectionState = value;
+                if (value == MonitorConnectionState.connected) {
+                    this.beforeConnected();
+                }
+                this.connectionStateChangedEvent.pub(oldValue, value);
+                if (value == MonitorConnectionState.connected) {
+                    this.connected();
+                }
+            }
+        };
+        return MonitorBase;
+    }());
+    ergometer.MonitorBase = MonitorBase;
+})(ergometer || (ergometer = {}));
+/**
  * Created by tijmen on 01-02-16.
  */
 var ergometer;
@@ -805,11 +997,15 @@ var ergometer;
         }
         ble.hasWebBlueTooth = hasWebBlueTooth;
         var DriverWebBlueTooth = /** @class */ (function () {
-            function DriverWebBlueTooth(performanceMonitor) {
+            //should queue the read and writes, this may be the cause of the blocking issues, this is a work arround for the chrome web blue tooth problem
+            //private _functionQueue : utils.FunctionQueue = new utils.FunctionQueue(1); //1 means one at a time
+            function DriverWebBlueTooth(_performanceMonitor, _scanServices, _scanOptionalServices) {
+                this._performanceMonitor = _performanceMonitor;
+                this._scanServices = _scanServices;
+                this._scanOptionalServices = _scanOptionalServices;
                 this._listenerMap = {};
                 //needed to prevent early free of the characteristic
                 this._listerCharacteristicMap = {};
-                this._performanceMonitor = performanceMonitor;
             }
             //simple wrapper for bleat characteristic functions
             DriverWebBlueTooth.prototype.getCharacteristic = function (serviceUid, characteristicUid) {
@@ -875,16 +1071,17 @@ var ergometer;
                     this.clearConnectionVars();
             };
             DriverWebBlueTooth.prototype.startScan = function (foundFn) {
+                var _this = this;
                 if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
                     this._performanceMonitor.traceInfo("startScan ");
                 return new Promise(function (resolve, reject) {
                     try {
                         navigator.bluetooth.requestDevice({
                             filters: [
-                                { services: [ble.PMDEVICE]
+                                { services: _this._scanServices
                                 }
                             ],
-                            optionalServices: [ble.PMDEVICE_INFO_SERVICE, ble.PMCONTROL_SERVICE, ble.PMROWING_SERVICE]
+                            optionalServices: _this._scanOptionalServices
                         }).then(function (device) {
                             foundFn({
                                 address: device.id,
@@ -1172,7 +1369,8 @@ var bleCentral;
     }
     bleCentral.available = available;
     var DriverBleCentral = /** @class */ (function () {
-        function DriverBleCentral() {
+        function DriverBleCentral(_scanServices) {
+            this._scanServices = _scanServices;
         }
         DriverBleCentral.prototype.connect = function (device, disconnectFn) {
             var _this = this;
@@ -1187,8 +1385,9 @@ var bleCentral;
             ble.disconnect(this._device.id);
         };
         DriverBleCentral.prototype.startScan = function (foundFn) {
+            var _this = this;
             return new Promise(function (resolve, reject) {
-                ble.startScan([ergometer.ble.PMDEVICE], function (foundData) {
+                ble.startScan(_this._scanServices, function (foundData) {
                     if (foundFn)
                         foundFn({
                             address: foundData.id,
@@ -1837,6 +2036,8 @@ var ergometer;
     (function (ble) {
         /** @internal */
         ble.PMDEVICE = "ce060000-43e5-11e4-916c-0800200c9a66";
+        ble.HEART_RATE_DEVICE_SERVICE = "0000180d-0000-1000-8000-00805f9b34fb"; // "heart_rate";
+        ble.HEART_RATE_MEASUREMENT = "00002a37-0000-1000-8000-00805f9b34fb";
         // Service UUIDs
         ble.PMDEVICE_INFO_SERVICE = "ce060010-43e5-11e4-916c-0800200c9a66";
         ble.PMCONTROL_SERVICE = "ce060020-43e5-11e4-916c-0800200c9a66";
@@ -2278,6 +2479,26 @@ var ergometer;
                 return buffer;
             };
         });
+        csafe.commandManager.register(function (buffer, monitor) {
+            buffer.getStrokeStats = function (params) {
+                buffer.addRawCommand({
+                    waitForResponse: true,
+                    command: 26 /* SETUSERCFG1_CMD */,
+                    detailCommand: 110 /* CSAFE_PM_GET_STROKESTATS */,
+                    data: [],
+                    onError: params.onError,
+                    onDataReceived: function (data) {
+                        if (params.onDataReceived && data.byteLength >= 3) {
+                            var driveTime = data.getUint8(0);
+                            var strokeRecoveryTime = data.getUint8(1) +
+                                data.getUint8(2) * 256;
+                            params.onDataReceived(driveTime, strokeRecoveryTime);
+                        }
+                    }
+                });
+                return buffer;
+            };
+        });
         csafe.registerStandardLongGet("getWorkoutType", 137 /* PM_GET_WORKOUTTYPE */, function (data) { return data.getUint8(0); });
         csafe.registerStandardLongGet("getWorkoutState", 141 /* PM_GET_WORKOUTSTATE */, function (data) { return data.getUint8(0); });
         csafe.registerStandardLongGet("getWorkoutIntervalCount", 159 /* PM_GET_WORKOUTINTERVALCOUNT */, function (data) { return data.getUint8(0); });
@@ -2391,6 +2612,8 @@ var ergometer;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+//to fix the problem that the base is not yet declared (not a problem during the actual build)
+/// <reference path="monitorBase.ts"/>
 var ergometer;
 /**
  * Concept 2 ergometer Performance Monitor api for Cordova
@@ -2415,24 +2638,9 @@ var ergometer;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+//to fix the problem that the base is not yet declared (not a problem during the actual build)
+/// <reference path="monitorBase.ts"/>
 (function (ergometer) {
-    var LogLevel;
-    (function (LogLevel) {
-        LogLevel[LogLevel["error"] = 0] = "error";
-        LogLevel[LogLevel["info"] = 1] = "info";
-        LogLevel[LogLevel["debug"] = 2] = "debug";
-        LogLevel[LogLevel["trace"] = 3] = "trace";
-    })(LogLevel = ergometer.LogLevel || (ergometer.LogLevel = {}));
-    var MonitorConnectionState;
-    (function (MonitorConnectionState) {
-        MonitorConnectionState[MonitorConnectionState["inactive"] = 0] = "inactive";
-        MonitorConnectionState[MonitorConnectionState["deviceReady"] = 1] = "deviceReady";
-        MonitorConnectionState[MonitorConnectionState["scanning"] = 2] = "scanning";
-        MonitorConnectionState[MonitorConnectionState["connecting"] = 3] = "connecting";
-        MonitorConnectionState[MonitorConnectionState["connected"] = 4] = "connected";
-        MonitorConnectionState[MonitorConnectionState["servicesFound"] = 5] = "servicesFound";
-        MonitorConnectionState[MonitorConnectionState["readyForCommunication"] = 6] = "readyForCommunication";
-    })(MonitorConnectionState = ergometer.MonitorConnectionState || (ergometer.MonitorConnectionState = {}));
     var WaitResponseBuffer = /** @class */ (function () {
         function WaitResponseBuffer(monitor, resolve, reject, commands, timeOut) {
             var _this = this;
@@ -2470,7 +2678,7 @@ var ergometer;
         WaitResponseBuffer.prototype.removeRemainingCommands = function () {
             var _this = this;
             this._commands.forEach(function (command) {
-                if (_this._monitor.logLevel >= LogLevel.error)
+                if (_this._monitor.logLevel >= ergometer.LogLevel.error)
                     _this._monitor.handleError("command removed without result command=" + command.command + " detial= " + command.detailCommand);
                 if (command.onError)
                     command.onError("command removed without result");
@@ -2482,7 +2690,7 @@ var ergometer;
             this.remove();
             if (this._reject)
                 this._reject("Time out buffer");
-            if (this._monitor.logLevel >= LogLevel.error)
+            if (this._monitor.logLevel >= ergometer.LogLevel.error)
                 this._monitor.handleError("buffer time out");
         };
         WaitResponseBuffer.prototype.remove = function () {
@@ -2507,7 +2715,7 @@ var ergometer;
                 this._reject(e);
         };
         WaitResponseBuffer.prototype.receivedCSaveCommand = function (parsed) {
-            if (this._monitor.logLevel == LogLevel.trace)
+            if (this._monitor.logLevel == ergometer.LogLevel.trace)
                 this._monitor.traceInfo("received command:" + JSON.stringify(parsed));
             //check on all the commands which where send and
             for (var i = 0; i < this._commands.length; i++) {
@@ -2557,18 +2765,15 @@ var ergometer;
      *    performanceMonitor.stopScan
      *
      */
-    var PerformanceMonitorBase = /** @class */ (function () {
+    var PerformanceMonitorBase = /** @class */ (function (_super) {
+        __extends(PerformanceMonitorBase, _super);
         function PerformanceMonitorBase() {
-            this._logEvent = new ergometer.pubSub.Event();
-            this._logLevel = LogLevel.error;
-            this._waitResonseBuffers = [];
-            this._connectionState = MonitorConnectionState.inactive;
-            //events
-            this._connectionStateChangedEvent = new ergometer.pubSub.Event();
-            this._checksumCheckEnabled = false;
-            this.sortCommands = false;
-            this._sendBufferQueue = [];
-            this.initialize();
+            var _this = _super !== null && _super.apply(this, arguments) || this;
+            _this._waitResonseBuffers = [];
+            _this._checksumCheckEnabled = false;
+            _this.sortCommands = false;
+            _this._sendBufferQueue = [];
+            return _this;
         }
         PerformanceMonitorBase.prototype.initialize = function () {
             this._powerCurveEvent = new ergometer.pubSub.Event();
@@ -2585,18 +2790,11 @@ var ergometer;
         PerformanceMonitorBase.prototype.enableDisableNotification = function () {
             return Promise.resolve();
         };
-        Object.defineProperty(PerformanceMonitorBase.prototype, "logEvent", {
+        Object.defineProperty(PerformanceMonitorBase.prototype, "powerCurveEvent", {
             /**
              * returns error and other log information. Some errors can only be received using the logEvent
              * @returns {pubSub.Event<LogEvent>}
              */
-            get: function () {
-                return this._logEvent;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(PerformanceMonitorBase.prototype, "powerCurveEvent", {
             get: function () {
                 return this._powerCurveEvent;
             },
@@ -2610,118 +2808,13 @@ var ergometer;
             enumerable: true,
             configurable: true
         });
-        /**
-         * Print debug info to console and application UI.
-         * @param info
-         */
-        PerformanceMonitorBase.prototype.traceInfo = function (info) {
-            if (this.logLevel >= LogLevel.trace)
-                this.logEvent.pub(info, LogLevel.trace);
-        };
-        /**
-         *
-         * @param info
-         */
-        PerformanceMonitorBase.prototype.debugInfo = function (info) {
-            if (this.logLevel >= LogLevel.debug)
-                this.logEvent.pub(info, LogLevel.debug);
-        };
-        /**
-         *
-         * @param info
-         */
-        PerformanceMonitorBase.prototype.showInfo = function (info) {
-            if (this.logLevel >= LogLevel.info)
-                this.logEvent.pub(info, LogLevel.info);
-        };
-        /**
-         * call the global error hander and call the optional error handler if given
-         * @param error
-         */
-        PerformanceMonitorBase.prototype.handleError = function (error, errorFn) {
-            if (this.logLevel >= LogLevel.error)
-                this.logEvent.pub(error, LogLevel.error);
-            if (errorFn)
-                errorFn(error);
-        };
-        /**
-         * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
-         * @param errorDescription
-         * @param errorFn
-         */
-        PerformanceMonitorBase.prototype.getErrorHandlerFunc = function (errorDescription, errorFn) {
-            var _this = this;
-            return function (e) {
-                _this.handleError(errorDescription + ':' + e.toString(), errorFn);
-            };
-        };
-        Object.defineProperty(PerformanceMonitorBase.prototype, "logLevel", {
-            /**
-     * By default it the logEvent will return errors if you want more debug change the log level
-     * @returns {LogLevel}
-     */
-            get: function () {
-                return this._logLevel;
-            },
-            /**
-             * By default it the logEvent will return errors if you want more debug change the log level
-             * @param value
-             */
-            set: function (value) {
-                this._logLevel = value;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        PerformanceMonitorBase.prototype.disconnect = function () {
-        };
-        Object.defineProperty(PerformanceMonitorBase.prototype, "connectionState", {
-            /**
-             * read the current connection state
-             * @returns {MonitorConnectionState}
-             */
-            get: function () {
-                return this._connectionState;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        PerformanceMonitorBase.prototype.connected = function () {
-        };
         PerformanceMonitorBase.prototype.clearAllBuffers = function () {
             this.clearWaitResponseBuffers();
             this._sendBufferQueue = [];
         };
-        /**
-         *
-         * @param value
-         */
-        PerformanceMonitorBase.prototype.changeConnectionState = function (value) {
-            if (this._connectionState != value) {
-                var oldValue = this._connectionState;
-                this._connectionState = value;
-                if (value == MonitorConnectionState.connected) {
-                    this.clearAllBuffers();
-                }
-                this.connectionStateChangedEvent.pub(oldValue, value);
-                if (value == MonitorConnectionState.connected) {
-                    this.connected();
-                }
-            }
+        PerformanceMonitorBase.prototype.beforeConnected = function () {
+            this.clearAllBuffers();
         };
-        Object.defineProperty(PerformanceMonitorBase.prototype, "connectionStateChangedEvent", {
-            /**
-            * event which is called when the connection state is changed. For example this way you
-            * can check if the device is disconnected.
-            * connect to the using .sub(this,myFunction)
-            * @returns {pubSub.Event<ConnectionStateChangedEvent>}
-            */
-            get: function () {
-                return this._connectionStateChangedEvent;
-            },
-            enumerable: true,
-            configurable: true
-        });
         /* ***************************************************************************************
          *                               csafe
          *****************************************************************************************  */
@@ -2858,7 +2951,7 @@ var ergometer;
                         if (value >= 0xF0 && value <= 0xF3) {
                             newArray.push(0xF3);
                             newArray.push(value - 0xF0);
-                            if (_this.logLevel == LogLevel.trace)
+                            if (_this.logLevel == ergometer.LogLevel.trace)
                                 _this.traceInfo("stuffed to byte:" + value);
                         }
                         else
@@ -2883,7 +2976,7 @@ var ergometer;
                                 sendBytesIndex++;
                                 bufferIndex++;
                             }
-                            if (_this.logLevel == LogLevel.trace)
+                            if (_this.logLevel == ergometer.LogLevel.trace)
                                 _this.traceInfo("send csafe: " + ergometer.utils.typedArrayToHexString(buffer));
                             _this.driver_write(dataView).then(function () {
                                 _this.traceInfo("csafe command send");
@@ -2906,7 +2999,7 @@ var ergometer;
         };
         PerformanceMonitorBase.prototype.moveToNextBuffer = function () {
             var result = null;
-            if (this.logLevel == LogLevel.trace)
+            if (this.logLevel == ergometer.LogLevel.trace)
                 this.traceInfo("next buffer: count=" + this._waitResonseBuffers.length);
             if (this._waitResonseBuffers.length > 0) {
                 var waitBuffer = this._waitResonseBuffers[0];
@@ -2926,7 +3019,7 @@ var ergometer;
             //skipp empty 0 ble blocks
             if (this._waitResonseBuffers.length > 0 && (dataView.byteLength != 1 || dataView.getUint8(0) != 0)) {
                 var waitBuffer = this._waitResonseBuffers[0];
-                if (this.logLevel == LogLevel.trace)
+                if (this.logLevel == ergometer.LogLevel.trace)
                     this.traceInfo("continious receive csafe: " + ergometer.utils.typedArrayToHexString(dataView.buffer));
                 var i = 0;
                 var moveToNextBuffer = false;
@@ -2934,13 +3027,13 @@ var ergometer;
                     var currentByte = dataView.getUint8(i);
                     if (waitBuffer.stuffByteActive && currentByte <= 3) {
                         currentByte = 0xF0 + currentByte; //unstuff
-                        if (this.logLevel == LogLevel.trace)
+                        if (this.logLevel == ergometer.LogLevel.trace)
                             this.traceInfo("unstuffed to byte:" + currentByte);
                         waitBuffer.stuffByteActive = false;
                     }
                     else {
                         waitBuffer.stuffByteActive = (currentByte == 0xF3);
-                        if (waitBuffer.stuffByteActive && this.logLevel == LogLevel.trace)
+                        if (waitBuffer.stuffByteActive && this.logLevel == ergometer.LogLevel.trace)
                             this.traceInfo("start stuff byte");
                     }
                     //when stuffbyte is active then move to the next
@@ -2948,14 +3041,14 @@ var ergometer;
                         if (waitBuffer.frameState != 0 /* initial */) {
                             waitBuffer.calcCheck = waitBuffer.calcCheck ^ currentByte; //xor for a simple crc check
                         }
-                        if (this.logLevel == LogLevel.trace)
+                        if (this.logLevel == ergometer.LogLevel.trace)
                             this.traceInfo("parse: " + i + ": " + ergometer.utils.toHexString(currentByte, 1) + " state: " + waitBuffer.frameState + " checksum:" + ergometer.utils.toHexString(waitBuffer.calcCheck, 1) + " ");
                         switch (waitBuffer.frameState) {
                             case 0 /* initial */: {
                                 //expect a start frame
                                 if (currentByte != ergometer.csafe.defs.FRAME_START_BYTE) {
                                     moveToNextBuffer = true;
-                                    if (this.logLevel == LogLevel.trace)
+                                    if (this.logLevel == ergometer.LogLevel.trace)
                                         this.traceInfo("stop byte " + ergometer.utils.toHexString(currentByte, 1));
                                 }
                                 else
@@ -2969,7 +3062,7 @@ var ergometer;
                                     waitBuffer.statusByte = currentByte;
                                     waitBuffer.monitorStatus = currentByte & ergometer.csafe.defs.SLAVESTATE_MSK;
                                     waitBuffer.prevFrameState = ((currentByte & ergometer.csafe.defs.PREVFRAMESTATUS_MSK) >> 4);
-                                    if (this.logLevel == LogLevel.trace)
+                                    if (this.logLevel == ergometer.LogLevel.trace)
                                         this.traceInfo("monitor status: " + waitBuffer.monitorStatus + ",prev frame state: " + waitBuffer.prevFrameState);
                                     waitBuffer._responseState = currentByte;
                                     break;
@@ -3097,7 +3190,7 @@ var ergometer;
             return csafeBuffer;
         };
         return PerformanceMonitorBase;
-    }());
+    }(ergometer.MonitorBase));
     ergometer.PerformanceMonitorBase = PerformanceMonitorBase;
 })(ergometer || (ergometer = {}));
 /**
@@ -3807,7 +3900,6 @@ var ergometer;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-//to fix the problem that the base is not yet declared
 var ergometer;
 /**
  * Concept 2 ergometer Performance Monitor api for Cordova
@@ -3832,7 +3924,6 @@ var ergometer;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-//to fix the problem that the base is not yet declared
 (function (ergometer) {
     /**
      *
@@ -4596,13 +4687,13 @@ var ergometer;
                          this.onDeviceReady();})},
                 false);   */
             if (bleCentral.available())
-                this._driver = new bleCentral.DriverBleCentral();
+                this._driver = new bleCentral.DriverBleCentral([ergometer.ble.PMDEVICE]);
             else if ((typeof bleat !== 'undefined') && bleat)
                 this._driver = new ergometer.ble.DriverBleat();
             else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
                 this._driver = new ergometer.ble.DriverSimpleBLE();
             else if (ergometer.ble.hasWebBlueTooth())
-                this._driver = new ergometer.ble.DriverWebBlueTooth(this);
+                this._driver = new ergometer.ble.DriverWebBlueTooth(this, [ergometer.ble.PMDEVICE], [ergometer.ble.PMDEVICE_INFO_SERVICE, ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.PMROWING_SERVICE]);
             else
                 this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.");
             var enableDisableFunc = function () { _this.enableDisableNotification().catch(_this.handleError); };
@@ -4919,7 +5010,7 @@ var ergometer;
                     distance: ergometer.utils.getUint24(data, 3 /* DISTANCE_LO */) / 10,
                     driveLength: data.getUint8(6 /* DRIVE_LENGTH */) / 100,
                     driveTime: data.getUint8(7 /* DRIVE_TIME */) * 10,
-                    strokeRecoveryTime: data.getUint16(8 /* STROKE_RECOVERY_TIME_LO */) * 10,
+                    strokeRecoveryTime: (data.getUint8(8 /* STROKE_RECOVERY_TIME_LO */) + data.getUint8(9 /* STROKE_RECOVERY_TIME_HI */) * 256) * 10,
                     strokeDistance: data.getUint16(10 /* STROKE_DISTANCE_LO */) / 100,
                     peakDriveForce: data.getUint16(12 /* PEAK_DRIVE_FORCE_LO */) / 10,
                     averageDriveForce: data.getUint16(14 /* AVG_DRIVE_FORCE_LO */) / 10,
@@ -5226,6 +5317,222 @@ var ergometer;
         return PerformanceMonitorBle;
     }(ergometer.PerformanceMonitorBase));
     ergometer.PerformanceMonitorBle = PerformanceMonitorBle;
+})(ergometer || (ergometer = {}));
+var ergometer;
+(function (ergometer) {
+    var HeartRateMonitorBle = /** @class */ (function (_super) {
+        __extends(HeartRateMonitorBle, _super);
+        function HeartRateMonitorBle() {
+            var _this = _super !== null && _super.apply(this, arguments) || this;
+            _this._devices = [];
+            _this._heartRateDataEvent = new ergometer.pubSub.Event();
+            _this._registeredGuids = {};
+            return _this;
+        }
+        Object.defineProperty(HeartRateMonitorBle.prototype, "driver", {
+            get: function () {
+                return this._driver;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(HeartRateMonitorBle.prototype, "heartRateDataEvent", {
+            get: function () {
+                return this._heartRateDataEvent;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        HeartRateMonitorBle.prototype.initialize = function () {
+            _super.prototype.initialize.call(this);
+            if (bleCentral.available())
+                this._driver = new bleCentral.DriverBleCentral([ergometer.ble.HEART_RATE_DEVICE_SERVICE]);
+            else if ((typeof bleat !== 'undefined') && bleat)
+                this._driver = new ergometer.ble.DriverBleat();
+            else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
+                this._driver = new ergometer.ble.DriverSimpleBLE();
+            else if (ergometer.ble.hasWebBlueTooth())
+                this._driver = new ergometer.ble.DriverWebBlueTooth(this, [ergometer.ble.HEART_RATE_DEVICE_SERVICE], []);
+            else
+                this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.");
+        };
+        HeartRateMonitorBle.prototype.disconnect = function () {
+            if (this.connectionState >= ergometer.MonitorConnectionState.deviceReady) {
+                this.driver.disconnect();
+                this.changeConnectionState(ergometer.MonitorConnectionState.deviceReady);
+            }
+        };
+        Object.defineProperty(HeartRateMonitorBle.prototype, "deviceInfo", {
+            get: function () {
+                return this._deviceInfo;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        HeartRateMonitorBle.prototype.currentDriverIsWebBlueTooth = function () {
+            return this._driver instanceof ergometer.ble.DriverWebBlueTooth;
+        };
+        /**
+                *
+                * @param device
+                */
+        HeartRateMonitorBle.prototype.removeDevice = function (device) {
+            this._devices = this._devices.splice(this._devices.indexOf(device), 1);
+        };
+        /**
+         *
+         * @param device
+         */
+        HeartRateMonitorBle.prototype.addDevice = function (device) {
+            var existing = this.findDevice(device.name);
+            if (existing)
+                this.removeDevice(existing);
+            this._devices.push(device);
+            //sort on hightest quality above
+            this._devices.sort(function (device1, device2) { return device2.quality - device1.quality; });
+        };
+        /**
+         *
+         * @param name
+         * @returns {DeviceInfo}
+         */
+        HeartRateMonitorBle.prototype.findDevice = function (name) {
+            var result = null;
+            this._devices.forEach(function (device) {
+                if (device.name == name)
+                    result = device;
+            });
+            return result;
+        };
+        /**
+         *
+         */
+        HeartRateMonitorBle.prototype.stopScan = function () {
+            if (this.connectionState == ergometer.MonitorConnectionState.scanning) {
+                this.driver.stopScan();
+            }
+        };
+        /**
+         * Scan for device use the deviceFound to connect .
+         * @param deviceFound
+         */
+        HeartRateMonitorBle.prototype.startScan = function (deviceFound, errorFn) {
+            var _this = this;
+            this._devices = [];
+            // Save it for next time we use the this.
+            //localStorage.setItem('deviceName', this._deviceName);
+            // Call stop before you start, just in case something else is running.
+            this.stopScan();
+            this.changeConnectionState(ergometer.MonitorConnectionState.scanning);
+            // Only report s once.
+            //evothings.easyble.reportDeviceOnce(true);
+            return this.driver.startScan(function (device) {
+                // Do not show un-named devices.
+                /*var deviceName = device.advertisementData ?
+                 device.advertisementData.kCBAdvDataLocalName : null;
+                 */
+                if (!device.name) {
+                    return;
+                }
+                // Print "name : mac address" for every device found.
+                _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+                // If my device is found connect to it.
+                //find any thing starting with PM and then a number a space and a serial number
+                _this.showInfo('Status: DeviceInfo found: ' + device.name);
+                var deviceInfo = {
+                    connected: false,
+                    _internalDevice: device,
+                    name: device.name,
+                    address: device.address,
+                    quality: 2 * (device.rssi + 100)
+                };
+                _this.addDevice(deviceInfo);
+                if (deviceFound && deviceFound(deviceInfo)) {
+                    _this.connectToDevice(deviceInfo.name);
+                }
+            }).then(function () {
+                _this.showInfo('Status: Scanning...');
+            }).catch(this.getErrorHandlerFunc("Scan error", errorFn));
+        };
+        /**
+         * connect to a specific device. This should be a PM5 device which is found by the startScan. You can
+         * only call this function after startScan is called. Connection to a device will stop the scan.
+         * @param deviceName
+         */
+        HeartRateMonitorBle.prototype.connectToDevice = function (deviceName) {
+            var _this = this;
+            this.showInfo('Status: Connecting...');
+            this.stopScan();
+            this.changeConnectionState(ergometer.MonitorConnectionState.connecting);
+            var deviceInfo = this.findDevice(deviceName);
+            if (!deviceInfo)
+                throw "Device " + deviceName + " not found";
+            this._deviceInfo = deviceInfo;
+            return this.driver.connect(deviceInfo._internalDevice, function () {
+                _this.changeConnectionState(ergometer.MonitorConnectionState.deviceReady);
+                _this.showInfo('Disconnected');
+            }).then(function () {
+                _this.changeConnectionState(ergometer.MonitorConnectionState.connected);
+                _this.showInfo('Status: Connected');
+            }).then(function () {
+                // Debug logging of all services, characteristics and descriptors
+                // reported by the BLE board.
+                _this.deviceConnected();
+            }).catch(function (errorCode) {
+                _this.changeConnectionState(ergometer.MonitorConnectionState.deviceReady);
+                _this.handleError(errorCode);
+            });
+        };
+        HeartRateMonitorBle.prototype.deviceConnected = function () {
+            var _this = this;
+            this.debugInfo("readServices success");
+            this.debugInfo('Status: notifications are activated');
+            //handle to the notification
+            this.changeConnectionState(ergometer.MonitorConnectionState.servicesFound);
+            //first enable all notifications and wait till they are active
+            //and then set the connection state to ready           
+            this.driver.enableNotification(ergometer.ble.HEART_RATE_DEVICE_SERVICE, ergometer.ble.HEART_RATE_MEASUREMENT, this.handleDataHeartRate.bind(this)).then(function () {
+                //fix problem of notifications not completaly ready yet
+                _this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
+            }).catch(this.handleError);
+        };
+        HeartRateMonitorBle.prototype.handleDataHeartRate = function (data) {
+            var value = new DataView(data);
+            var flags = value.getUint8(0);
+            var rate16Bits = flags & 0x1;
+            var result = {};
+            var index = 1;
+            if (rate16Bits) {
+                result.heartRate = value.getUint16(index, /*littleEndian=*/ true);
+                index += 2;
+            }
+            else {
+                result.heartRate = value.getUint8(index);
+                index += 1;
+            }
+            var contactDetected = flags & 0x2;
+            var contactSensorPresent = flags & 0x4;
+            if (contactSensorPresent) {
+                result.contactDetected = !!contactDetected;
+            }
+            var energyPresent = flags & 0x8;
+            if (energyPresent) {
+                result.energyExpended = value.getUint16(index, /*littleEndian=*/ true);
+                index += 2;
+            }
+            var rrIntervalPresent = flags & 0x10;
+            if (rrIntervalPresent) {
+                var rrIntervals = [];
+                for (; index + 1 < value.byteLength; index += 2) {
+                    rrIntervals.push(value.getUint16(index, /*littleEndian=*/ true));
+                }
+                result.rrIntervals = rrIntervals;
+            }
+            this.heartRateDataEvent.pub(result);
+        };
+        return HeartRateMonitorBle;
+    }(ergometer.MonitorBase));
+    ergometer.HeartRateMonitorBle = HeartRateMonitorBle;
 })(ergometer || (ergometer = {}));
 /**
  * Created by tijmen on 06-03-16.

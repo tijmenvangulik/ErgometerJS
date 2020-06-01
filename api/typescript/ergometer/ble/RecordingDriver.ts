@@ -32,9 +32,9 @@ namespace ergometer.ble {
     private _startTime : number;
     private _events : IRecordingItem[] = [];
 
-    public  _performanceMonitor : PerformanceMonitorBase;
+    public  _performanceMonitor : MonitorBase;
 
-    constructor (performanceMonitor : PerformanceMonitorBase,realDriver : IDriver)  {
+    constructor (performanceMonitor : MonitorBase,realDriver : IDriver)  {
       this._performanceMonitor =performanceMonitor;
       this._realDriver=realDriver;
     }

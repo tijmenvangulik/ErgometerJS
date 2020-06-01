@@ -7,6 +7,10 @@ namespace ergometer.ble {
     /** @internal */
     export const  PMDEVICE =                             "ce060000-43e5-11e4-916c-0800200c9a66";
 
+    export const  HEART_RATE_DEVICE_SERVICE =            "0000180d-0000-1000-8000-00805f9b34fb"   // "heart_rate";
+    
+    export const HEART_RATE_MEASUREMENT =                "00002a37-0000-1000-8000-00805f9b34fb"
+   
 // Service UUIDs
     export const  PMDEVICE_INFO_SERVICE =                  "ce060010-43e5-11e4-916c-0800200c9a66";
     export const  PMCONTROL_SERVICE =                     "ce060020-43e5-11e4-916c-0800200c9a66";

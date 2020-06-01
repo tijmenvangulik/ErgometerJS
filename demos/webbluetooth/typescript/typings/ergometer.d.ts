@@ -134,6 +134,115 @@ declare namespace ergometer.pubSub {
     }
 }
 /**
+ * Concept 2 ergometer Performance Monitor api for Cordova
+ *
+ * This will will work with the PM5
+ *
+ * Created by tijmen on 01-06-15.
+ * License:
+ *
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ * Copyright 2016 Tijmen van Gulik (tijmen@vangulik.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+declare namespace ergometer {
+    interface ErrorHandler {
+        (e: any): void;
+    }
+    enum LogLevel {
+        error = 0,
+        info = 1,
+        debug = 2,
+        trace = 3,
+    }
+    interface LogEvent extends pubSub.ISubscription {
+        (text: string, logLevel: LogLevel): void;
+    }
+    enum MonitorConnectionState {
+        inactive = 0,
+        deviceReady = 1,
+        scanning = 2,
+        connecting = 3,
+        connected = 4,
+        servicesFound = 5,
+        readyForCommunication = 6,
+    }
+    interface ConnectionStateChangedEvent extends pubSub.ISubscription {
+        (oldState: MonitorConnectionState, newState: MonitorConnectionState): void;
+    }
+    class MonitorBase {
+        private _logEvent;
+        private _logLevel;
+        private _connectionStateChangedEvent;
+        protected _connectionState: MonitorConnectionState;
+        /**
+        * By default it the logEvent will return errors if you want more debug change the log level
+        * @returns {LogLevel}
+        */
+        readonly logEvent: pubSub.Event<LogEvent>;
+        constructor();
+        protected initialize(): void;
+        /**
+         * By default it the logEvent will return errors if you want more debug change the log level
+         * @param value
+         */
+        logLevel: LogLevel;
+        disconnect(): void;
+        /**
+         * read the current connection state
+         * @returns {MonitorConnectionState}
+         */
+        readonly connectionState: MonitorConnectionState;
+        protected connected(): void;
+        /**
+         * event which is called when the connection state is changed. For example this way you
+         * can check if the device is disconnected.
+         * connect to the using .sub(this,myFunction)
+         * @returns {pubSub.Event<ConnectionStateChangedEvent>}
+         */
+        readonly connectionStateChangedEvent: pubSub.Event<ConnectionStateChangedEvent>;
+        debugInfo(info: string): void;
+        /**
+         *
+         * @param info
+         */
+        showInfo(info: string): void;
+        /**
+         * Print debug info to console and application UI.
+         * @param info
+         */
+        traceInfo(info: string): void;
+        /**
+         * call the global error hander and call the optional error handler if given
+         * @param error
+         */
+        handleError(error: string, errorFn?: ErrorHandler): void;
+        /**
+         * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
+         * @param errorDescription
+         * @param errorFn
+         */
+        getErrorHandlerFunc(errorDescription: string, errorFn?: ErrorHandler): ErrorHandler;
+        protected beforeConnected(): void;
+        /**
+         *
+         * @param value
+         */
+        protected changeConnectionState(value: MonitorConnectionState): void;
+    }
+}
+/**
  * Created by tijmen on 01-02-16.
  */
 declare namespace ergometer.ble {
@@ -199,8 +308,10 @@ declare namespace ergometer.ble {
 declare namespace bleCentral {
     function available(): boolean;
     class DriverBleCentral implements ergometer.ble.IDriver {
+        private _scanServices;
         private _device;
         connect(device: ergometer.ble.IDevice, disconnectFn: () => void): Promise<void>;
+        constructor(_scanServices: string[]);
         disconnect(): void;
         startScan(foundFn?: ergometer.ble.IFoundFunc): Promise<void>;
         stopScan(): Promise<void>;
@@ -219,13 +330,15 @@ declare namespace bleCentral {
 declare namespace ergometer.ble {
     function hasWebBlueTooth(): boolean;
     class DriverWebBlueTooth implements IDriver {
+        private _performanceMonitor;
+        private _scanServices;
+        private _scanOptionalServices;
         private _device;
         private _server;
         private _disconnectFn;
         private _listenerMap;
         private _listerCharacteristicMap;
-        private _performanceMonitor;
-        constructor(performanceMonitor: PerformanceMonitorBase);
+        constructor(_performanceMonitor: MonitorBase, _scanServices: string[], _scanOptionalServices: string[]);
         private getCharacteristic(serviceUid, characteristicUid);
         private onDisconnected(event);
         private clearConnectionVars();
@@ -278,8 +391,8 @@ declare namespace ergometer.ble {
         private _realDriver;
         private _startTime;
         private _events;
-        _performanceMonitor: PerformanceMonitorBase;
-        constructor(performanceMonitor: PerformanceMonitorBase, realDriver: IDriver);
+        _performanceMonitor: MonitorBase;
+        constructor(performanceMonitor: MonitorBase, realDriver: IDriver);
         protected getRelativeTime(): number;
         addRecording(eventType: RecordingEventType, data?: IRecordCharacteristic | IRecordDevice): IRecordingItem;
         events: ergometer.ble.IRecordingItem[];
@@ -317,7 +430,7 @@ declare namespace ergometer.ble {
         private _checkQueueTimerId;
         private _performanceMonitor;
         protected getRelativeTime(): number;
-        constructor(performanceMonitor: PerformanceMonitorBase, realDriver: IDriver);
+        constructor(performanceMonitor: MonitorBase, realDriver: IDriver);
         readonly events: ergometer.ble.IRecordingItem[];
         protected isCallBack(eventType: RecordingEventType): boolean;
         protected isSameEvent(event1: IRecordingItem, event2: IRecordingItem): boolean;
@@ -799,7 +912,10 @@ declare namespace ergometer.csafe.defs {
         PM_GET_FORCEPLOTDATA = 107,
         PM_GET_HEARTBEATDATA = 108,
         PM_GET_UI_EVENTS = 109,
-        GETPMDATA_CMD_LONG_MAX = 110,
+        CSAFE_PM_GET_STROKESTATS = 110,
+        CSAFE_PM_GET_DIAGLOG_RECORD_NUM = 112,
+        CSAFE_PM_GET_DIAGLOG_RECORD = 113,
+        GETPMDATA_CMD_LONG_MAX = 114,
     }
     const PREVOK_FLG = 0;
     const PREVREJECT_FLG = 16;
@@ -996,6 +1112,13 @@ declare namespace ergometer.csafe {
     }
     interface IBuffer {
         getPowerCurve(params: ICommandPowerCurve): IBuffer;
+    }
+    interface ICommandStrokeStats {
+        onDataReceived: (driveTime: number, strokeRecoveryTime: number) => void;
+        onError?: ErrorHandler;
+    }
+    interface IBuffer {
+        getStrokeStats(params: ICommandStrokeStats): IBuffer;
     }
     interface ICommandGetWorkoutType extends ICommandParamsBase {
         onDataReceived: (value: WorkoutType) => void;
@@ -1466,18 +1589,6 @@ declare namespace ergometer {
  */
 declare namespace ergometer {
     import IRawCommand = ergometer.csafe.IRawCommand;
-    interface ErrorHandler {
-        (e: any): void;
-    }
-    enum LogLevel {
-        error = 0,
-        info = 1,
-        debug = 2,
-        trace = 3,
-    }
-    interface LogEvent extends pubSub.ISubscription {
-        (text: string, logLevel: LogLevel): void;
-    }
     interface SendBufferQueued {
         commandArray: number[];
         resolve: () => void;
@@ -1497,18 +1608,6 @@ declare namespace ergometer {
         parseDetailCommand = 4,
         parseDetailCommandLength = 5,
         parseCommandData = 6,
-    }
-    enum MonitorConnectionState {
-        inactive = 0,
-        deviceReady = 1,
-        scanning = 2,
-        connecting = 3,
-        connected = 4,
-        servicesFound = 5,
-        readyForCommunication = 6,
-    }
-    interface ConnectionStateChangedEvent extends pubSub.ISubscription {
-        (oldState: MonitorConnectionState, newState: MonitorConnectionState): void;
     }
     interface PowerCurveEvent extends pubSub.ISubscription {
         (data: number[]): void;
@@ -1568,21 +1667,16 @@ declare namespace ergometer {
      *    performanceMonitor.stopScan
      *
      */
-    class PerformanceMonitorBase {
-        private _logEvent;
-        private _logLevel;
+    class PerformanceMonitorBase extends MonitorBase {
         private _waitResonseBuffers;
-        protected _connectionState: MonitorConnectionState;
         protected _powerCurve: number[];
         protected _splitCommandsWhenToBig: boolean;
         protected _receivePartialBuffers: boolean;
-        private _connectionStateChangedEvent;
         private _powerCurveEvent;
         private _checksumCheckEnabled;
         protected _commandTimeout: number;
         sortCommands: boolean;
         private _sendBufferQueue;
-        constructor();
         protected initialize(): void;
         removeResponseBuffer(buffer: WaitResponseBuffer): void;
         protected enableDisableNotification(): Promise<void>;
@@ -1590,64 +1684,10 @@ declare namespace ergometer {
          * returns error and other log information. Some errors can only be received using the logEvent
          * @returns {pubSub.Event<LogEvent>}
          */
-        readonly logEvent: pubSub.Event<LogEvent>;
         readonly powerCurveEvent: pubSub.Event<ergometer.PowerCurveEvent>;
         readonly powerCurve: number[];
-        /**
-         * Print debug info to console and application UI.
-         * @param info
-         */
-        traceInfo(info: string): void;
-        /**
-         *
-         * @param info
-         */
-        debugInfo(info: string): void;
-        /**
-         *
-         * @param info
-         */
-        showInfo(info: string): void;
-        /**
-         * call the global error hander and call the optional error handler if given
-         * @param error
-         */
-        handleError(error: string, errorFn?: ErrorHandler): void;
-        /**
-         * Get an error function which adds the errorDescription to the error ,cals the global and an optional local funcion
-         * @param errorDescription
-         * @param errorFn
-         */
-        getErrorHandlerFunc(errorDescription: string, errorFn?: ErrorHandler): ErrorHandler;
-        /**
- * By default it the logEvent will return errors if you want more debug change the log level
- * @returns {LogLevel}
- */
-        /**
-         * By default it the logEvent will return errors if you want more debug change the log level
-         * @param value
-         */
-        logLevel: LogLevel;
-        disconnect(): void;
-        /**
-         * read the current connection state
-         * @returns {MonitorConnectionState}
-         */
-        readonly connectionState: MonitorConnectionState;
-        protected connected(): void;
         protected clearAllBuffers(): void;
-        /**
-         *
-         * @param value
-         */
-        protected changeConnectionState(value: MonitorConnectionState): void;
-        /**
-        * event which is called when the connection state is changed. For example this way you
-        * can check if the device is disconnected.
-        * connect to the using .sub(this,myFunction)
-        * @returns {pubSub.Event<ConnectionStateChangedEvent>}
-        */
-        readonly connectionStateChangedEvent: pubSub.Event<ConnectionStateChangedEvent>;
+        protected beforeConnected(): void;
         protected clearWaitResponseBuffers(): void;
         protected driver_write(data: ArrayBufferView): Promise<void>;
         /**
@@ -2234,5 +2274,68 @@ declare namespace ergometer {
         protected handleDataCallback(data: ArrayBuffer, func: (data: DataView) => void): void;
         protected driver_write(data: ArrayBufferView): Promise<void>;
         protected getPacketSize(): number;
+    }
+}
+declare namespace ergometer {
+    interface HeartRateDeviceInfo {
+        connected: boolean;
+        name: string;
+        address: string;
+        quality: number;
+    }
+    interface HeartRateData {
+        heartRate?: number;
+        rrIntervals?: number[];
+        energyExpended?: number;
+        contactDetected?: boolean;
+    }
+    interface HeartRateDataEvent extends pubSub.ISubscription {
+        (data: HeartRateData): void;
+    }
+    class HeartRateMonitorBle extends MonitorBase {
+        private _driver;
+        private _deviceInfo;
+        private _devices;
+        private _heartRateDataEvent;
+        readonly driver: ergometer.ble.IDriver;
+        readonly heartRateDataEvent: pubSub.Event<HeartRateDataEvent>;
+        protected initialize(): void;
+        disconnect(): void;
+        readonly deviceInfo: ergometer.HeartRateDeviceInfo;
+        private _registeredGuids;
+        currentDriverIsWebBlueTooth(): boolean;
+        /**
+                *
+                * @param device
+                */
+        protected removeDevice(device: DeviceInfo): void;
+        /**
+         *
+         * @param device
+         */
+        protected addDevice(device: DeviceInfo): void;
+        /**
+         *
+         * @param name
+         * @returns {DeviceInfo}
+         */
+        protected findDevice(name: string): DeviceInfo;
+        /**
+         *
+         */
+        stopScan(): void;
+        /**
+         * Scan for device use the deviceFound to connect .
+         * @param deviceFound
+         */
+        startScan(deviceFound: (device: DeviceInfo) => boolean, errorFn?: ErrorHandler): Promise<void>;
+        /**
+         * connect to a specific device. This should be a PM5 device which is found by the startScan. You can
+         * only call this function after startScan is called. Connection to a device will stop the scan.
+         * @param deviceName
+         */
+        connectToDevice(deviceName: string): Promise<void>;
+        protected deviceConnected(): void;
+        protected handleDataHeartRate(data: ArrayBuffer): void;
     }
 }

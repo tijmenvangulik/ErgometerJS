@@ -29,10 +29,13 @@ namespace ergometer.ble {
     //should queue the read and writes, this may be the cause of the blocking issues, this is a work arround for the chrome web blue tooth problem
     //private _functionQueue : utils.FunctionQueue = new utils.FunctionQueue(1); //1 means one at a time
 
-    private _performanceMonitor : PerformanceMonitorBase;
+   
 
-    constructor (performanceMonitor : PerformanceMonitorBase)  {
-      this._performanceMonitor =performanceMonitor;
+    constructor (private _performanceMonitor : MonitorBase,
+      private _scanServices : string[],
+      private _scanOptionalServices : string[])  {
+        
+     
 
     }
 
@@ -120,11 +123,11 @@ namespace ergometer.ble {
           navigator.bluetooth.requestDevice(
               {
                 filters: [
-                  {   services:[PMDEVICE]
+                  {   services: this._scanServices
                   }
 
                 ],
-                optionalServices: [PMDEVICE_INFO_SERVICE,PMCONTROL_SERVICE,PMROWING_SERVICE]
+                optionalServices: this._scanOptionalServices
               }).then(device => {
                 foundFn({
                   address: device.id,

@@ -30,6 +30,8 @@ Basically ErgometerJS needs javascript and a blue tooth driver which can be (nob
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
 
 # Change Log
+- 1.4.0
+  * Separate blue tooth Heart rate monitor class which makes use of the existing driver infra structure. This is use full for devices like the PM3 which does not support heart rate.
 - 1.3.7
   * BLE: fix strokes value
   * BLE: fix power value
@@ -429,6 +431,43 @@ See the csafe paragraph of the previous chapter how to do csafe commands.
 
     this.performanceMonitor.newCsafeBuffer()
 
+# heart rate
+
+When the end user has an PM5 he will normally connect a heart rate device to the concept2 performance monitor and the
+device will send the heart rate to ergometerjs. Hover older devices like the PM3 do not have heart rate support. For
+this I have included a class HeartRateMonitorBle which can directly to a blue tooth heart rate device. 
+
+HeartRateMonitorBle makes use of the same driver infra structure as the ergometer PerformanceMonitorBle class. The inter face of the heart rate monitor is similar to the blue tooth class the main difference is that this class has a heartRateDataEvent for reading the heart rate.
+
+To start the connection first start scanning for a device,                                                          
+you should call when the cordova deviceready event is called (or later)  
+                                           
+    performanceMonitor.startScan((device : ergometer.HeartRateDeviceInfo) : boolean => {                                       
+      //return true when you want to connect to the device                                                           
+       return device.name=='My device name';                                                                         
+    });  
+                                                                                                                 
+to connect at at a later time 
+                                                                                     
+    performanceMonitor.connectToDevice('my device name'); 
+                                                           
+the devices which where found during the scan are collected in
+                                                     
+    performanceMonitor.devices   
+                                                                                        
+when you connect to a device the scan is stopped, when you want to stop the scan earlier you need to call 
+         
+    performanceMonitor.stopScan()
+
+To disconnect call
+
+    performanceMonitor.disconnect()
+to receive the heart rate information you have to subscribe to the heartRateDataEvent event
+
+    performanceMonitor.heartRateDataEvent.sub(this,this.hearRateData);
+
+An demo of the api is in included in the electron usb debug example.
+         
 # Examples
                   
 ## Simple Cordova (obsolete)
@@ -497,7 +536,7 @@ https://github.com/robatwilliams/awesome-webhid#status
 
 [demos/web_usb_debug](demos/web_usb_debug/README.md)
 
-## cordova usb example.
+## cordova usb example (includes ble heart rate samle).
 
 for cordova I have created an usb hid plugin which needs to be installed
 
@@ -505,6 +544,8 @@ for cordova I have created an usb hid plugin which needs to be installed
 
 The demo compiles by including the original source code. This is good for debugging. It is better to
 include the lib when you only the lib.
+
+This sample also includes an example how to connect to an heart rate device directly using the HeartRateMonitorBle class. This is usefull for connecting to a PM3 device which does not have heart rate support.
 
 [demos/usb_cordova_debug](demos/usb_cordova_debug/ReadMe.md)
 

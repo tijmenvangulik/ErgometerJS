@@ -26,6 +26,7 @@
     "../../api/typescript/ergometer/utils.ts",
     "../../api/typescript/ergometer/FunctionQueue.ts",
     "../../api/typescript/ergometer/pubsub.ts",
+    "../../api/typescript/ergometer/monitorBase.ts",
     "../../api/typescript/ergometer/ble/Driver.ts",
     "../../api/typescript/ergometer/ble/DriverBleat.ts",
     "../../api/typescript/ergometer/ble/RecordingDriver.ts",
@@ -48,6 +49,7 @@
     "../../api/typescript/ergometer/performancemonitorBase.ts",
     "../../api/typescript/ergometer/performancemonitorUsb.ts",
     "../../api/typescript/ergometer/performancemonitorBle.ts",
+    "../../api/typescript/ergometer/heartratemonitorBle.ts",
     "typescript/typings/jquery.d.ts",
     "typescript/app.ts",
     "typescript/demo.ts"

@@ -179,6 +179,41 @@ namespace ergometer.csafe {
             return buffer;
         }
     });
+
+    //----------------------------- get power curve ------------------------------------
+
+    export interface ICommandStrokeStats {
+        onDataReceived: (driveTime : number,strokeRecoveryTime : number) => void;
+        onError?: ErrorHandler;
+    }
+    export interface IBuffer {
+        getStrokeStats(params: ICommandStrokeStats): IBuffer;
+    }
+
+    commandManager.register((buffer: IBuffer, monitor: PerformanceMonitorBase) => {
+        
+        buffer.getStrokeStats = function (params: ICommandStrokeStats): IBuffer {
+
+            buffer.addRawCommand({
+                waitForResponse: true,
+                command: csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
+                detailCommand: csafe.defs.PM_LONG_PULL_DATA_CMDS.CSAFE_PM_GET_STROKESTATS,
+                data: [],
+                onError: params.onError,
+                onDataReceived: (data: DataView) => {
+                    if (params.onDataReceived && data.byteLength>=3) {
+                        var driveTime=data.getUint8(0);
+                        var strokeRecoveryTime=
+                            data.getUint8(1) +
+                            data.getUint8(2)*256;
+                        params.onDataReceived(driveTime,strokeRecoveryTime);
+                    }
+                    
+                }
+            });
+            return buffer;
+        }
+    });
     //----------------------------- get workout type ------------------------------------
 
     export interface ICommandGetWorkoutType extends ICommandParamsBase {
