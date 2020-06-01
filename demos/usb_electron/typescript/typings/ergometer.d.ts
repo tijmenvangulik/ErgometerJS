@@ -2328,7 +2328,7 @@ declare namespace ergometer {
          * Scan for device use the deviceFound to connect .
          * @param deviceFound
          */
-        startScan(deviceFound: (device: DeviceInfo) => boolean, errorFn?: ErrorHandler): Promise<void>;
+        startScan(deviceFound: (device: HeartRateDeviceInfo) => boolean, errorFn?: ErrorHandler): Promise<void>;
         /**
          * connect to a specific device. This should be a PM5 device which is found by the startScan. You can
          * only call this function after startScan is called. Connection to a device will stop the scan.
