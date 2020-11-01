@@ -30,6 +30,8 @@ Basically ErgometerJS needs javascript and a blue tooth driver which can be (nob
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
 
 # Change Log
+- 1.4.1
+  * after c2 firmware is updated , the power curve contains often two curve. made a workaround to detect the correct end. 
 - 1.4.0
   * Separate blue tooth Heart rate monitor class which makes use of the existing driver infra structure. This is use full for devices like the PM3 which does not support heart rate.
 - 1.3.7

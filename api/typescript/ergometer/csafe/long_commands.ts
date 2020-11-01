@@ -132,53 +132,83 @@ namespace ergometer.csafe {
     export interface IBuffer {
         getPowerCurve(params: ICommandPowerCurve): IBuffer;
     }
-    var receivePowerCurvePart: number[] = [];
-    var currentPowerCurve: number[] = [];
+    var receivePowerCurvePart = [];
+    var currentPowerCurve = [];
+    var peekValue=0;
     commandManager.register((buffer: IBuffer, monitor: PerformanceMonitorBase) => {
-        
-        buffer.getPowerCurve = function (params: ICommandPowerCurve): IBuffer {
+    
+    buffer.getPowerCurve = function (params: ICommandPowerCurve): IBuffer {
 
-            buffer.addRawCommand({
-                waitForResponse: true,
-                command: csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
-                detailCommand: csafe.defs.PM_LONG_PULL_DATA_CMDS.PM_GET_FORCEPLOTDATA,
-                data: [20],
-                onError: params.onError,
-                onDataReceived: (data: DataView) => {
-                    if (params.onDataReceived) {
-
-                        var bytesReturned = data.getUint8(0); //first byte
-                        monitor.traceInfo(`received power curve count ${bytesReturned}`);
-                        if (bytesReturned > 0) {
-                            for (var i = 1; i < bytesReturned + 1; i += 2) {
-                                var value = data.getUint16(i, true); //in ltile endian format
-
-                                receivePowerCurvePart.push(value);
-                            }
-                            monitor.traceInfo("received part :" + JSON.stringify(receivePowerCurvePart));
-                            setTimeout(()=>{
-                                //try to get another one till it is empty and there is nothing more
-                                monitor.newCsafeBuffer()
-                                .getPowerCurve({ onDataReceived: params.onDataReceived })
-                                .send();
-                            },0); 
-                            
-                        }
-                        else {
-                            if (receivePowerCurvePart.length > 0) {
+        buffer.addRawCommand({
+            waitForResponse: true,
+            command: csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
+            detailCommand: csafe.defs.PM_LONG_PULL_DATA_CMDS.PM_GET_FORCEPLOTDATA,
+            data: [20],
+            onError: params.onError,
+            onDataReceived: function (data) {
+                if (params.onDataReceived) {
+                    var bytesReturned = data.getUint8(0); //first byte
+                    monitor.traceInfo("received power curve count " + bytesReturned);
+                    var endFound = false;
+                    if (bytesReturned > 0) {
+                        //when it is going down we are near the end                            
+                        
+                        var value = 0;
+                        var lastValue=0;
+                        if (receivePowerCurvePart.length>0 ) lastValue=receivePowerCurvePart[receivePowerCurvePart.length-1];
+                        for (var i = 1; i < bytesReturned + 1; i += 2) {
+                            value = data.getUint16(i, true); //in ltile endian format
+                            //console.log("receive curve "+value+" peek value "+peekValue);
+                            //work around the problem that since the last update we can not detect the end
+                            //when going up again near to the end it is a new curve (25% of the Peek value)
+                            //so directly send it                                    
+                            if (receivePowerCurvePart.length > 20 && lastValue<(peekValue/4) && value > lastValue) {
+                                //console.log("going up again , split!");
+                                //console.log("Curve:" + JSON.stringify(currentPowerCurve));
+                                monitor.traceInfo("Curve:" + JSON.stringify(currentPowerCurve));
                                 currentPowerCurve = receivePowerCurvePart;
                                 receivePowerCurvePart = [];
-                                monitor.traceInfo("Curve:" + JSON.stringify(currentPowerCurve));
-                                if (params.onDataReceived && currentPowerCurve.length > 0)
+                                peekValue=0;
+                                if (params.onDataReceived && currentPowerCurve.length > 4)
                                     params.onDataReceived(currentPowerCurve);
+                                
                             }
+                            receivePowerCurvePart.push(value);
+                            if (value>peekValue) peekValue=value;
+                            lastValue=value;
+                        }
+                        //sometimes the last value is 0 in that case it is the end of the curve
+                        if (receivePowerCurvePart.length > 10 && value === 0) {
+                            endFound = true;
+                            //console.log("end found")
+                        }
+                        if (!endFound) {
+                            monitor.traceInfo("received part :" + JSON.stringify(receivePowerCurvePart));
+                            //console.log("wait for next")
+                            monitor.newCsafeBuffer()
+                                .getPowerCurve({ onDataReceived: params.onDataReceived })
+                                .send();
                         }
                     }
+                    else
+                        endFound = true;
+                    if (endFound) {
+                        //console.log("send received");
+                        //console.log("Curve:" + JSON.stringify(currentPowerCurve));
+                        peekValue=0;
+                        currentPowerCurve = receivePowerCurvePart;
+                        receivePowerCurvePart = [];
+                        monitor.traceInfo("Curve:" + JSON.stringify(currentPowerCurve));
+                        if (params.onDataReceived && currentPowerCurve.length > 4)
+                            params.onDataReceived(currentPowerCurve);
+                        
+                    }
                 }
-            });
-            return buffer;
-        }
-    });
+            }
+        });
+        return buffer;
+    };
+});
 
     //----------------------------- get power curve ------------------------------------
 

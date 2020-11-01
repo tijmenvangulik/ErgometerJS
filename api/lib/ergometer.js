@@ -2439,6 +2439,7 @@ var ergometer;
         });
         var receivePowerCurvePart = [];
         var currentPowerCurve = [];
+        var peekValue = 0;
         csafe.commandManager.register(function (buffer, monitor) {
             buffer.getPowerCurve = function (params) {
                 buffer.addRawCommand({
@@ -2451,27 +2452,58 @@ var ergometer;
                         if (params.onDataReceived) {
                             var bytesReturned = data.getUint8(0); //first byte
                             monitor.traceInfo("received power curve count " + bytesReturned);
+                            var endFound = false;
                             if (bytesReturned > 0) {
+                                //when it is going down we are near the end                            
+                                var value = 0;
+                                var lastValue = 0;
+                                if (receivePowerCurvePart.length > 0)
+                                    lastValue = receivePowerCurvePart[receivePowerCurvePart.length - 1];
                                 for (var i = 1; i < bytesReturned + 1; i += 2) {
-                                    var value = data.getUint16(i, true); //in ltile endian format
+                                    value = data.getUint16(i, true); //in ltile endian format
+                                    //console.log("receive curve "+value+" peek value "+peekValue);
+                                    //work around the problem that since the last update we can not detect the end
+                                    //when going up again near to the end it is a new curve (25% of the Peek value)
+                                    //so directly send it                                    
+                                    if (receivePowerCurvePart.length > 20 && lastValue < (peekValue / 4) && value > lastValue) {
+                                        //console.log("going up again , split!");
+                                        //console.log("Curve:" + JSON.stringify(currentPowerCurve));
+                                        monitor.traceInfo("Curve:" + JSON.stringify(currentPowerCurve));
+                                        currentPowerCurve = receivePowerCurvePart;
+                                        receivePowerCurvePart = [];
+                                        peekValue = 0;
+                                        if (params.onDataReceived && currentPowerCurve.length > 4)
+                                            params.onDataReceived(currentPowerCurve);
+                                    }
                                     receivePowerCurvePart.push(value);
+                                    if (value > peekValue)
+                                        peekValue = value;
+                                    lastValue = value;
                                 }
-                                monitor.traceInfo("received part :" + JSON.stringify(receivePowerCurvePart));
-                                setTimeout(function () {
-                                    //try to get another one till it is empty and there is nothing more
+                                //sometimes the last value is 0 in that case it is the end of the curve
+                                if (receivePowerCurvePart.length > 10 && value === 0) {
+                                    endFound = true;
+                                    //console.log("end found")
+                                }
+                                if (!endFound) {
+                                    monitor.traceInfo("received part :" + JSON.stringify(receivePowerCurvePart));
+                                    //console.log("wait for next")
                                     monitor.newCsafeBuffer()
                                         .getPowerCurve({ onDataReceived: params.onDataReceived })
                                         .send();
-                                }, 0);
-                            }
-                            else {
-                                if (receivePowerCurvePart.length > 0) {
-                                    currentPowerCurve = receivePowerCurvePart;
-                                    receivePowerCurvePart = [];
-                                    monitor.traceInfo("Curve:" + JSON.stringify(currentPowerCurve));
-                                    if (params.onDataReceived && currentPowerCurve.length > 0)
-                                        params.onDataReceived(currentPowerCurve);
                                 }
+                            }
+                            else
+                                endFound = true;
+                            if (endFound) {
+                                //console.log("send received");
+                                //console.log("Curve:" + JSON.stringify(currentPowerCurve));
+                                peekValue = 0;
+                                currentPowerCurve = receivePowerCurvePart;
+                                receivePowerCurvePart = [];
+                                monitor.traceInfo("Curve:" + JSON.stringify(currentPowerCurve));
+                                if (params.onDataReceived && currentPowerCurve.length > 4)
+                                    params.onDataReceived(currentPowerCurve);
                             }
                         }
                     }
