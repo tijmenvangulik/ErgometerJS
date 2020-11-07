@@ -30,6 +30,8 @@ Basically ErgometerJS needs javascript and a blue tooth driver which can be (nob
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
 
 # Change Log
+- 1.4.2
+  * When multi plexing is enabled on android devices it did not receive any events because a disable was send as last. After this fix connecting with multi plex should also be faster.
 - 1.4.1
   * after c2 firmware is updated , the power curve contains often two curve. made a workaround to detect the correct end. 
 - 1.4.0

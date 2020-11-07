@@ -547,10 +547,12 @@
         protected enableDisableNotification() : Promise<void> {
             super.enableDisableNotification();
             var promises : Promise<void>[] =[];
+            var enableMultiPlex=false;
+             
             if (this.connectionState>=MonitorConnectionState.servicesFound) {
                 if (this.rowingGeneralStatusEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     else {
                         promises.push(this.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC,
@@ -560,14 +562,13 @@
                     }
                 }
                 else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                    else promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC)
+                    if (!this.multiplex) promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_STATUS_CHARACTERISIC)
                         .catch(this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingAdditionalStatus1Event.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     else {
                         promises.push(this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC,
@@ -577,14 +578,14 @@
                     }
                 }
                 else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                    else promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC)
+                    if (!this.multiplex) 
+                     promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS1_CHARACTERISIC)
                        .catch(this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingAdditionalStatus2Event.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     else {
                         promises.push(this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC,
@@ -594,14 +595,14 @@
                     }
                 }
                 else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                    else promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC)
+                    if (!this.multiplex) 
+                     promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STATUS2_CHARACTERISIC)
                         .catch( this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingStrokeDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     else {
                         promises.push(this.enableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC,
@@ -611,14 +612,13 @@
                     }
                 }
                 else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                    else promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC)
+                    if (!this.multiplex)  promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.STROKE_DATA_CHARACTERISIC)
                         .catch( this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingAdditionalStrokeDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     else {
                         promises.push(this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC,
@@ -628,14 +628,13 @@
                     }
                 }
                 else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                    else promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC)
+                    if (!this.multiplex)  promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_STROKE_DATA_CHARACTERISIC)
                         .catch(this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingSplitIntervalDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     else {
                         promises.push(this.enableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC,
@@ -645,14 +644,13 @@
                     }
                 }
                 else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                    else promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC)
+                    if (!this.multiplex) promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.SPLIT_INTERVAL_DATA_CHARACTERISIC)
                         .catch(this.getErrorHandlerFunc("")));
                 }
 
                 if (this.rowingAdditionalSplitIntervalDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     else {
                         promises.push(this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC,
@@ -662,14 +660,13 @@
                     }
                 }
                 else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                    else promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC)
+                    if (!this.multiplex)  promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC)
                         .catch( this.getErrorHandlerFunc("")));
                 }
 
                 if (this.workoutSummaryDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     else {
                         promises.push(this.enableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC,
@@ -679,14 +676,13 @@
                     }
                 }
                 else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                    else promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC)
+                    if (!this.multiplex)  promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.ROWING_SUMMARY_CHARACTERISIC)
                         .catch(this.getErrorHandlerFunc("")));
                 }
 
                 if (this.additionalWorkoutSummaryDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     else {
                         promises.push(this.enableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC,
@@ -696,23 +692,20 @@
                     }
                 }
                 else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                    else promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC )
+                    if (!this.multiplex) promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC )
                         .catch( this.getErrorHandlerFunc("")));
                 }
                 if (this.additionalWorkoutSummaryData2Event.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     //this data is only available for multi ples
                 }
-                else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                }
+                
 
                 if (this.heartRateBeltInformationEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex=true;
                     }
                     else {
                         promises.push(this.enableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC,
@@ -722,8 +715,7 @@
                     }
                 }
                 else {
-                    if (this.multiplex) promises.push(this.disableMultiPlexNotification());
-                    else promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC)
+                    if (!this.multiplex)  promises.push(this.disableNotification(ble.PMROWING_SERVICE,ble.HEART_RATE_BELT_INFO_CHARACTERISIC)
                         .catch( this.getErrorHandlerFunc("")));
                 }
                 if (this.powerCurveEvent.count>0) {
@@ -741,7 +733,13 @@
                     }
 
                 }
+                if (this.multiplex && enableMultiPlex) {
+                    enableMultiPlex=true;
+                    promises.push(this.enableMultiplexNotification());
+                }
+                else promises.push(this.disableMultiPlexNotification());
             }
+            //utils.promiseAllSync(promisses) or use a slower method
             return Promise.all(promises).then(()=>{
                 return Promise.resolve()});   
         }
@@ -1401,8 +1399,8 @@
             this.changeConnectionState(MonitorConnectionState.servicesFound);
             //first enable all notifications and wait till they are active
             //and then set the connection state to ready           
-            this.enableDisableNotification().then(()=>{
-                return this.handleCSafeNotifications()
+            this.handleCSafeNotifications().then(()=>{
+                return this.enableDisableNotification()
             }).then(()=>{
                 //fix problem of notifications not completaly ready yet
                 
