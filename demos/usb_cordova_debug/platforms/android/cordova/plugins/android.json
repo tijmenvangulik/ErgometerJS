@@ -1,0 +1,15 @@
+{
+  "prepare_queue": {
+    "installed": [],
+    "uninstalled": []
+  },
+  "config_munge": {
+    "files": {}
+  },
+  "installed_plugins": {
+    "org.vangulik.usb.hid": {
+      "PACKAGE_NAME": "org.vangulik.demo.hid"
+    }
+  },
+  "dependent_plugins": {}
+}

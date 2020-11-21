@@ -2439,6 +2439,7 @@ var ergometer;
         });
         var receivePowerCurvePart = [];
         var currentPowerCurve = [];
+        var peekValue = 0;
         csafe.commandManager.register(function (buffer, monitor) {
             buffer.getPowerCurve = function (params) {
                 buffer.addRawCommand({
@@ -2451,27 +2452,58 @@ var ergometer;
                         if (params.onDataReceived) {
                             var bytesReturned = data.getUint8(0); //first byte
                             monitor.traceInfo("received power curve count " + bytesReturned);
+                            var endFound = false;
                             if (bytesReturned > 0) {
+                                //when it is going down we are near the end                            
+                                var value = 0;
+                                var lastValue = 0;
+                                if (receivePowerCurvePart.length > 0)
+                                    lastValue = receivePowerCurvePart[receivePowerCurvePart.length - 1];
                                 for (var i = 1; i < bytesReturned + 1; i += 2) {
-                                    var value = data.getUint16(i, true); //in ltile endian format
+                                    value = data.getUint16(i, true); //in ltile endian format
+                                    //console.log("receive curve "+value+" peek value "+peekValue);
+                                    //work around the problem that since the last update we can not detect the end
+                                    //when going up again near to the end it is a new curve (25% of the Peek value)
+                                    //so directly send it                                    
+                                    if (receivePowerCurvePart.length > 20 && lastValue < (peekValue / 4) && value > lastValue) {
+                                        //console.log("going up again , split!");
+                                        //console.log("Curve:" + JSON.stringify(currentPowerCurve));
+                                        monitor.traceInfo("Curve:" + JSON.stringify(currentPowerCurve));
+                                        currentPowerCurve = receivePowerCurvePart;
+                                        receivePowerCurvePart = [];
+                                        peekValue = 0;
+                                        if (params.onDataReceived && currentPowerCurve.length > 4)
+                                            params.onDataReceived(currentPowerCurve);
+                                    }
                                     receivePowerCurvePart.push(value);
+                                    if (value > peekValue)
+                                        peekValue = value;
+                                    lastValue = value;
                                 }
-                                monitor.traceInfo("received part :" + JSON.stringify(receivePowerCurvePart));
-                                setTimeout(function () {
-                                    //try to get another one till it is empty and there is nothing more
+                                //sometimes the last value is 0 in that case it is the end of the curve
+                                if (receivePowerCurvePart.length > 10 && value === 0) {
+                                    endFound = true;
+                                    //console.log("end found")
+                                }
+                                if (!endFound) {
+                                    monitor.traceInfo("received part :" + JSON.stringify(receivePowerCurvePart));
+                                    //console.log("wait for next")
                                     monitor.newCsafeBuffer()
                                         .getPowerCurve({ onDataReceived: params.onDataReceived })
                                         .send();
-                                }, 0);
-                            }
-                            else {
-                                if (receivePowerCurvePart.length > 0) {
-                                    currentPowerCurve = receivePowerCurvePart;
-                                    receivePowerCurvePart = [];
-                                    monitor.traceInfo("Curve:" + JSON.stringify(currentPowerCurve));
-                                    if (params.onDataReceived && currentPowerCurve.length > 0)
-                                        params.onDataReceived(currentPowerCurve);
                                 }
+                            }
+                            else
+                                endFound = true;
+                            if (endFound) {
+                                //console.log("send received");
+                                //console.log("Curve:" + JSON.stringify(currentPowerCurve));
+                                peekValue = 0;
+                                currentPowerCurve = receivePowerCurvePart;
+                                receivePowerCurvePart = [];
+                                monitor.traceInfo("Curve:" + JSON.stringify(currentPowerCurve));
+                                if (params.onDataReceived && currentPowerCurve.length > 4)
+                                    params.onDataReceived(currentPowerCurve);
                             }
                         }
                     }
@@ -4451,10 +4483,11 @@ var ergometer;
             var _this = this;
             _super.prototype.enableDisableNotification.call(this);
             var promises = [];
+            var enableMultiPlex = false;
             if (this.connectionState >= ergometer.MonitorConnectionState.servicesFound) {
                 if (this.rowingGeneralStatusEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     else {
                         promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_CHARACTERISIC, function (data) {
@@ -4463,15 +4496,13 @@ var ergometer;
                     }
                 }
                 else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                    else
+                    if (!this.multiplex)
                         promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_STATUS_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingAdditionalStatus1Event.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     else {
                         promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS1_CHARACTERISIC, function (data) {
@@ -4480,15 +4511,13 @@ var ergometer;
                     }
                 }
                 else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                    else
+                    if (!this.multiplex)
                         promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS1_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingAdditionalStatus2Event.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     else {
                         promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS2_CHARACTERISIC, function (data) {
@@ -4497,15 +4526,13 @@ var ergometer;
                     }
                 }
                 else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                    else
+                    if (!this.multiplex)
                         promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STATUS2_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingStrokeDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     else {
                         promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.STROKE_DATA_CHARACTERISIC, function (data) {
@@ -4514,15 +4541,13 @@ var ergometer;
                     }
                 }
                 else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                    else
+                    if (!this.multiplex)
                         promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.STROKE_DATA_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingAdditionalStrokeDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     else {
                         promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STROKE_DATA_CHARACTERISIC, function (data) {
@@ -4531,15 +4556,13 @@ var ergometer;
                     }
                 }
                 else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                    else
+                    if (!this.multiplex)
                         promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_STROKE_DATA_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingSplitIntervalDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     else {
                         promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.SPLIT_INTERVAL_DATA_CHARACTERISIC, function (data) {
@@ -4548,15 +4571,13 @@ var ergometer;
                     }
                 }
                 else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                    else
+                    if (!this.multiplex)
                         promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.SPLIT_INTERVAL_DATA_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.rowingAdditionalSplitIntervalDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     else {
                         promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC, function (data) {
@@ -4565,15 +4586,13 @@ var ergometer;
                     }
                 }
                 else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                    else
+                    if (!this.multiplex)
                         promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_SPLIT_INTERVAL_DATA_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.workoutSummaryDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     else {
                         promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_SUMMARY_CHARACTERISIC, function (data) {
@@ -4582,15 +4601,13 @@ var ergometer;
                     }
                 }
                 else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                    else
+                    if (!this.multiplex)
                         promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.ROWING_SUMMARY_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.additionalWorkoutSummaryDataEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     else {
                         promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC, function (data) {
@@ -4599,25 +4616,19 @@ var ergometer;
                     }
                 }
                 else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                    else
+                    if (!this.multiplex)
                         promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.EXTRA_ROWING_SUMMARY_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
                 if (this.additionalWorkoutSummaryData2Event.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     //this data is only available for multi ples
                 }
-                else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                }
                 if (this.heartRateBeltInformationEvent.count > 0) {
                     if (this.multiplex) {
-                        promises.push(this.enableMultiplexNotification());
+                        enableMultiPlex = true;
                     }
                     else {
                         promises.push(this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.HEART_RATE_BELT_INFO_CHARACTERISIC, function (data) {
@@ -4626,9 +4637,7 @@ var ergometer;
                     }
                 }
                 else {
-                    if (this.multiplex)
-                        promises.push(this.disableMultiPlexNotification());
-                    else
+                    if (!this.multiplex)
                         promises.push(this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.HEART_RATE_BELT_INFO_CHARACTERISIC)
                             .catch(this.getErrorHandlerFunc("")));
                 }
@@ -4645,7 +4654,14 @@ var ergometer;
                         this.rowingGeneralStatusEvent.unsub(this.onPowerCurveRowingGeneralStatus);
                     }
                 }
+                if (this.multiplex && enableMultiPlex) {
+                    enableMultiPlex = true;
+                    promises.push(this.enableMultiplexNotification());
+                }
+                else
+                    promises.push(this.disableMultiPlexNotification());
             }
+            //utils.promiseAllSync(promisses) or use a slower method
             return Promise.all(promises).then(function () {
                 return Promise.resolve();
             });
@@ -5213,8 +5229,8 @@ var ergometer;
             this.changeConnectionState(ergometer.MonitorConnectionState.servicesFound);
             //first enable all notifications and wait till they are active
             //and then set the connection state to ready           
-            this.enableDisableNotification().then(function () {
-                return _this.handleCSafeNotifications();
+            this.handleCSafeNotifications().then(function () {
+                return _this.enableDisableNotification();
             }).then(function () {
                 //fix problem of notifications not completaly ready yet
                 _this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);

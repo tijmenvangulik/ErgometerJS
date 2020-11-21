@@ -30,6 +30,10 @@ Basically ErgometerJS needs javascript and a blue tooth driver which can be (nob
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
 
 # Change Log
+- 1.4.3
+  * Upgrade android to 9.0.0 (api level 29 needed for the android store)
+  * Removed obsolete simple cordova demo
+  * fix connection issue for usb demo when connecting for the first time
 - 1.4.2
   * When multi plexing is enabled on android devices it did not receive any events because a disable was send as last. After this fix connecting with multi plex should also be faster.
 - 1.4.1
@@ -473,14 +477,7 @@ to receive the heart rate information you have to subscribe to the heartRateData
 An demo of the api is in included in the electron usb debug example.
          
 # Examples
-                  
-## Simple Cordova (obsolete)
-
- ! this demo is obsolete because it uses an very old ble driver , check the demo ble_cordova demo  which uses an new ble driver !
-Use cordova when you want to write a mobile app using html5.
-
-[demos/simplecordova](demos/simplecordova/README.md)                 
-
+            
 
 ## Electron
 

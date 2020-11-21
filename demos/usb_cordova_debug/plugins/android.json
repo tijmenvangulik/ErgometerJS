@@ -9,6 +9,9 @@
   "installed_plugins": {
     "cordova-plugin-whitelist": {
       "PACKAGE_NAME": "org.vangulik.demo.hid"
+    },
+    "org.vangulik.usb.hid": {
+      "PACKAGE_NAME": "org.vangulik.demo.hid"
     }
   },
   "dependent_plugins": {}

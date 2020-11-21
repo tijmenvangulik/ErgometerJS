@@ -24,12 +24,14 @@
         <config-file parent="/manifest/application" target="AndroidManifest.xml">
             <meta-data android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" android:resource="@xml/device_filter" />
         </config-file>
-        <resource-file src="device_filter.xml" target="res/xml/device_filter.xml" />
+        <config-file parent="/manifest/application/activity" target="AndroidManifest.xml">
+            <meta-data android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" android:resource="@xml/device_filter" />
+        </config-file>
+        <resource-file src="device_filter.xml" target="app/src/main/res/xml/device_filter.xml" />
     </platform>
     <platform name="ios">
         <allow-intent href="itms:*" />
         <allow-intent href="itms-apps:*" />
     </platform>
     <plugin name="org.vangulik.usb.hid" spec="https://github.com/tijmenvangulik/cordova-usb-hid.git" />
-    <engine name="android" spec="^7.1.4" />
 </widget>

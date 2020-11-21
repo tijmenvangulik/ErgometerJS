@@ -155,7 +155,11 @@ class Demo {
             }
             
     
-        }).catch(this.showError.bind(this));
+        }).catch( (e)=>{
+            this.showError(e);
+            setTimeout(()=>{this.fillDevices()},1000);
+        });
+            
         
     }
 
