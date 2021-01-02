@@ -948,14 +948,16 @@
                 }).catch(
                     this.getErrorHandlerFunc("Scan error",(e)=>{
                         if (errorFn) errorFn(e);
-                        this.changeConnectionState(MonitorConnectionState.readyForCommunication);
+                        if (this.connectionState<MonitorConnectionState.connected)
+                          this.changeConnectionState(MonitorConnectionState.readyForCommunication);
                     })
                 );
     
             }
             
             catch (e) {
-                this.changeConnectionState(MonitorConnectionState.inactive);
+                if (this.connectionState<MonitorConnectionState.connected)
+                  this.changeConnectionState(MonitorConnectionState.readyForCommunication);
                 this.getErrorHandlerFunc("Scan error",errorFn)(e);
                 return Promise.reject(e);
             }

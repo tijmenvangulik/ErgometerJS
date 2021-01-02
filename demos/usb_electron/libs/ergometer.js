@@ -4857,11 +4857,13 @@ var ergometer;
                 }).catch(this.getErrorHandlerFunc("Scan error", function (e) {
                     if (errorFn)
                         errorFn(e);
-                    _this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
+                    if (_this.connectionState < ergometer.MonitorConnectionState.connected)
+                        _this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
                 }));
             }
             catch (e) {
-                this.changeConnectionState(ergometer.MonitorConnectionState.inactive);
+                if (this.connectionState < ergometer.MonitorConnectionState.connected)
+                    this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
                 this.getErrorHandlerFunc("Scan error", errorFn)(e);
                 return Promise.reject(e);
             }
