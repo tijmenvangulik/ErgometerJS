@@ -38,15 +38,28 @@ namespace ergometer {
         public get heartRateDataEvent():pubSub.Event<HeartRateDataEvent> {
             return this._heartRateDataEvent;
         }
+
         protected initialize() {
             super.initialize();
 
-            if (bleCentral.available()) this._driver= new bleCentral.DriverBleCentral([ble.HEART_RATE_DEVICE_SERVICE])            
-            else if ((typeof bleat !== 'undefined' ) && bleat) this._driver = new ble.DriverBleat();
-            else if ((typeof simpleBLE !== 'undefined' ) && simpleBLE ) this._driver = new ble.DriverSimpleBLE();
-            else if (ble.hasWebBlueTooth()) this._driver= new ble.DriverWebBlueTooth(this,[ble.HEART_RATE_DEVICE_SERVICE],[]);
-            else this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.") ;
+            this.initDriver();
 
+        }
+        private checkInitDriver() {
+            if (!this._driver) this.initDriver();
+            if (!this._driver) throw "No suitable driver found"; 
+        }
+        private initDriver() {
+            if (bleCentral.available())
+                this._driver = new bleCentral.DriverBleCentral([ble.HEART_RATE_DEVICE_SERVICE]);
+            else if ((typeof bleat !== 'undefined') && bleat)
+                this._driver = new ble.DriverBleat();
+            else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
+                this._driver = new ble.DriverSimpleBLE();
+            else if (ble.hasWebBlueTooth())
+                this._driver = new ble.DriverWebBlueTooth(this, [ble.HEART_RATE_DEVICE_SERVICE], []);
+            else
+                this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.");
         }
 
         public disconnect() {
@@ -115,56 +128,64 @@ namespace ergometer {
         public startScan(deviceFound : (device : HeartRateDeviceInfo)=>boolean,errorFn? : ErrorHandler ) :Promise<void> {
 
 
+            try {
+                this.checkInitDriver();
+                this._devices=[];
+                // Save it for next time we use the this.
+                //localStorage.setItem('deviceName', this._deviceName);
 
-            this._devices=[];
-            // Save it for next time we use the this.
-            //localStorage.setItem('deviceName', this._deviceName);
+                // Call stop before you start, just in case something else is running.
+                this.stopScan();
+                this.changeConnectionState(MonitorConnectionState.scanning);
 
-            // Call stop before you start, just in case something else is running.
-            this.stopScan();
-            this.changeConnectionState(MonitorConnectionState.scanning);
-
-            // Only report s once.
-            //evothings.easyble.reportDeviceOnce(true);
+                // Only report s once.
+                //evothings.easyble.reportDeviceOnce(true);
 
 
-            return this.driver.startScan(
-                (device) => {
-                    // Do not show un-named devices.
-                    /*var deviceName = device.advertisementData ?
-                     device.advertisementData.kCBAdvDataLocalName : null;
-                     */
-                    if (!device.name) {
-                        return
+                return this.driver.startScan(
+                    (device) => {
+                        // Do not show un-named devices.
+                        /*var deviceName = device.advertisementData ?
+                        device.advertisementData.kCBAdvDataLocalName : null;
+                        */
+                        if (!device.name) {
+                            return
+                        }
+
+                        // Print "name : mac address" for every device found.
+                        this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+                        
+                        // If my device is found connect to it.
+                        //find any thing starting with PM and then a number a space and a serial number
+                        
+                        this.showInfo('Status: DeviceInfo found: ' + device.name);
+                        var deviceInfo : HeartRateDeviceInfo={
+                            connected:false,
+                            _internalDevice: device,
+                            name:device.name,
+                            address:device.address,
+                            quality: 2* (device.rssi + 100) };
+                        this.addDevice(deviceInfo);
+                        if ( deviceFound && deviceFound(deviceInfo)) {
+                            this.connectToDevice(deviceInfo.name);
+                        }
+
                     }
 
-                    // Print "name : mac address" for every device found.
-                    this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
-                    
-                    // If my device is found connect to it.
-                    //find any thing starting with PM and then a number a space and a serial number
-                    
-                    this.showInfo('Status: DeviceInfo found: ' + device.name);
-                    var deviceInfo : HeartRateDeviceInfo={
-                        connected:false,
-                        _internalDevice: device,
-                        name:device.name,
-                        address:device.address,
-                        quality: 2* (device.rssi + 100) };
-                    this.addDevice(deviceInfo);
-                    if ( deviceFound && deviceFound(deviceInfo)) {
-                        this.connectToDevice(deviceInfo.name);
-                    }
-
-                }
-
-            ).then(()=> {
-                this.showInfo('Status: Scanning...');
-            }).catch(
-                this.getErrorHandlerFunc("Scan error",errorFn)
-            );
-
+                ).then(()=> {
+                    this.showInfo('Status: Scanning...');
+                }).catch(
+                    this.getErrorHandlerFunc("Scan error",errorFn)
+                );
+            }
+        catch (e) {
+            this.changeConnectionState(MonitorConnectionState.inactive);
+            this.getErrorHandlerFunc("Scan error",errorFn)(e);
+            return Promise.reject(e);
         }
+            
+
+    }
 
 
 

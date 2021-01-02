@@ -30,6 +30,9 @@ Basically ErgometerJS needs javascript and a blue tooth driver which can be (nob
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
 
 # Change Log
+- 1.4.4
+  * Cordova ios has very late library initialization (even after device ready). Recheck if the driver needs initialization just before connecting 
+  * Improved error handling and stop scan when driver could not be found
 - 1.4.3
   * Upgrade android to 9.0.0 (api level 29 needed for the android store)
   * Removed obsolete simple cordova demo

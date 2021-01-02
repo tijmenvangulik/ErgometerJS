@@ -3397,6 +3397,11 @@ var ergometer;
         };
         PerformanceMonitorUsb.prototype.initialize = function () {
             _super.prototype.initialize.call(this);
+            this.initDriver();
+            this._splitCommandsWhenToBig = false;
+            this._receivePartialBuffers = false;
+        };
+        PerformanceMonitorUsb.prototype.initDriver = function () {
             if (PerformanceMonitorUsb.canUseNodeHid()) {
                 this._driver = new ergometer.usb.DriverNodeHid();
             }
@@ -3406,8 +3411,12 @@ var ergometer;
             else if (PerformanceMonitorUsb.canUseWebHid()) {
                 this._driver = new ergometer.usb.DriverWebHid();
             }
-            this._splitCommandsWhenToBig = false;
-            this._receivePartialBuffers = false;
+        };
+        PerformanceMonitorUsb.prototype.checkInitDriver = function () {
+            if (!this._driver)
+                this.initDriver();
+            if (!this._driver)
+                throw "No suitable driver found";
         };
         Object.defineProperty(PerformanceMonitorUsb.prototype, "driver", {
             get: function () {
@@ -3464,22 +3473,26 @@ var ergometer;
         };
         PerformanceMonitorUsb.prototype.requestDevics = function () {
             var _this = this;
-            if (!this._driver)
-                return Promise.reject("driver not set");
             return new Promise(function (resolve, reject) {
-                _this._driver.requestDevics().then(function (driverDevices) {
-                    var result = [];
-                    driverDevices.forEach(function (driverDevice) {
-                        var device = new UsbDevice();
-                        device.productId = driverDevice.productId;
-                        device.productName = driverDevice.productName;
-                        device.vendorId = driverDevice.vendorId;
-                        device.serialNumber = driverDevice.serialNumber;
-                        device._internalDevice = driverDevice;
-                        result.push(device);
-                    });
-                    resolve(result);
-                }).catch(reject);
+                try {
+                    _this.checkInitDriver();
+                    _this._driver.requestDevics().then(function (driverDevices) {
+                        var result = [];
+                        driverDevices.forEach(function (driverDevice) {
+                            var device = new UsbDevice();
+                            device.productId = driverDevice.productId;
+                            device.productName = driverDevice.productName;
+                            device.vendorId = driverDevice.vendorId;
+                            device.serialNumber = driverDevice.serialNumber;
+                            device._internalDevice = driverDevice;
+                            result.push(device);
+                        });
+                        resolve(result);
+                    }).catch(reject);
+                }
+                catch (e) {
+                    reject(e);
+                }
             });
         };
         PerformanceMonitorUsb.prototype.disconnect = function () {
@@ -4688,6 +4701,24 @@ var ergometer;
         PerformanceMonitorBle.prototype.currentDriverIsWebBlueTooth = function () {
             return this._driver instanceof ergometer.ble.DriverWebBlueTooth;
         };
+        PerformanceMonitorBle.prototype.initDriver = function () {
+            if (bleCentral.available())
+                this._driver = new bleCentral.DriverBleCentral([ergometer.ble.PMDEVICE]);
+            else if ((typeof bleat !== 'undefined') && bleat)
+                this._driver = new ergometer.ble.DriverBleat();
+            else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
+                this._driver = new ergometer.ble.DriverSimpleBLE();
+            else if (ergometer.ble.hasWebBlueTooth())
+                this._driver = new ergometer.ble.DriverWebBlueTooth(this, [ergometer.ble.PMDEVICE], [ergometer.ble.PMDEVICE_INFO_SERVICE, ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.PMROWING_SERVICE]);
+            else
+                this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.");
+        };
+        PerformanceMonitorBle.prototype.checkInitDriver = function () {
+            if (!this._driver)
+                this.initDriver();
+            if (!this._driver)
+                throw "No suitable blue tooth driver found to connect to the ergometer.";
+        };
         /**
          *
          */
@@ -4702,16 +4733,7 @@ var ergometer;
                      evothings.scriptsLoaded(()=>{
                          this.onDeviceReady();})},
                 false);   */
-            if (bleCentral.available())
-                this._driver = new bleCentral.DriverBleCentral([ergometer.ble.PMDEVICE]);
-            else if ((typeof bleat !== 'undefined') && bleat)
-                this._driver = new ergometer.ble.DriverBleat();
-            else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
-                this._driver = new ergometer.ble.DriverSimpleBLE();
-            else if (ergometer.ble.hasWebBlueTooth())
-                this._driver = new ergometer.ble.DriverWebBlueTooth(this, [ergometer.ble.PMDEVICE], [ergometer.ble.PMDEVICE_INFO_SERVICE, ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.PMROWING_SERVICE]);
-            else
-                this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.");
+            this.initDriver();
             var enableDisableFunc = function () { _this.enableDisableNotification().catch(_this.handleError); };
             this._rowingGeneralStatusEvent = new ergometer.pubSub.Event();
             this.rowingGeneralStatusEvent.registerChangedEvent(enableDisableFunc);
@@ -4794,43 +4816,55 @@ var ergometer;
          */
         PerformanceMonitorBle.prototype.startScan = function (deviceFound, errorFn) {
             var _this = this;
-            this._devices = [];
-            // Save it for next time we use the this.
-            //localStorage.setItem('deviceName', this._deviceName);
-            // Call stop before you start, just in case something else is running.
-            this.stopScan();
-            this.changeConnectionState(ergometer.MonitorConnectionState.scanning);
-            // Only report s once.
-            //evothings.easyble.reportDeviceOnce(true);
-            return this.driver.startScan(function (device) {
-                // Do not show un-named devices.
-                /*var deviceName = device.advertisementData ?
-                 device.advertisementData.kCBAdvDataLocalName : null;
-                 */
-                if (!device.name) {
-                    return;
-                }
-                // Print "name : mac address" for every device found.
-                _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
-                // If my device is found connect to it.
-                //find any thing starting with PM and then a number a space and a serial number
-                if (device.name.match(/PM\d \d*/g)) {
-                    _this.showInfo('Status: DeviceInfo found: ' + device.name);
-                    var deviceInfo = {
-                        connected: false,
-                        _internalDevice: device,
-                        name: device.name,
-                        address: device.address,
-                        quality: 2 * (device.rssi + 100)
-                    };
-                    _this.addDevice(deviceInfo);
-                    if (deviceFound && deviceFound(deviceInfo)) {
-                        _this.connectToDevice(deviceInfo.name);
+            try {
+                this.checkInitDriver();
+                this._devices = [];
+                // Save it for next time we use the this.
+                //localStorage.setItem('deviceName', this._deviceName);
+                // Call stop before you start, just in case something else is running.
+                this.stopScan();
+                this.changeConnectionState(ergometer.MonitorConnectionState.scanning);
+                // Only report s once.
+                //evothings.easyble.reportDeviceOnce(true);
+                return this.driver.startScan(function (device) {
+                    // Do not show un-named devices.
+                    /*var deviceName = device.advertisementData ?
+                     device.advertisementData.kCBAdvDataLocalName : null;
+                     */
+                    if (!device.name) {
+                        return;
                     }
-                }
-            }).then(function () {
-                _this.showInfo('Status: Scanning...');
-            }).catch(this.getErrorHandlerFunc("Scan error", errorFn));
+                    // Print "name : mac address" for every device found.
+                    _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+                    // If my device is found connect to it.
+                    //find any thing starting with PM and then a number a space and a serial number
+                    if (device.name.match(/PM\d \d*/g)) {
+                        _this.showInfo('Status: DeviceInfo found: ' + device.name);
+                        var deviceInfo = {
+                            connected: false,
+                            _internalDevice: device,
+                            name: device.name,
+                            address: device.address,
+                            quality: 2 * (device.rssi + 100)
+                        };
+                        _this.addDevice(deviceInfo);
+                        if (deviceFound && deviceFound(deviceInfo)) {
+                            _this.connectToDevice(deviceInfo.name);
+                        }
+                    }
+                }).then(function () {
+                    _this.showInfo('Status: Scanning...');
+                }).catch(this.getErrorHandlerFunc("Scan error", function (e) {
+                    if (errorFn)
+                        errorFn(e);
+                    _this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
+                }));
+            }
+            catch (e) {
+                this.changeConnectionState(ergometer.MonitorConnectionState.inactive);
+                this.getErrorHandlerFunc("Scan error", errorFn)(e);
+                return Promise.reject(e);
+            }
         };
         /**
          * connect to a specific device. This should be a PM5 device which is found by the startScan. You can
@@ -5361,6 +5395,15 @@ var ergometer;
         });
         HeartRateMonitorBle.prototype.initialize = function () {
             _super.prototype.initialize.call(this);
+            this.initDriver();
+        };
+        HeartRateMonitorBle.prototype.checkInitDriver = function () {
+            if (!this._driver)
+                this.initDriver();
+            if (!this._driver)
+                throw "No suitable driver found";
+        };
+        HeartRateMonitorBle.prototype.initDriver = function () {
             if (bleCentral.available())
                 this._driver = new bleCentral.DriverBleCentral([ergometer.ble.HEART_RATE_DEVICE_SERVICE]);
             else if ((typeof bleat !== 'undefined') && bleat)
@@ -5434,41 +5477,49 @@ var ergometer;
          */
         HeartRateMonitorBle.prototype.startScan = function (deviceFound, errorFn) {
             var _this = this;
-            this._devices = [];
-            // Save it for next time we use the this.
-            //localStorage.setItem('deviceName', this._deviceName);
-            // Call stop before you start, just in case something else is running.
-            this.stopScan();
-            this.changeConnectionState(ergometer.MonitorConnectionState.scanning);
-            // Only report s once.
-            //evothings.easyble.reportDeviceOnce(true);
-            return this.driver.startScan(function (device) {
-                // Do not show un-named devices.
-                /*var deviceName = device.advertisementData ?
-                 device.advertisementData.kCBAdvDataLocalName : null;
-                 */
-                if (!device.name) {
-                    return;
-                }
-                // Print "name : mac address" for every device found.
-                _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
-                // If my device is found connect to it.
-                //find any thing starting with PM and then a number a space and a serial number
-                _this.showInfo('Status: DeviceInfo found: ' + device.name);
-                var deviceInfo = {
-                    connected: false,
-                    _internalDevice: device,
-                    name: device.name,
-                    address: device.address,
-                    quality: 2 * (device.rssi + 100)
-                };
-                _this.addDevice(deviceInfo);
-                if (deviceFound && deviceFound(deviceInfo)) {
-                    _this.connectToDevice(deviceInfo.name);
-                }
-            }).then(function () {
-                _this.showInfo('Status: Scanning...');
-            }).catch(this.getErrorHandlerFunc("Scan error", errorFn));
+            try {
+                this.checkInitDriver();
+                this._devices = [];
+                // Save it for next time we use the this.
+                //localStorage.setItem('deviceName', this._deviceName);
+                // Call stop before you start, just in case something else is running.
+                this.stopScan();
+                this.changeConnectionState(ergometer.MonitorConnectionState.scanning);
+                // Only report s once.
+                //evothings.easyble.reportDeviceOnce(true);
+                return this.driver.startScan(function (device) {
+                    // Do not show un-named devices.
+                    /*var deviceName = device.advertisementData ?
+                    device.advertisementData.kCBAdvDataLocalName : null;
+                    */
+                    if (!device.name) {
+                        return;
+                    }
+                    // Print "name : mac address" for every device found.
+                    _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+                    // If my device is found connect to it.
+                    //find any thing starting with PM and then a number a space and a serial number
+                    _this.showInfo('Status: DeviceInfo found: ' + device.name);
+                    var deviceInfo = {
+                        connected: false,
+                        _internalDevice: device,
+                        name: device.name,
+                        address: device.address,
+                        quality: 2 * (device.rssi + 100)
+                    };
+                    _this.addDevice(deviceInfo);
+                    if (deviceFound && deviceFound(deviceInfo)) {
+                        _this.connectToDevice(deviceInfo.name);
+                    }
+                }).then(function () {
+                    _this.showInfo('Status: Scanning...');
+                }).catch(this.getErrorHandlerFunc("Scan error", errorFn));
+            }
+            catch (e) {
+                this.changeConnectionState(ergometer.MonitorConnectionState.inactive);
+                this.getErrorHandlerFunc("Scan error", errorFn)(e);
+                return Promise.reject(e);
+            }
         };
         /**
          * connect to a specific device. This should be a PM5 device which is found by the startScan. You can

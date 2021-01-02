@@ -136,17 +136,25 @@ namespace ergometer {
         }
         protected initialize() {
             super.initialize();
-            if (PerformanceMonitorUsb.canUseNodeHid()) {
-                this._driver= new ergometer.usb.DriverNodeHid();
-            }
-            else if (PerformanceMonitorUsb.canUseCordovaHid()) {
-                this._driver= new ergometer.usb.DriverCordovaHid();
-            }
-            else if (PerformanceMonitorUsb.canUseWebHid()) {
-                this._driver= new ergometer.usb.DriverWebHid();
-            }
+            this.initDriver();
             this._splitCommandsWhenToBig=false;
             this._receivePartialBuffers=false;  
+        }
+
+        private initDriver() {
+            if (PerformanceMonitorUsb.canUseNodeHid()) {
+                this._driver = new ergometer.usb.DriverNodeHid();
+            }
+            else if (PerformanceMonitorUsb.canUseCordovaHid()) {
+                this._driver = new ergometer.usb.DriverCordovaHid();
+            }
+            else if (PerformanceMonitorUsb.canUseWebHid()) {
+                this._driver = new ergometer.usb.DriverWebHid();
+            }
+        }
+        private checkInitDriver() {
+            if (!this._driver) this.initDriver();
+            if (!this._driver) throw "No suitable driver found";
         }
 
         public get driver():ergometer.usb.IDriver {
@@ -204,21 +212,29 @@ namespace ergometer {
         }
         
         public requestDevics() : Promise<UsbDevices> { 
-            if (!this._driver) return Promise.reject("driver not set");
+            
+            
             return new Promise((resolve,reject)=>{
-                this._driver.requestDevics().then((driverDevices)=>{
-                    var result : UsbDevices= [];
-                    driverDevices.forEach((driverDevice)=>{
-                        var device= new UsbDevice();
-                        device.productId=driverDevice.productId;
-                        device.productName=driverDevice.productName;
-                        device.vendorId=driverDevice.vendorId;
-                        device.serialNumber=driverDevice.serialNumber;
-                        device._internalDevice=driverDevice;
-                        result.push(device);
-                    });
-                    resolve(result);
-                }).catch(reject);  
+                try {
+                    this.checkInitDriver();
+                    this._driver.requestDevics().then((driverDevices)=>{
+                        var result : UsbDevices= [];
+                        driverDevices.forEach((driverDevice)=>{
+                            var device= new UsbDevice();
+                            device.productId=driverDevice.productId;
+                            device.productName=driverDevice.productName;
+                            device.vendorId=driverDevice.vendorId;
+                            device.serialNumber=driverDevice.serialNumber;
+                            device._internalDevice=driverDevice;
+                            result.push(device);
+                        });
+                        resolve(result);
+                    }).catch(reject);  
+                }
+                catch (e) {
+                    reject(e);
+                }
+                
             });
         
         }

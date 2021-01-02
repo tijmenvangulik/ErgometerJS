@@ -768,6 +768,18 @@
         public currentDriverIsWebBlueTooth() : boolean {
            return  this._driver instanceof ble.DriverWebBlueTooth;
         } 
+
+        protected initDriver() {
+            if (bleCentral.available()) this._driver= new bleCentral.DriverBleCentral([ergometer.ble.PMDEVICE])            
+            else if ((typeof bleat !== 'undefined' ) && bleat) this._driver = new ble.DriverBleat();
+            else if ((typeof simpleBLE !== 'undefined' ) && simpleBLE ) this._driver = new ble.DriverSimpleBLE();
+            else if (ble.hasWebBlueTooth()) this._driver= new ble.DriverWebBlueTooth(this,[ble.PMDEVICE],[ble.PMDEVICE_INFO_SERVICE,ble.PMCONTROL_SERVICE,ble.PMROWING_SERVICE]);
+            else this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.") ;
+        }
+        protected checkInitDriver() {
+            if (!this._driver) this.initDriver();
+            if (!this._driver) throw "No suitable blue tooth driver found to connect to the ergometer.";
+        }
         /**
          *
          */
@@ -781,11 +793,7 @@
                      evothings.scriptsLoaded(()=>{
                          this.onDeviceReady();})},
                 false);   */
-            if (bleCentral.available()) this._driver= new bleCentral.DriverBleCentral([ergometer.ble.PMDEVICE])            
-            else if ((typeof bleat !== 'undefined' ) && bleat) this._driver = new ble.DriverBleat();
-            else if ((typeof simpleBLE !== 'undefined' ) && simpleBLE ) this._driver = new ble.DriverSimpleBLE();
-            else if (ble.hasWebBlueTooth()) this._driver= new ble.DriverWebBlueTooth(this,[ble.PMDEVICE],[ble.PMDEVICE_INFO_SERVICE,ble.PMCONTROL_SERVICE,ble.PMROWING_SERVICE]);
-            else this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.") ;
+            this.initDriver();
 
             var enableDisableFunc = ()=>{this.enableDisableNotification().catch(this.handleError)};
             this._rowingGeneralStatusEvent = new pubSub.Event<RowingGeneralStatusEvent>();
@@ -889,59 +897,69 @@
          */
         public startScan(deviceFound : (device : DeviceInfo)=>boolean,errorFn? : ErrorHandler ) :Promise<void> {
 
-
-
-            this._devices=[];
-            // Save it for next time we use the this.
-            //localStorage.setItem('deviceName', this._deviceName);
-
-            // Call stop before you start, just in case something else is running.
-            this.stopScan();
-            this.changeConnectionState(MonitorConnectionState.scanning);
-
-            // Only report s once.
-            //evothings.easyble.reportDeviceOnce(true);
-
-
-            return this.driver.startScan(
-                (device) => {
-                    // Do not show un-named devices.
-                    /*var deviceName = device.advertisementData ?
-                     device.advertisementData.kCBAdvDataLocalName : null;
-                     */
-                    if (!device.name) {
-                        return
-                    }
-
-                    // Print "name : mac address" for every device found.
-                    this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
-                    
-                    // If my device is found connect to it.
-                    //find any thing starting with PM and then a number a space and a serial number
-                    if ( device.name.match(/PM\d \d*/g) ) {
-
-                        this.showInfo('Status: DeviceInfo found: ' + device.name);
-                        var deviceInfo : DeviceInfo={
-                            connected:false,
-                            _internalDevice: device,
-                            name:device.name,
-                            address:device.address,
-                            quality: 2* (device.rssi + 100) };
-                        this.addDevice(deviceInfo);
-                        if ( deviceFound && deviceFound(deviceInfo)) {
-                            this.connectToDevice(deviceInfo.name);
+            try {
+                this.checkInitDriver();
+                this._devices=[];
+                // Save it for next time we use the this.
+                //localStorage.setItem('deviceName', this._deviceName);
+    
+                // Call stop before you start, just in case something else is running.
+                this.stopScan();
+                this.changeConnectionState(MonitorConnectionState.scanning);
+    
+                // Only report s once.
+                //evothings.easyble.reportDeviceOnce(true);
+    
+    
+                return this.driver.startScan(
+                    (device) => {
+                        // Do not show un-named devices.
+                        /*var deviceName = device.advertisementData ?
+                         device.advertisementData.kCBAdvDataLocalName : null;
+                         */
+                        if (!device.name) {
+                            return
                         }
-
+    
+                        // Print "name : mac address" for every device found.
+                        this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+                        
+                        // If my device is found connect to it.
+                        //find any thing starting with PM and then a number a space and a serial number
+                        if ( device.name.match(/PM\d \d*/g) ) {
+    
+                            this.showInfo('Status: DeviceInfo found: ' + device.name);
+                            var deviceInfo : DeviceInfo={
+                                connected:false,
+                                _internalDevice: device,
+                                name:device.name,
+                                address:device.address,
+                                quality: 2* (device.rssi + 100) };
+                            this.addDevice(deviceInfo);
+                            if ( deviceFound && deviceFound(deviceInfo)) {
+                                this.connectToDevice(deviceInfo.name);
+                            }
+    
+                        }
                     }
-                }
-
-            ).then(()=> {
-                this.showInfo('Status: Scanning...');
-            }).catch(
-                this.getErrorHandlerFunc("Scan error",errorFn)
-            );
-
-        }
+    
+                ).then(()=> {
+                    this.showInfo('Status: Scanning...');
+                }).catch(
+                    this.getErrorHandlerFunc("Scan error",(e)=>{
+                        if (errorFn) errorFn(e);
+                        this.changeConnectionState(MonitorConnectionState.readyForCommunication);
+                    })
+                );
+    
+            }
+            
+            catch (e) {
+                this.changeConnectionState(MonitorConnectionState.inactive);
+                this.getErrorHandlerFunc("Scan error",errorFn)(e);
+                return Promise.reject(e);
+            }
+        }            
 
 
 

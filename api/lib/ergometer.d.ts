@@ -1797,6 +1797,8 @@ declare namespace ergometer {
         static canUseCordovaHid(): boolean;
         static canUseUsb(): boolean;
         protected initialize(): void;
+        private initDriver();
+        private checkInitDriver();
         driver: ergometer.usb.IDriver;
         protected driver_write(data: ArrayBufferView): Promise<void>;
         private receiveData(data);
@@ -2149,6 +2151,8 @@ declare namespace ergometer {
         protected enableDisableNotification(): Promise<void>;
         protected onPowerCurveRowingGeneralStatus(data: ergometer.RowingGeneralStatus): void;
         currentDriverIsWebBlueTooth(): boolean;
+        protected initDriver(): void;
+        protected checkInitDriver(): void;
         /**
          *
          */
@@ -2300,6 +2304,8 @@ declare namespace ergometer {
         readonly driver: ergometer.ble.IDriver;
         readonly heartRateDataEvent: pubSub.Event<HeartRateDataEvent>;
         protected initialize(): void;
+        private checkInitDriver();
+        private initDriver();
         disconnect(): void;
         readonly deviceInfo: ergometer.HeartRateDeviceInfo;
         private _registeredGuids;
