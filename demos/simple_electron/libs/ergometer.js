@@ -4858,12 +4858,12 @@ var ergometer;
                     if (errorFn)
                         errorFn(e);
                     if (_this.connectionState < ergometer.MonitorConnectionState.connected)
-                        _this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
+                        _this.changeConnectionState(ergometer.MonitorConnectionState.deviceReady);
                 }));
             }
             catch (e) {
                 if (this.connectionState < ergometer.MonitorConnectionState.connected)
-                    this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
+                    this.changeConnectionState(ergometer.MonitorConnectionState.inactive);
                 this.getErrorHandlerFunc("Scan error", errorFn)(e);
                 return Promise.reject(e);
             }

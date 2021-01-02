@@ -949,7 +949,7 @@
                     this.getErrorHandlerFunc("Scan error",(e)=>{
                         if (errorFn) errorFn(e);
                         if (this.connectionState<MonitorConnectionState.connected)
-                          this.changeConnectionState(MonitorConnectionState.readyForCommunication);
+                          this.changeConnectionState(MonitorConnectionState.deviceReady);
                     })
                 );
     
@@ -957,7 +957,7 @@
             
             catch (e) {
                 if (this.connectionState<MonitorConnectionState.connected)
-                  this.changeConnectionState(MonitorConnectionState.readyForCommunication);
+                  this.changeConnectionState(MonitorConnectionState.inactive);
                 this.getErrorHandlerFunc("Scan error",errorFn)(e);
                 return Promise.reject(e);
             }
