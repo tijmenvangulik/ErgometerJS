@@ -1384,19 +1384,33 @@ var bleCentral;
         DriverBleCentral.prototype.disconnect = function () {
             ble.disconnect(this._device.id);
         };
-        DriverBleCentral.prototype.startScan = function (foundFn) {
+        DriverBleCentral.prototype.startScan = function (foundFn, retry) {
             var _this = this;
+            if (retry === void 0) { retry = true; }
             return new Promise(function (resolve, reject) {
-                ble.startScan(_this._scanServices, function (foundData) {
-                    if (foundFn)
-                        foundFn({
-                            address: foundData.id,
-                            name: foundData.name,
-                            rssi: foundData.rssi,
-                            _internalDevice: foundData
-                        });
-                }, reject);
-                resolve();
+                //work around ios problem that ble is not yet active
+                //when the start scan is called, so wait a bit when an error happens 
+                //and then retry, give an error when it ble is not enabled
+                ble.isEnabled(function () {
+                    ble.startScan(_this._scanServices, function (foundData) {
+                        if (foundFn)
+                            foundFn({
+                                address: foundData.id,
+                                name: foundData.name,
+                                rssi: foundData.rssi,
+                                _internalDevice: foundData
+                            });
+                    }, reject);
+                    resolve();
+                }, function (err) {
+                    if (retry) {
+                        setTimeout(function () {
+                            _this.startScan(foundFn, false).then(resolve).catch(reject);
+                        }, 1000);
+                    }
+                    else
+                        reject("Can not start scan, Bluetooth is not enabled. Please activate blue tooth.  (" + err + ")");
+                });
             });
         };
         DriverBleCentral.prototype.stopScan = function () {

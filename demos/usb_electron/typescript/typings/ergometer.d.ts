@@ -313,7 +313,7 @@ declare namespace bleCentral {
         connect(device: ergometer.ble.IDevice, disconnectFn: () => void): Promise<void>;
         constructor(_scanServices: string[]);
         disconnect(): void;
-        startScan(foundFn?: ergometer.ble.IFoundFunc): Promise<void>;
+        startScan(foundFn?: ergometer.ble.IFoundFunc, retry?: boolean): Promise<void>;
         stopScan(): Promise<void>;
         writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
         readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;

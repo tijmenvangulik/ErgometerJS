@@ -30,6 +30,8 @@ Basically ErgometerJS needs javascript and a blue tooth driver which can be (nob
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
 
 # Change Log
+- 1.4.5
+  * Made a work around for ble central bug for ios (1.3.1) You have run start scan twice to get the scan to work on ios13
 - 1.4.4
   * Cordova ios has very late library initialization (even after device ready). Recheck if the driver needs initialization just before connecting 
   * Improved error handling and stop scan when driver could not be found
