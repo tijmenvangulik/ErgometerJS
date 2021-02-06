@@ -64,7 +64,7 @@ namespace ergometer.usb {
         private receivedReport(ev: webhid.HIDInputReportEvent) {
             var inputData= ev.data;    
             //todo chack on ev.reportId==REPORT_TYPE
-            if (inputData && inputData.byteLength==USB_CSAVE_SIZE) {         
+            if (inputData && inputData.byteLength>=USB_CSAVE_SIZE) {         
                 //copy all results into a buffer of 120
                 var endByte=USB_CSAVE_SIZE-1;
                 while (endByte>=0 && inputData.getUint8(endByte)==0) endByte--;

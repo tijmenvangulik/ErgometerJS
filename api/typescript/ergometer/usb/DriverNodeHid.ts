@@ -77,7 +77,7 @@ namespace ergometer.usb {
                 this._hid.read((err,inputData)=>{
                     if (err) this.callError(err);
                     else {
-                        if (inputData && inputData.length==WRITE_BUF_SIZE && inputData[0]==REPORT_TYPE) {
+                        if (inputData && inputData.length>=WRITE_BUF_SIZE && inputData[0]==REPORT_TYPE) {
                             //copy all results into a buffer of 121
                             var endByte=WRITE_BUF_SIZE-1;
                             while (endByte>=0 && inputData[endByte]==0) endByte--;

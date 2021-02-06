@@ -65,7 +65,7 @@ namespace ergometer.usb {
                         resolve();
                         //handle the resolve later
                         setTimeout(()=>{
-                            if (data && data.byteLength == usb.WRITE_BUF_SIZE ) {
+                            if (data && data.byteLength >= usb.WRITE_BUF_SIZE ) {
         
                                 var inputData = new DataView(data);
                 

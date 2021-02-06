@@ -1821,7 +1821,7 @@ var ergometer;
                         if (err)
                             _this.callError(err);
                         else {
-                            if (inputData && inputData.length == usb.WRITE_BUF_SIZE && inputData[0] == usb.REPORT_TYPE) {
+                            if (inputData && inputData.length >= usb.WRITE_BUF_SIZE && inputData[0] == usb.REPORT_TYPE) {
                                 //copy all results into a buffer of 121
                                 var endByte = usb.WRITE_BUF_SIZE - 1;
                                 while (endByte >= 0 && inputData[endByte] == 0)
@@ -1928,7 +1928,7 @@ var ergometer;
             DeviceWebHid.prototype.receivedReport = function (ev) {
                 var inputData = ev.data;
                 //todo chack on ev.reportId==REPORT_TYPE
-                if (inputData && inputData.byteLength == usb.USB_CSAVE_SIZE) {
+                if (inputData && inputData.byteLength >= usb.USB_CSAVE_SIZE) {
                     //copy all results into a buffer of 120
                     var endByte = usb.USB_CSAVE_SIZE - 1;
                     while (endByte >= 0 && inputData.getUint8(endByte) == 0)
@@ -2030,7 +2030,7 @@ var ergometer;
                             resolve();
                             //handle the resolve later
                             setTimeout(function () {
-                                if (data && data.byteLength == usb.WRITE_BUF_SIZE) {
+                                if (data && data.byteLength >= usb.WRITE_BUF_SIZE) {
                                     var inputData = new DataView(data);
                                     var endByte = usb.WRITE_BUF_SIZE - 1;
                                     while (endByte >= 1 && inputData.getUint8(endByte) == 0)
