@@ -1188,7 +1188,7 @@
                     driveLength: data.getUint8(ble.PM_Stroke_Data_BLE_Payload.DRIVE_LENGTH) / 100, //meters
                     driveTime: data.getUint8(ble.PM_Stroke_Data_BLE_Payload.DRIVE_TIME) * 10, //ms
                     strokeRecoveryTime: (data.getUint8(ble.PM_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_LO) + data.getUint8(ble.PM_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_HI)*256) * 10, //ms
-                    strokeDistance: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.STROKE_DISTANCE_LO) / 100,//meter
+                    strokeDistance: (data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_LO)+data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_HI)*256) / 100,//meter
                     peakDriveForce: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO) / 10, //lbs
                     averageDriveForce: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO) / 10, //lbs
                     workPerStroke: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO) / 10, //jouls
@@ -1202,7 +1202,7 @@
                     driveLength: data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.DRIVE_LENGTH) / 100, //meters
                     driveTime: data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.DRIVE_TIME) * 10, //ms
                     strokeRecoveryTime: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_LO) * 10, //ms
-                    strokeDistance: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_LO) / 100,//meter
+                    strokeDistance: (data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_LO)+data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_HI)*256) / 100,//meter
                     peakDriveForce: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO) / 10, //lbs
                     averageDriveForce: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO) / 10, //lbs
                     workPerStroke: null,

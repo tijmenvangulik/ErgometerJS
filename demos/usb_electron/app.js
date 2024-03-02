@@ -34,7 +34,7 @@ var App = /** @class */ (function () {
         get: function () {
             return this._demo;
         },
-        enumerable: true,
+        enumerable: false,
         configurable: true
     });
     return App;
@@ -72,7 +72,7 @@ var Demo = /** @class */ (function () {
         get: function () {
             return this._performanceMonitor;
         },
-        enumerable: true,
+        enumerable: false,
         configurable: true
     });
     /**

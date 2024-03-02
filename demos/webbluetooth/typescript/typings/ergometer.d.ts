@@ -45,7 +45,7 @@ declare namespace ergometer.utils {
          * @param {*} value
          * @returns {LocalPromise}
          */
-        private resolveWith(value);
+        private resolveWith;
         private maxPendingPromises;
         private maxQueuedPromises;
         private pendingPromises;
@@ -74,7 +74,7 @@ declare namespace ergometer.utils {
          * @returns {boolean} true if first item removed from queue
          * @private
          */
-        private _dequeue();
+        private _dequeue;
     }
 }
 /**
@@ -127,9 +127,9 @@ declare namespace ergometer.pubSub {
         sub(applyObject: any, event: T): void;
         unsub(event: T): void;
         protected doPub(args: any[]): void;
-        readonly pub: T;
-        readonly pubAsync: T;
-        readonly count: number;
+        get pub(): T;
+        get pubAsync(): T;
+        get count(): number;
         registerChangedEvent(func: ISubscriptionChanged): void;
     }
 }
@@ -164,7 +164,7 @@ declare namespace ergometer {
         error = 0,
         info = 1,
         debug = 2,
-        trace = 3,
+        trace = 3
     }
     interface LogEvent extends pubSub.ISubscription {
         (text: string, logLevel: LogLevel): void;
@@ -176,7 +176,7 @@ declare namespace ergometer {
         connecting = 3,
         connected = 4,
         servicesFound = 5,
-        readyForCommunication = 6,
+        readyForCommunication = 6
     }
     interface ConnectionStateChangedEvent extends pubSub.ISubscription {
         (oldState: MonitorConnectionState, newState: MonitorConnectionState): void;
@@ -190,20 +190,21 @@ declare namespace ergometer {
         * By default it the logEvent will return errors if you want more debug change the log level
         * @returns {LogLevel}
         */
-        readonly logEvent: pubSub.Event<LogEvent>;
+        get logEvent(): pubSub.Event<LogEvent>;
         constructor();
         protected initialize(): void;
+        get logLevel(): LogLevel;
         /**
          * By default it the logEvent will return errors if you want more debug change the log level
          * @param value
          */
-        logLevel: LogLevel;
+        set logLevel(value: LogLevel);
         disconnect(): void;
         /**
          * read the current connection state
          * @returns {MonitorConnectionState}
          */
-        readonly connectionState: MonitorConnectionState;
+        get connectionState(): MonitorConnectionState;
         protected connected(): void;
         /**
          * event which is called when the connection state is changed. For example this way you
@@ -211,7 +212,7 @@ declare namespace ergometer {
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<ConnectionStateChangedEvent>}
          */
-        readonly connectionStateChangedEvent: pubSub.Event<ConnectionStateChangedEvent>;
+        get connectionStateChangedEvent(): pubSub.Event<ConnectionStateChangedEvent>;
         debugInfo(info: string): void;
         /**
          *
@@ -272,7 +273,7 @@ declare namespace ergometer.ble {
 declare namespace ergometer.ble {
     class DriverBleat implements IDriver {
         private _device;
-        private getCharacteristic(serviceUid, characteristicUid);
+        private getCharacteristic;
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
         disconnect(): void;
         startScan(foundFn?: IFoundFunc): Promise<void>;
@@ -339,16 +340,16 @@ declare namespace ergometer.ble {
         private _listenerMap;
         private _listerCharacteristicMap;
         constructor(_performanceMonitor: MonitorBase, _scanServices: string[], _scanOptionalServices: string[]);
-        private getCharacteristic(serviceUid, characteristicUid);
-        private onDisconnected(event);
-        private clearConnectionVars();
+        private getCharacteristic;
+        private onDisconnected;
+        private clearConnectionVars;
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
         disconnect(): void;
         startScan(foundFn?: IFoundFunc): Promise<void>;
         stopScan(): Promise<void>;
         writeCharacteristic(serviceUIID: string, characteristicUUID: string, data: ArrayBufferView): Promise<void>;
         readCharacteristic(serviceUIID: string, characteristicUUID: string): Promise<ArrayBuffer>;
-        private onCharacteristicValueChanged(event);
+        private onCharacteristicValueChanged;
         enableNotification(serviceUIID: string, characteristicUUID: string, receive: (data: ArrayBuffer) => void): Promise<void>;
         disableNotification(serviceUIID: string, characteristicUUID: string): Promise<void>;
     }
@@ -378,7 +379,7 @@ declare namespace ergometer.ble {
         readCharacteristic = 7,
         enableNotification = 8,
         notificationReceived = 9,
-        disableNotification = 10,
+        disableNotification = 10
     }
     interface IRecordingItem {
         timeStamp: number;
@@ -395,12 +396,13 @@ declare namespace ergometer.ble {
         constructor(performanceMonitor: MonitorBase, realDriver: IDriver);
         protected getRelativeTime(): number;
         addRecording(eventType: RecordingEventType, data?: IRecordCharacteristic | IRecordDevice): IRecordingItem;
-        events: ergometer.ble.IRecordingItem[];
+        get events(): ergometer.ble.IRecordingItem[];
+        set events(value: ergometer.ble.IRecordingItem[]);
         clear(): void;
         startRecording(): void;
         protected recordResolveFunc(resolve: () => void, rec: IRecordingItem): () => void;
         protected recordResolveBufferFunc(resolve: (data: ArrayBuffer) => void, rec: IRecordingItem): (data: ArrayBuffer) => void;
-        protected recordErrorFunc(reject: (e) => void, rec: IRecordingItem): (e) => void;
+        protected recordErrorFunc(reject: (e: any) => void, rec: IRecordingItem): (e: any) => void;
         startScan(foundFn?: IFoundFunc): Promise<void>;
         stopScan(): void;
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
@@ -431,7 +433,7 @@ declare namespace ergometer.ble {
         private _performanceMonitor;
         protected getRelativeTime(): number;
         constructor(performanceMonitor: MonitorBase, realDriver: IDriver);
-        readonly events: ergometer.ble.IRecordingItem[];
+        get events(): ergometer.ble.IRecordingItem[];
         protected isCallBack(eventType: RecordingEventType): boolean;
         protected isSameEvent(event1: IRecordingItem, event2: IRecordingItem): boolean;
         protected runEvent(event: IRecordingItem, queuedEvent: CallBackEvent): void;
@@ -442,7 +444,8 @@ declare namespace ergometer.ble {
         protected timeNextCheck(timeStamp?: number): void;
         protected addEvent(eventType: RecordingEventType, isMethod: boolean, resolve?: (e?: any) => void, reject?: (e: any) => void, serviceUIID?: string, characteristicUUID?: string): void;
         replay(events: IRecordingItem[]): void;
-        playing: boolean;
+        get playing(): boolean;
+        set playing(value: boolean);
         startScan(foundFn?: IFoundFunc): Promise<void>;
         stopScan(): void;
         connect(device: IDevice, disconnectFn: () => void): Promise<void>;
@@ -508,14 +511,14 @@ declare namespace ergometer.usb {
         serialNumber: string;
         constructor(deviceInfo: any);
         callError(err: any): void;
-        private disconnected(device);
+        private disconnected;
         private received;
         private _receiveData;
         open(disconnect: DisconnectFunc, error: (err: any) => void, receiveData: (data: DataView) => void): Promise<void>;
-        private detachDisconnect();
+        private detachDisconnect;
         close(): Promise<void>;
         sendData(data: ArrayBuffer): Promise<void>;
-        private receivedReport(ev);
+        private receivedReport;
     }
     class DriverWebHid implements IDriver {
         requestDevics(): Promise<Devices>;
@@ -532,7 +535,7 @@ declare namespace ergometer.usb {
         serialNumber: string;
         constructor(device: any);
         callError(err: any): void;
-        private disconnected(device);
+        private disconnected;
         private _receiveData;
         open(disconnect: DisconnectFunc, error: (err: any) => void, receiveData: (data: DataView) => void): Promise<void>;
         close(): Promise<void>;
@@ -603,7 +606,7 @@ declare namespace ergometer.csafe.defs {
         GOFINISHED_CMD = 134,
         GOREADY_CMD = 135,
         BADID_CMD = 136,
-        CTRL_CMD_SHORT_MAX = 137,
+        CTRL_CMD_SHORT_MAX = 137
     }
     const enum SHORT_STATUS_CMDS {
         GETVERSION_CMD = 145,
@@ -618,7 +621,7 @@ declare namespace ergometer.csafe.defs {
         GETSERVICECODE_CMD = 157,
         GETUSERCFG1_CMD = 158,
         GETUSERCFG2_CMD = 159,
-        STATUS_CMD_SHORT_MAX = 160,
+        STATUS_CMD_SHORT_MAX = 160
     }
     const enum SHORT_DATA_CMDS {
         GETTWORK_CMD = 160,
@@ -642,29 +645,29 @@ declare namespace ergometer.csafe.defs {
         GETHRMAX_CMD = 182,
         GETUSERDATA1_CMD = 190,
         GETUSERDATA2_CMD = 191,
-        DATA_CMD_SHORT_MAX = 192,
+        DATA_CMD_SHORT_MAX = 192
     }
     const enum SHORT_AUDIO_CMDS {
         GETAUDIOCHANNEL_CMD = 192,
         GETAUDIOVOLUME_CMD = 193,
         GETAUDIOMUTE_CMD = 194,
-        AUDIO_CMD_SHORT_MAX = 195,
+        AUDIO_CMD_SHORT_MAX = 195
     }
     const enum SHORT_TEXTCFG_CMDS {
         ENDTEXT_CMD = 224,
         DISPLAYPOPUP_CMD = 225,
-        TEXTCFG_CMD_SHORT_MAX = 226,
+        TEXTCFG_CMD_SHORT_MAX = 226
     }
     const enum SHORT_TEXTSTATUS_CMDS {
         GETPOPUPSTATUS_CMD = 229,
-        TEXTSTATUS_CMD_SHORT_MAX = 230,
+        TEXTSTATUS_CMD_SHORT_MAX = 230
     }
     const enum LONG_CTRL_CMDS {
         AUTOUPLOAD_CMD = 1,
         UPLIST_CMD = 2,
         UPSTATUSSEC_CMD = 4,
         UPLISTSEC_CMD = 5,
-        CTRL_CMD_LONG_MAX = 6,
+        CTRL_CMD_LONG_MAX = 6
     }
     const enum LONG_CFG_CMDS {
         IDDIGITS_CMD = 16,
@@ -673,7 +676,7 @@ declare namespace ergometer.csafe.defs {
         SETTIMEOUT_CMD = 19,
         SETUSERCFG1_CMD = 26,
         SETUSERCFG2_CMD = 27,
-        CFG_CMD_LONG_MAX = 28,
+        CFG_CMD_LONG_MAX = 28
     }
     const enum LONG_DATA_CMDS {
         SETTWORK_CMD = 32,
@@ -693,7 +696,7 @@ declare namespace ergometer.csafe.defs {
         SETPOWER_CMD = 52,
         SETHRZONE_CMD = 53,
         SETHRMAX_CMD = 54,
-        DATA_CMD_LONG_MAX = 55,
+        DATA_CMD_LONG_MAX = 55
     }
     const enum LONG_AUDIO_CMDS {
         SETCHANNELRANGE_CMD = 64,
@@ -701,29 +704,29 @@ declare namespace ergometer.csafe.defs {
         SETAUDIOMUTE_CMD = 66,
         SETAUDIOCHANNEL_CMD = 67,
         SETAUDIOVOLUME_CMD = 68,
-        AUDIO_CMD_LONG_MAX = 69,
+        AUDIO_CMD_LONG_MAX = 69
     }
     const enum LONG_TEXTCFG_CMDS {
         STARTTEXT_CMD = 96,
         APPENDTEXT_CMD = 97,
-        TEXTCFG_CMD_LONG_MAX = 98,
+        TEXTCFG_CMD_LONG_MAX = 98
     }
     const enum LONG_TEXTSTATUS_CMDS {
         GETTEXTSTATUS_CMD = 101,
-        TEXTSTATUS_CMD_LONG_MAX = 102,
+        TEXTSTATUS_CMD_LONG_MAX = 102
     }
     const enum LONG_CAP_CMDS {
         GETCAPS_CMD = 112,
         GETUSERCAPS1_CMD = 126,
         GETUSERCAPS2_CMD = 127,
-        CAP_CMD_LONG_MAX = 128,
+        CAP_CMD_LONG_MAX = 128
     }
     const enum LONG_PMPROPRIETARY_CMDS {
         SETPMCFG_CMD = 118,
         SETPMDATA_CMD = 119,
         GETPMCFG_CMD = 126,
         GETPMDATA_CMD = 127,
-        PMPROPRIETARY_CMD_LONG_MAX = 128,
+        PMPROPRIETARY_CMD_LONG_MAX = 128
     }
     const GETPMCFG_CMD_SHORT_MIN = 128;
     const GETPMCFG_CMD_LONG_MIN = 80;
@@ -765,7 +768,7 @@ declare namespace ergometer.csafe.defs {
         PM_GET_CPUTICKRATE = 157,
         PM_GET_LOGCARDCENSUS = 158,
         PM_GET_WORKOUTINTERVALCOUNT = 159,
-        GETPMCFG_CMD_SHORT_MAX = 160,
+        GETPMCFG_CMD_SHORT_MAX = 160
     }
     const enum PM_SHORT_PULL_DATA_CMDS {
         PM_GET_WORKTIME = 160,
@@ -816,7 +819,7 @@ declare namespace ergometer.csafe.defs {
         PM_GET_DISPLAYUPDATETIME = 205,
         PM_GET_SYNCFRACTIONALTIME = 206,
         PM_GET_RESTTIME = 207,
-        GETPMDATA_CMD_SHORT_MAX = 208,
+        GETPMDATA_CMD_SHORT_MAX = 208
     }
     const enum PM_SHORT_PUSH_DATA_CMDS {
         PM_SET_SYNC_DISTANCE = 208,
@@ -828,12 +831,12 @@ declare namespace ergometer.csafe.defs {
         PM_SET_SYNC_VERSION_INFO = 214,
         PM_SET_SYNC_RACETICKTIME = 215,
         PM_SET_SYNC_DATAALL = 216,
-        SETPMDATA_CMD_SHORT_MAX = 217,
+        SETPMDATA_CMD_SHORT_MAX = 217
     }
     const enum PM_SHORT_PUSH_CFG_CMDS {
         PM_SET_RESET_ALL = 224,
         PM_SET_RESET_ERGNUMBER = 225,
-        SETPMCFG_CMD_SHORT_MAX = 226,
+        SETPMCFG_CMD_SHORT_MAX = 226
     }
     const enum PM_LONG_PUSH_CFG_CMDS {
         PM_SET_BAUDRATE = 0,
@@ -881,7 +884,7 @@ declare namespace ergometer.csafe.defs {
         PM_SET_USER_PROFILE = 42,
         PM_SET_HRM = 43,
         PM_SET_SENSOR_CHANNEL = 47,
-        SETPMCFG_CMD_LONG_MAX = 48,
+        SETPMCFG_CMD_LONG_MAX = 48
     }
     const enum PM_LONG_PUSH_DATA_CMDS {
         PM_SET_TEAM_DISTANCE = 48,
@@ -894,7 +897,7 @@ declare namespace ergometer.csafe.defs {
         PM_SET_LOCALRACEPARTICIPANT = 55,
         PM_SET_ANTRFMODE = 78,
         PM_SET_MEMORY = 79,
-        SETPMDATA_CMD_LONG_MAX = 80,
+        SETPMDATA_CMD_LONG_MAX = 80
     }
     const enum PM_LONG_PULL_CFG_CMDS {
         PM_GET_ERGNUMBER = 80,
@@ -903,7 +906,7 @@ declare namespace ergometer.csafe.defs {
         PM_GET_LOCALRACEPARTICIPANT = 83,
         PM_GET_USER_ID = 84,
         PM_GET_USER_PROFILE = 85,
-        GETPMCFG_CMD_LONG_MAX = 86,
+        GETPMCFG_CMD_LONG_MAX = 86
     }
     const enum PM_LONG_PULL_DATA_CMDS {
         PM_GET_MEMORY = 104,
@@ -915,7 +918,7 @@ declare namespace ergometer.csafe.defs {
         CSAFE_PM_GET_STROKESTATS = 110,
         CSAFE_PM_GET_DIAGLOG_RECORD_NUM = 112,
         CSAFE_PM_GET_DIAGLOG_RECORD = 113,
-        GETPMDATA_CMD_LONG_MAX = 114,
+        GETPMDATA_CMD_LONG_MAX = 114
     }
     const PREVOK_FLG = 0;
     const PREVREJECT_FLG = 16;
@@ -1027,13 +1030,13 @@ declare namespace ergometer.csafe {
         PAUZED = 6,
         FINISHED = 7,
         MANUAL = 8,
-        OFFLINE = 9,
+        OFFLINE = 9
     }
     const enum PrevFrameState {
         OK = 0,
         REJECT = 1,
         BAD = 2,
-        NOT_READY = 3,
+        NOT_READY = 3
     }
     interface ICommandParamsBase {
         onError?: ErrorHandler;
@@ -1286,7 +1289,7 @@ declare namespace ergometer {
         rate1sec = 0,
         rate500ms = 1,
         rate250ms = 2,
-        rate100ms = 3,
+        rate100ms = 3
     }
     const enum ErgmachineType {
         staticD = 0,
@@ -1303,7 +1306,7 @@ declare namespace ergometer {
         slidesDynamic = 32,
         staticDyno = 64,
         staticSki = 128,
-        num = 129,
+        num = 129
     }
     const enum WorkoutType {
         justRowNoSplits = 0,
@@ -1317,7 +1320,7 @@ declare namespace ergometer {
         variableInterval = 8,
         variableUndefinedRestInterval = 9,
         fixedCalorie = 10,
-        fixedWattMinutes = 11,
+        fixedWattMinutes = 11
     }
     const enum IntervalType {
         time = 0,
@@ -1330,7 +1333,7 @@ declare namespace ergometer {
         calRestUndefined = 7,
         wattMinute = 8,
         wattMinuteRestUndefined = 9,
-        none = 255,
+        none = 255
     }
     const enum WorkoutState {
         waitToBegin = 0,
@@ -1346,30 +1349,30 @@ declare namespace ergometer {
         workoutEnd = 10,
         terminate = 11,
         workoutLogged = 12,
-        rearm = 13,
+        rearm = 13
     }
     const enum RowingState {
         inactive = 0,
-        active = 1,
+        active = 1
     }
     const enum StrokeState {
         waitingForWheelToReachMinSpeedState = 0,
         waitingForWheelToAccelerateState = 1,
         drivingState = 2,
         dwellingAfterDriveState = 3,
-        recoveryState = 4,
+        recoveryState = 4
     }
     const enum WorkoutDurationType {
         timeDuration = 0,
         caloriesDuration = 64,
         distanceDuration = 128,
-        wattsDuration = 192,
+        wattsDuration = 192
     }
     const enum SampleRate {
         rate1sec = 0,
         rate500ms = 1,
         rate250ms = 2,
-        rate100ms = 3,
+        rate100ms = 3
     }
     const enum Program {
         Programmed = 0,
@@ -1387,7 +1390,7 @@ declare namespace ergometer {
         FavoritesList2 = 12,
         FavoritesList3 = 13,
         FavoritesList4 = 14,
-        FavoritesList5 = 15,
+        FavoritesList5 = 15
     }
     const enum Unit {
         distanceMile = 1,
@@ -1442,7 +1445,7 @@ declare namespace ergometer {
         powerWatts = 88,
         energyInchlb = 90,
         energyFootlb = 91,
-        energyNm = 92,
+        energyNm = 92
     }
     interface RowingGeneralStatus {
         elapsedTime: number;
@@ -1592,7 +1595,7 @@ declare namespace ergometer {
     interface SendBufferQueued {
         commandArray: number[];
         resolve: () => void;
-        reject: (e) => void;
+        reject: (e: any) => void;
         rawCommandBuffer: IRawCommand[];
     }
     interface ParsedCSafeCommand {
@@ -1607,7 +1610,7 @@ declare namespace ergometer {
         parseCommandLength = 3,
         parseDetailCommand = 4,
         parseDetailCommandLength = 5,
-        parseCommandData = 6,
+        parseCommandData = 6
     }
     interface PowerCurveEvent extends pubSub.ISubscription {
         (data: number[]): void;
@@ -1630,10 +1633,10 @@ declare namespace ergometer {
         private _timeOutHandle;
         stuffByteActive: boolean;
         endCommand: number;
-        readonly commands: csafe.IRawCommand[];
+        get commands(): csafe.IRawCommand[];
         removeRemainingCommands(): void;
-        private timeOut();
-        constructor(monitor: PerformanceMonitorBase, resolve: () => void, reject: (e) => void, commands: csafe.IRawCommand[], timeOut: number);
+        private timeOut;
+        constructor(monitor: PerformanceMonitorBase, resolve: () => void, reject: (e: any) => void, commands: csafe.IRawCommand[], timeOut: number);
         remove(): void;
         processedBuffer(): void;
         removedWithError(e: any): void;
@@ -1684,8 +1687,8 @@ declare namespace ergometer {
          * returns error and other log information. Some errors can only be received using the logEvent
          * @returns {pubSub.Event<LogEvent>}
          */
-        readonly powerCurveEvent: pubSub.Event<ergometer.PowerCurveEvent>;
-        readonly powerCurve: number[];
+        get powerCurveEvent(): pubSub.Event<ergometer.PowerCurveEvent>;
+        get powerCurve(): number[];
         protected clearAllBuffers(): void;
         protected beforeConnected(): void;
         protected clearWaitResponseBuffers(): void;
@@ -1785,34 +1788,35 @@ declare namespace ergometer {
         private _strokeState;
         private _lastTrainingTime;
         private _lastLowResUpdate;
-        readonly strokeData: StrokeData;
-        readonly trainingData: TrainingData;
-        readonly strokeState: StrokeState;
-        readonly device: ergometer.usb.IDevice;
-        readonly strokeStateEvent: pubSub.Event<StrokeStateChangedEvent>;
-        readonly trainingDataEvent: pubSub.Event<TrainingDataEvent>;
-        readonly strokeDataEvent: pubSub.Event<StrokeDataEvent>;
+        get strokeData(): StrokeData;
+        get trainingData(): TrainingData;
+        get strokeState(): StrokeState;
+        get device(): ergometer.usb.IDevice;
+        get strokeStateEvent(): pubSub.Event<StrokeStateChangedEvent>;
+        get trainingDataEvent(): pubSub.Event<TrainingDataEvent>;
+        get strokeDataEvent(): pubSub.Event<StrokeDataEvent>;
         static canUseNodeHid(): boolean;
         static canUseWebHid(): boolean;
         static canUseCordovaHid(): boolean;
         static canUseUsb(): boolean;
         protected initialize(): void;
-        private initDriver();
-        private checkInitDriver();
-        driver: ergometer.usb.IDriver;
+        private initDriver;
+        private checkInitDriver;
+        get driver(): ergometer.usb.IDriver;
+        set driver(value: ergometer.usb.IDriver);
         protected driver_write(data: ArrayBufferView): Promise<void>;
-        private receiveData(data);
+        private receiveData;
         sendCSafeBuffer(csafeBuffer: ergometer.csafe.IBuffer): Promise<void>;
         requestDevics(): Promise<UsbDevices>;
         disconnect(): void;
-        private disconnected();
+        private disconnected;
         connectToDevice(device: UsbDevice): Promise<void>;
         protected getPacketSize(): number;
         protected highResolutionUpdate(): Promise<void>;
-        private handlePowerCurve();
+        private handlePowerCurve;
         protected connected(): void;
         private _autoUpdating;
-        private listeningToEvents();
+        private listeningToEvents;
         protected autoUpdate(first?: boolean): void;
         protected isWaiting(): boolean;
         protected nextAutoUpdate(): void;
@@ -1822,7 +1826,7 @@ declare namespace ergometer {
         protected lowResolutionUpdate(): Promise<void>;
         protected newStrokeState(state: StrokeState): void;
         protected trainingDataUpdate(): Promise<void>;
-        private resetStartRowing();
+        private resetStartRowing;
     }
 }
 /**
@@ -1954,23 +1958,28 @@ declare namespace ergometer {
         private _autoReConnect;
         private _generalStatusEventAttachedByPowerCurve;
         private _recording;
-        protected readonly recordingDriver: ergometer.ble.RecordingDriver;
-        driver: ble.IDriver;
-        recording: boolean;
-        readonly replayDriver: ble.ReplayDriver;
-        replaying: boolean;
+        protected get recordingDriver(): ergometer.ble.RecordingDriver;
+        set driver(value: ble.IDriver);
+        get recording(): boolean;
+        set recording(value: boolean);
+        get replayDriver(): ble.ReplayDriver;
+        get replaying(): boolean;
         replay(events: ble.IRecordingItem[]): void;
-        recordingEvents: ble.IRecordingItem[];
+        set replaying(value: boolean);
+        get recordingEvents(): ble.IRecordingItem[];
+        set recordingEvents(value: ble.IRecordingItem[]);
+        get driver(): ergometer.ble.IDriver;
         /**
          * when the connection is lost re-connect
          * @returns {boolean}
          */
+        get autoReConnect(): boolean;
         /**
          *
          * when the connection is lost re-connect
          * @param value
          */
-        autoReConnect: boolean;
+        set autoReConnect(value: boolean);
         /**
          * On some android phones you can connect to a limited number of events. Use the multiplex property to overcome
          * this problem. When the multi plex mode is switched on the data send to the device can be a a bit different, see
@@ -1978,156 +1987,158 @@ declare namespace ergometer {
          *
          * @returns {boolean}
          */
+        get multiplex(): boolean;
         /**
          * On some android phones you can connect to a limited number of events. Use the multiplex property to overcome
          * this problem. When the multi plex mode is switched on the data send to the device can be a a bit different, see
          * the documentation in the properties You must set the multi plex property before connecting
          * @param value
          */
-        multiplex: boolean;
+        set multiplex(value: boolean);
         /**
          * an array of of performance monitor devices which where found during the scan.
          * the array is sorted by connection quality (best on top)
          *
          * @returns {DeviceInfo[]}
          */
-        readonly devices: ergometer.DeviceInfo[];
+        get devices(): ergometer.DeviceInfo[];
         /**
          * The values of the last rowingGeneralStatus event
          *
          * @returns {RowingGeneralStatus}
          */
-        readonly rowingGeneralStatus: RowingGeneralStatus;
+        get rowingGeneralStatus(): RowingGeneralStatus;
         /**
          * The values of the last rowingAdditionalStatus1 event
          * @returns {RowingAdditionalStatus1}
          */
-        readonly rowingAdditionalStatus1: RowingAdditionalStatus1;
+        get rowingAdditionalStatus1(): RowingAdditionalStatus1;
         /**
          * The values of the last RowingAdditionalStatus2 event
          * @returns {RowingAdditionalStatus2}
          */
-        readonly rowingAdditionalStatus2: RowingAdditionalStatus2;
+        get rowingAdditionalStatus2(): RowingAdditionalStatus2;
         /**
          *  The values of the last rowingStrokeData event
          * @returns {RowingStrokeData}
          */
-        readonly rowingStrokeData: RowingStrokeData;
+        get rowingStrokeData(): RowingStrokeData;
         /**
          * The values of the last rowingAdditionalStrokeData event
          * @returns {RowingAdditionalStrokeData}
          */
-        readonly rowingAdditionalStrokeData: RowingAdditionalStrokeData;
+        get rowingAdditionalStrokeData(): RowingAdditionalStrokeData;
         /**
          * The values of the last rowingSplitIntervalData event
          * @returns {RowingSplitIntervalData}
          */
-        readonly rowingSplitIntervalData: RowingSplitIntervalData;
+        get rowingSplitIntervalData(): RowingSplitIntervalData;
         /**
          * The values of the last rowingAdditionalSplitIntervalData event
          * @returns {RowingAdditionalSplitIntervalData}
          */
-        readonly rowingAdditionalSplitIntervalData: RowingAdditionalSplitIntervalData;
+        get rowingAdditionalSplitIntervalData(): RowingAdditionalSplitIntervalData;
         /**
          * The values of the last workoutSummaryData event
          * @returns {WorkoutSummaryData}
          */
-        readonly workoutSummaryData: WorkoutSummaryData;
+        get workoutSummaryData(): WorkoutSummaryData;
         /**
          * The values of the last additionalWorkoutSummaryData event
          * @returns {AdditionalWorkoutSummaryData}
          */
-        readonly additionalWorkoutSummaryData: AdditionalWorkoutSummaryData;
+        get additionalWorkoutSummaryData(): AdditionalWorkoutSummaryData;
         /**
          * The values of the last AdditionalWorkoutSummaryData2 event
          * @returns {AdditionalWorkoutSummaryData2}
          */
-        readonly additionalWorkoutSummaryData2: AdditionalWorkoutSummaryData2;
+        get additionalWorkoutSummaryData2(): AdditionalWorkoutSummaryData2;
         /**
          * The values of the last heartRateBeltInformation event
          * @returns {HeartRateBeltInformation}
          */
-        readonly heartRateBeltInformation: HeartRateBeltInformation;
+        get heartRateBeltInformation(): HeartRateBeltInformation;
         /**
          * read rowingGeneralStatus data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingGeneralStatusEvent>}
          */
-        readonly rowingGeneralStatusEvent: pubSub.Event<RowingGeneralStatusEvent>;
+        get rowingGeneralStatusEvent(): pubSub.Event<RowingGeneralStatusEvent>;
         /**
          * read rowingGeneralStatus1 data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingAdditionalStatus1Event>}
          */
-        readonly rowingAdditionalStatus1Event: pubSub.Event<RowingAdditionalStatus1Event>;
+        get rowingAdditionalStatus1Event(): pubSub.Event<RowingAdditionalStatus1Event>;
         /**
          * read rowingAdditionalStatus2 data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingAdditionalStatus2Event>}
          */
-        readonly rowingAdditionalStatus2Event: pubSub.Event<RowingAdditionalStatus2Event>;
+        get rowingAdditionalStatus2Event(): pubSub.Event<RowingAdditionalStatus2Event>;
         /**
          * read rowingStrokeData data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingStrokeDataEvent>}
          */
-        readonly rowingStrokeDataEvent: pubSub.Event<RowingStrokeDataEvent>;
+        get rowingStrokeDataEvent(): pubSub.Event<RowingStrokeDataEvent>;
         /**
          * read rowingAdditionalStrokeData data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingAdditionalStrokeDataEvent>}
          */
-        readonly rowingAdditionalStrokeDataEvent: pubSub.Event<RowingAdditionalStrokeDataEvent>;
+        get rowingAdditionalStrokeDataEvent(): pubSub.Event<RowingAdditionalStrokeDataEvent>;
         /**
          * read rowingSplitIntervalDat data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingSplitIntervalDataEvent>}
          */
-        readonly rowingSplitIntervalDataEvent: pubSub.Event<RowingSplitIntervalDataEvent>;
+        get rowingSplitIntervalDataEvent(): pubSub.Event<RowingSplitIntervalDataEvent>;
         /**
          * read rowingAdditionalSplitIntervalData data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<RowingAdditionalSplitIntervalDataEvent>}
          */
-        readonly rowingAdditionalSplitIntervalDataEvent: pubSub.Event<RowingAdditionalSplitIntervalDataEvent>;
+        get rowingAdditionalSplitIntervalDataEvent(): pubSub.Event<RowingAdditionalSplitIntervalDataEvent>;
         /**
          * read workoutSummaryData data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<WorkoutSummaryDataEvent>}
          */
-        readonly workoutSummaryDataEvent: pubSub.Event<WorkoutSummaryDataEvent>;
+        get workoutSummaryDataEvent(): pubSub.Event<WorkoutSummaryDataEvent>;
         /**
          * read additionalWorkoutSummaryData data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<AdditionalWorkoutSummaryDataEvent>}
          */
-        readonly additionalWorkoutSummaryDataEvent: pubSub.Event<AdditionalWorkoutSummaryDataEvent>;
+        get additionalWorkoutSummaryDataEvent(): pubSub.Event<AdditionalWorkoutSummaryDataEvent>;
         /**
          * read additionalWorkoutSummaryData2 data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<AdditionalWorkoutSummaryData2Event>}
          */
-        readonly additionalWorkoutSummaryData2Event: pubSub.Event<AdditionalWorkoutSummaryData2Event>;
+        get additionalWorkoutSummaryData2Event(): pubSub.Event<AdditionalWorkoutSummaryData2Event>;
         /**
          * read heartRateBeltInformation data
          * connect to the using .sub(this,myFunction)
          * @returns {pubSub.Event<HeartRateBeltInformationEvent>}
          */
-        readonly heartRateBeltInformationEvent: pubSub.Event<HeartRateBeltInformationEvent>;
+        get heartRateBeltInformationEvent(): pubSub.Event<HeartRateBeltInformationEvent>;
         /**
          * Get device information of the connected device.
          * @returns {DeviceInfo}
          */
-        readonly deviceInfo: ergometer.DeviceInfo;
+        get deviceInfo(): ergometer.DeviceInfo;
         /**
          * read the performance montitor sample rate. By default this is 500 ms
          * @returns {number}
          */
+        get sampleRate(): SampleRate;
         /**
          * Change the performance monitor sample rate.
          * @param value
          */
-        sampleRate: SampleRate;
+        set sampleRate(value: SampleRate);
         /**
          * disconnect the current connected device
          */
@@ -2301,13 +2312,13 @@ declare namespace ergometer {
         private _deviceInfo;
         private _devices;
         private _heartRateDataEvent;
-        readonly driver: ergometer.ble.IDriver;
-        readonly heartRateDataEvent: pubSub.Event<HeartRateDataEvent>;
+        get driver(): ergometer.ble.IDriver;
+        get heartRateDataEvent(): pubSub.Event<HeartRateDataEvent>;
         protected initialize(): void;
-        private checkInitDriver();
-        private initDriver();
+        private checkInitDriver;
+        private initDriver;
         disconnect(): void;
-        readonly deviceInfo: ergometer.HeartRateDeviceInfo;
+        get deviceInfo(): ergometer.HeartRateDeviceInfo;
         private _registeredGuids;
         currentDriverIsWebBlueTooth(): boolean;
         /**
