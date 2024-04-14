@@ -1117,7 +1117,7 @@ declare namespace ergometer.csafe {
         getPowerCurve(params: ICommandPowerCurve): IBuffer;
     }
     interface ICommandStrokeStats {
-        onDataReceived: (driveTime: number, strokeRecoveryTime: number) => void;
+        onDataReceived: (strokeDistance: number, driveTime: number, strokeRecoveryTime: number, strokeCount: number) => void;
         onError?: ErrorHandler;
     }
     interface IBuffer {
@@ -1763,6 +1763,10 @@ declare namespace ergometer {
         totCalories: number;
         caloriesPerHour: number;
         heartRate: number;
+        strokeDistance: number;
+        driveTime: number;
+        strokeRecoveryTime: number;
+        strokeCount: number;
     }
     class TrainingData {
         workoutType: WorkoutType;

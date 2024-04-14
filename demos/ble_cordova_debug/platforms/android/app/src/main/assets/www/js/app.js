@@ -1,7 +1,10 @@
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -242,6 +245,7 @@ var ergometer;
                 try {
                     this.pendingPromises++;
                     self.resolveWith(item.promiseGenerator.apply(item.context, item.params))
+                        // Forward all stuff
                         .then(function (value) {
                         // It is not pending now
                         self.pendingPromises--;
@@ -429,7 +433,7 @@ var ergometer;
                     };
                     return func;
                 },
-                enumerable: true,
+                enumerable: false,
                 configurable: true
             });
             Object.defineProperty(Event.prototype, "pubAsync", {
@@ -446,14 +450,14 @@ var ergometer;
                     };
                     return func;
                 },
-                enumerable: true,
+                enumerable: false,
                 configurable: true
             });
             Object.defineProperty(Event.prototype, "count", {
                 get: function () {
                     return this._subscribed.length;
                 },
-                enumerable: true,
+                enumerable: false,
                 configurable: true
             });
             Event.prototype.registerChangedEvent = function (func) {
@@ -545,7 +549,7 @@ var ergometer;
             get: function () {
                 return this._logEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         MonitorBase.prototype.initialize = function () {
@@ -561,7 +565,7 @@ var ergometer;
             set: function (value) {
                 this._logLevel = value;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         MonitorBase.prototype.disconnect = function () {
@@ -574,7 +578,7 @@ var ergometer;
             get: function () {
                 return this._connectionState;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         MonitorBase.prototype.connected = function () {
@@ -589,7 +593,7 @@ var ergometer;
             get: function () {
                 return this._connectionStateChangedEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         MonitorBase.prototype.debugInfo = function (info) {
@@ -834,7 +838,7 @@ var ergometer;
                 set: function (value) {
                     this._events = value;
                 },
-                enumerable: true,
+                enumerable: false,
                 configurable: true
             });
             RecordingDriver.prototype.clear = function () {
@@ -1384,19 +1388,33 @@ var bleCentral;
         DriverBleCentral.prototype.disconnect = function () {
             ble.disconnect(this._device.id);
         };
-        DriverBleCentral.prototype.startScan = function (foundFn) {
+        DriverBleCentral.prototype.startScan = function (foundFn, retry) {
             var _this = this;
+            if (retry === void 0) { retry = true; }
             return new Promise(function (resolve, reject) {
-                ble.startScan(_this._scanServices, function (foundData) {
-                    if (foundFn)
-                        foundFn({
-                            address: foundData.id,
-                            name: foundData.name,
-                            rssi: foundData.rssi,
-                            _internalDevice: foundData
-                        });
-                }, reject);
-                resolve();
+                //work around ios problem that ble is not yet active
+                //when the start scan is called, so wait a bit when an error happens 
+                //and then retry, give an error when it ble is not enabled
+                ble.isEnabled(function () {
+                    ble.startScan(_this._scanServices, function (foundData) {
+                        if (foundFn)
+                            foundFn({
+                                address: foundData.id,
+                                name: foundData.name,
+                                rssi: foundData.rssi,
+                                _internalDevice: foundData
+                            });
+                    }, reject);
+                    resolve();
+                }, function (err) {
+                    if (retry) {
+                        setTimeout(function () {
+                            _this.startScan(foundFn, false).then(resolve).catch(reject);
+                        }, 1000);
+                    }
+                    else
+                        reject("Can not start scan, Bluetooth is not enabled. Please activate blue tooth.  (" + err + ")");
+                });
             });
         };
         DriverBleCentral.prototype.stopScan = function () {
@@ -1453,7 +1471,7 @@ var ergometer;
                 get: function () {
                     return this._events;
                 },
-                enumerable: true,
+                enumerable: false,
                 configurable: true
             });
             ReplayDriver.prototype.isCallBack = function (eventType) {
@@ -1625,7 +1643,7 @@ var ergometer;
                         }
                     }
                 },
-                enumerable: true,
+                enumerable: false,
                 configurable: true
             });
             /*protected  playEvent(event : IRecordingItem) : Promise<void> {
@@ -1757,7 +1775,7 @@ var ergometer;
                         if (err)
                             _this.callError(err);
                         else {
-                            if (inputData && inputData.length == usb.WRITE_BUF_SIZE && inputData[0] == usb.REPORT_TYPE) {
+                            if (inputData && inputData.length >= usb.WRITE_BUF_SIZE && inputData[0] == usb.REPORT_TYPE) {
                                 //copy all results into a buffer of 121
                                 var endByte = usb.WRITE_BUF_SIZE - 1;
                                 while (endByte >= 0 && inputData[endByte] == 0)
@@ -1864,7 +1882,7 @@ var ergometer;
             DeviceWebHid.prototype.receivedReport = function (ev) {
                 var inputData = ev.data;
                 //todo chack on ev.reportId==REPORT_TYPE
-                if (inputData && inputData.byteLength == usb.USB_CSAVE_SIZE) {
+                if (inputData && inputData.byteLength >= usb.USB_CSAVE_SIZE) {
                     //copy all results into a buffer of 120
                     var endByte = usb.USB_CSAVE_SIZE - 1;
                     while (endByte >= 0 && inputData.getUint8(endByte) == 0)
@@ -1966,7 +1984,7 @@ var ergometer;
                             resolve();
                             //handle the resolve later
                             setTimeout(function () {
-                                if (data && data.byteLength == usb.WRITE_BUF_SIZE) {
+                                if (data && data.byteLength >= usb.WRITE_BUF_SIZE) {
                                     var inputData = new DataView(data);
                                     var endByte = usb.WRITE_BUF_SIZE - 1;
                                     while (endByte >= 1 && inputData.getUint8(endByte) == 0)
@@ -2517,14 +2535,33 @@ var ergometer;
                     waitForResponse: true,
                     command: 26 /* SETUSERCFG1_CMD */,
                     detailCommand: 110 /* CSAFE_PM_GET_STROKESTATS */,
-                    data: [],
+                    data: [20],
                     onError: params.onError,
                     onDataReceived: function (data) {
+                        /*
+    Byte 0: Stroke Distance (MSB)
+    Byte 1: Stroke Distance (LSB)
+    Byte 2: Stroke Drive Time
+    Byte 3: Stroke Recovery Time (MSB)
+    Byte 4: Stroke Recovery Time (LSB)
+    Byte 5: Stroke Length
+    Byte 6: Drive Counter (MSB)
+    Byte 7: Drive Counter (LSB)
+    Byte 8: Peak Drive Force (MSB)
+    Byte 9: Peak Drive Force (LSB)
+    Byte 10: Impulse Drive Force (MSB)
+    Byte 11: Impulse Drive Force (LSB)
+    Byte 12: Avg Drive Force (MSB)
+    Byte 13: Avg Drive Force (LSB)
+    Byte 14: Work Per Stroke (MSB)
+    Byte 15: Work Per Stroke (LSB)
+                        */
                         if (params.onDataReceived && data.byteLength >= 3) {
-                            var driveTime = data.getUint8(0);
-                            var strokeRecoveryTime = data.getUint8(1) +
-                                data.getUint8(2) * 256;
-                            params.onDataReceived(driveTime, strokeRecoveryTime);
+                            var strokeDistance = data.getUint16(0);
+                            var driveTime = data.getUint8(2);
+                            var strokeRecoveryTime = data.getUint16(3);
+                            var strokeCount = data.getUint16(6);
+                            params.onDataReceived(strokeDistance, driveTime, strokeRecoveryTime, strokeCount);
                         }
                     }
                 });
@@ -2704,7 +2741,7 @@ var ergometer;
             get: function () {
                 return this._commands;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         WaitResponseBuffer.prototype.removeRemainingCommands = function () {
@@ -2830,14 +2867,14 @@ var ergometer;
             get: function () {
                 return this._powerCurveEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBase.prototype, "powerCurve", {
             get: function () {
                 return this._powerCurve;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         PerformanceMonitorBase.prototype.clearAllBuffers = function () {
@@ -3336,49 +3373,49 @@ var ergometer;
             get: function () {
                 return this._strokeData;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorUsb.prototype, "trainingData", {
             get: function () {
                 return this._trainingData;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorUsb.prototype, "strokeState", {
             get: function () {
                 return this._strokeState;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorUsb.prototype, "device", {
             get: function () {
                 return this._device;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorUsb.prototype, "strokeStateEvent", {
             get: function () {
                 return this._strokeStateEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorUsb.prototype, "trainingDataEvent", {
             get: function () {
                 return this._trainingDataEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorUsb.prototype, "strokeDataEvent", {
             get: function () {
                 return this._strokeDataEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         PerformanceMonitorUsb.canUseNodeHid = function () {
@@ -3397,6 +3434,11 @@ var ergometer;
         };
         PerformanceMonitorUsb.prototype.initialize = function () {
             _super.prototype.initialize.call(this);
+            this.initDriver();
+            this._splitCommandsWhenToBig = false;
+            this._receivePartialBuffers = false;
+        };
+        PerformanceMonitorUsb.prototype.initDriver = function () {
             if (PerformanceMonitorUsb.canUseNodeHid()) {
                 this._driver = new ergometer.usb.DriverNodeHid();
             }
@@ -3406,8 +3448,12 @@ var ergometer;
             else if (PerformanceMonitorUsb.canUseWebHid()) {
                 this._driver = new ergometer.usb.DriverWebHid();
             }
-            this._splitCommandsWhenToBig = false;
-            this._receivePartialBuffers = false;
+        };
+        PerformanceMonitorUsb.prototype.checkInitDriver = function () {
+            if (!this._driver)
+                this.initDriver();
+            if (!this._driver)
+                throw "No suitable driver found";
         };
         Object.defineProperty(PerformanceMonitorUsb.prototype, "driver", {
             get: function () {
@@ -3416,7 +3462,7 @@ var ergometer;
             set: function (value) {
                 this._driver = value;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         PerformanceMonitorUsb.prototype.driver_write = function (data) {
@@ -3464,22 +3510,26 @@ var ergometer;
         };
         PerformanceMonitorUsb.prototype.requestDevics = function () {
             var _this = this;
-            if (!this._driver)
-                return Promise.reject("driver not set");
             return new Promise(function (resolve, reject) {
-                _this._driver.requestDevics().then(function (driverDevices) {
-                    var result = [];
-                    driverDevices.forEach(function (driverDevice) {
-                        var device = new UsbDevice();
-                        device.productId = driverDevice.productId;
-                        device.productName = driverDevice.productName;
-                        device.vendorId = driverDevice.vendorId;
-                        device.serialNumber = driverDevice.serialNumber;
-                        device._internalDevice = driverDevice;
-                        result.push(device);
-                    });
-                    resolve(result);
-                }).catch(reject);
+                try {
+                    _this.checkInitDriver();
+                    _this._driver.requestDevics().then(function (driverDevices) {
+                        var result = [];
+                        driverDevices.forEach(function (driverDevice) {
+                            var device = new UsbDevice();
+                            device.productId = driverDevice.productId;
+                            device.productName = driverDevice.productName;
+                            device.vendorId = driverDevice.vendorId;
+                            device.serialNumber = driverDevice.serialNumber;
+                            device._internalDevice = driverDevice;
+                            result.push(device);
+                        });
+                        resolve(result);
+                    }).catch(reject);
+                }
+                catch (e) {
+                    reject(e);
+                }
             });
         };
         PerformanceMonitorUsb.prototype.disconnect = function () {
@@ -3570,6 +3620,15 @@ var ergometer;
         PerformanceMonitorUsb.prototype.handlePowerCurve = function () {
             var _this = this;
             return this.newCsafeBuffer()
+                .getStrokeStats({
+                onDataReceived: function (strokeDistance, driveTime, strokeRecoveryTime, strokeCount) {
+                    _this.strokeData.strokeDistance = strokeDistance;
+                    _this.strokeData.driveTime = driveTime;
+                    _this.strokeData.strokeRecoveryTime = strokeRecoveryTime;
+                    _this.strokeData.strokeCount = strokeCount;
+                    _this.strokeDataEvent.pub(_this.strokeData);
+                }
+            })
                 .getPowerCurve({
                 onDataReceived: function (curve) {
                     _this.powerCurveEvent.pub(curve);
@@ -3692,6 +3751,9 @@ var ergometer;
                     _this.strokeData.workDistance = value;
                 }
             })
+                /*.getWork({onDataReceived: (value) => {
+                     this.strokeData.time=value;
+                }})*/
                 .getPace({
                 onDataReceived: function (pace) {
                     var caloriesPerHour = 0;
@@ -3853,7 +3915,7 @@ var ergometer;
                     //otherwise the work time does not reflect the last time and distance
                     if (_this.trainingData.workoutType >= 2 /* fixedDistanceNoAplits */ &&
                         _this.trainingData.workoutType <= 5 /* fixedTimeAplits */) {
-                        if (_this.trainingData.duration && _this.trainingData.duration > 0) {
+                        if (_this.trainingData.duration && _this.trainingData.duration > 0) { //doing an fixed time
                             _this.strokeData.workTime = _this.trainingData.duration;
                             _this.strokeData.workDistance = distance;
                             //this.strokeData.time=duration;
@@ -3862,7 +3924,7 @@ var ergometer;
                             _this.trainingData.endDuration = _this.trainingData.duration;
                             //console.log("Fixed time Send stroke state and training");
                         }
-                        else if (_this.trainingData.distance > 0) {
+                        else if (_this.trainingData.distance > 0) { //doing a fixed distance
                             _this.strokeData.workTime = duration;
                             _this.strokeData.workDistance = 0;
                             //this.strokeData.time=duration;
@@ -4008,7 +4070,7 @@ var ergometer;
                 }
                 return this._recordingDriver;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "driver", {
@@ -4024,7 +4086,7 @@ var ergometer;
             set: function (value) {
                 this._driver = value;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "recording", {
@@ -4036,7 +4098,7 @@ var ergometer;
                 if (value)
                     this.recordingDriver.startRecording();
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "replayDriver", {
@@ -4045,7 +4107,7 @@ var ergometer;
                     this._replayDriver = new ergometer.ble.ReplayDriver(this, this._driver);
                 return this._replayDriver;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "replaying", {
@@ -4055,7 +4117,7 @@ var ergometer;
             set: function (value) {
                 this.replayDriver.playing = value;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         PerformanceMonitorBle.prototype.replay = function (events) {
@@ -4068,7 +4130,7 @@ var ergometer;
             set: function (value) {
                 this.recordingDriver.events = value;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "autoReConnect", {
@@ -4087,7 +4149,7 @@ var ergometer;
             set: function (value) {
                 this._autoReConnect = value;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "multiplex", {
@@ -4114,7 +4176,7 @@ var ergometer;
                     this._multiplex = value;
                 }
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "devices", {
@@ -4127,7 +4189,7 @@ var ergometer;
             get: function () {
                 return this._devices;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingGeneralStatus", {
@@ -4139,7 +4201,7 @@ var ergometer;
             get: function () {
                 return this._rowingGeneralStatus;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingAdditionalStatus1", {
@@ -4150,7 +4212,7 @@ var ergometer;
             get: function () {
                 return this._rowingAdditionalStatus1;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingAdditionalStatus2", {
@@ -4161,7 +4223,7 @@ var ergometer;
             get: function () {
                 return this._rowingAdditionalStatus2;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingStrokeData", {
@@ -4172,7 +4234,7 @@ var ergometer;
             get: function () {
                 return this._rowingStrokeData;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingAdditionalStrokeData", {
@@ -4183,7 +4245,7 @@ var ergometer;
             get: function () {
                 return this._rowingAdditionalStrokeData;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingSplitIntervalData", {
@@ -4194,7 +4256,7 @@ var ergometer;
             get: function () {
                 return this._rowingSplitIntervalData;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingAdditionalSplitIntervalData", {
@@ -4205,7 +4267,7 @@ var ergometer;
             get: function () {
                 return this._rowingAdditionalSplitIntervalData;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "workoutSummaryData", {
@@ -4216,7 +4278,7 @@ var ergometer;
             get: function () {
                 return this._workoutSummaryData;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "additionalWorkoutSummaryData", {
@@ -4227,7 +4289,7 @@ var ergometer;
             get: function () {
                 return this._additionalWorkoutSummaryData;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "additionalWorkoutSummaryData2", {
@@ -4238,7 +4300,7 @@ var ergometer;
             get: function () {
                 return this._additionalWorkoutSummaryData2;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "heartRateBeltInformation", {
@@ -4249,7 +4311,7 @@ var ergometer;
             get: function () {
                 return this._heartRateBeltInformation;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingGeneralStatusEvent", {
@@ -4261,7 +4323,7 @@ var ergometer;
             get: function () {
                 return this._rowingGeneralStatusEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingAdditionalStatus1Event", {
@@ -4273,7 +4335,7 @@ var ergometer;
             get: function () {
                 return this._rowingAdditionalStatus1Event;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingAdditionalStatus2Event", {
@@ -4285,7 +4347,7 @@ var ergometer;
             get: function () {
                 return this._rowingAdditionalStatus2Event;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingStrokeDataEvent", {
@@ -4297,7 +4359,7 @@ var ergometer;
             get: function () {
                 return this._rowingStrokeDataEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingAdditionalStrokeDataEvent", {
@@ -4309,7 +4371,7 @@ var ergometer;
             get: function () {
                 return this._rowingAdditionalStrokeDataEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingSplitIntervalDataEvent", {
@@ -4321,7 +4383,7 @@ var ergometer;
             get: function () {
                 return this._rowingSplitIntervalDataEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "rowingAdditionalSplitIntervalDataEvent", {
@@ -4333,7 +4395,7 @@ var ergometer;
             get: function () {
                 return this._rowingAdditionalSplitIntervalDataEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "workoutSummaryDataEvent", {
@@ -4345,7 +4407,7 @@ var ergometer;
             get: function () {
                 return this._workoutSummaryDataEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "additionalWorkoutSummaryDataEvent", {
@@ -4357,7 +4419,7 @@ var ergometer;
             get: function () {
                 return this._additionalWorkoutSummaryDataEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "additionalWorkoutSummaryData2Event", {
@@ -4369,7 +4431,7 @@ var ergometer;
             get: function () {
                 return this._additionalWorkoutSummaryData2Event;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "heartRateBeltInformationEvent", {
@@ -4381,7 +4443,7 @@ var ergometer;
             get: function () {
                 return this._heartRateBeltInformationEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "deviceInfo", {
@@ -4392,7 +4454,7 @@ var ergometer;
             get: function () {
                 return this._deviceInfo;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(PerformanceMonitorBle.prototype, "sampleRate", {
@@ -4418,7 +4480,7 @@ var ergometer;
                     }, this.getErrorHandlerFunc("Can not set sample rate"));
                 }
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         /**
@@ -4688,6 +4750,24 @@ var ergometer;
         PerformanceMonitorBle.prototype.currentDriverIsWebBlueTooth = function () {
             return this._driver instanceof ergometer.ble.DriverWebBlueTooth;
         };
+        PerformanceMonitorBle.prototype.initDriver = function () {
+            if (bleCentral.available())
+                this._driver = new bleCentral.DriverBleCentral([ergometer.ble.PMDEVICE]);
+            else if ((typeof bleat !== 'undefined') && bleat)
+                this._driver = new ergometer.ble.DriverBleat();
+            else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
+                this._driver = new ergometer.ble.DriverSimpleBLE();
+            else if (ergometer.ble.hasWebBlueTooth())
+                this._driver = new ergometer.ble.DriverWebBlueTooth(this, [ergometer.ble.PMDEVICE], [ergometer.ble.PMDEVICE_INFO_SERVICE, ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.PMROWING_SERVICE]);
+            else
+                this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.");
+        };
+        PerformanceMonitorBle.prototype.checkInitDriver = function () {
+            if (!this._driver)
+                this.initDriver();
+            if (!this._driver)
+                throw "No suitable blue tooth driver found to connect to the ergometer.";
+        };
         /**
          *
          */
@@ -4702,16 +4782,7 @@ var ergometer;
                      evothings.scriptsLoaded(()=>{
                          this.onDeviceReady();})},
                 false);   */
-            if (bleCentral.available())
-                this._driver = new bleCentral.DriverBleCentral([ergometer.ble.PMDEVICE]);
-            else if ((typeof bleat !== 'undefined') && bleat)
-                this._driver = new ergometer.ble.DriverBleat();
-            else if ((typeof simpleBLE !== 'undefined') && simpleBLE)
-                this._driver = new ergometer.ble.DriverSimpleBLE();
-            else if (ergometer.ble.hasWebBlueTooth())
-                this._driver = new ergometer.ble.DriverWebBlueTooth(this, [ergometer.ble.PMDEVICE], [ergometer.ble.PMDEVICE_INFO_SERVICE, ergometer.ble.PMCONTROL_SERVICE, ergometer.ble.PMROWING_SERVICE]);
-            else
-                this.handleError("No suitable blue tooth driver found to connect to the ergometer. You need to load bleat on native platforms and a browser with web blue tooth capability.");
+            this.initDriver();
             var enableDisableFunc = function () { _this.enableDisableNotification().catch(_this.handleError); };
             this._rowingGeneralStatusEvent = new ergometer.pubSub.Event();
             this.rowingGeneralStatusEvent.registerChangedEvent(enableDisableFunc);
@@ -4794,43 +4865,57 @@ var ergometer;
          */
         PerformanceMonitorBle.prototype.startScan = function (deviceFound, errorFn) {
             var _this = this;
-            this._devices = [];
-            // Save it for next time we use the this.
-            //localStorage.setItem('deviceName', this._deviceName);
-            // Call stop before you start, just in case something else is running.
-            this.stopScan();
-            this.changeConnectionState(ergometer.MonitorConnectionState.scanning);
-            // Only report s once.
-            //evothings.easyble.reportDeviceOnce(true);
-            return this.driver.startScan(function (device) {
-                // Do not show un-named devices.
-                /*var deviceName = device.advertisementData ?
-                 device.advertisementData.kCBAdvDataLocalName : null;
-                 */
-                if (!device.name) {
-                    return;
-                }
-                // Print "name : mac address" for every device found.
-                _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
-                // If my device is found connect to it.
-                //find any thing starting with PM and then a number a space and a serial number
-                if (device.name.match(/PM\d \d*/g)) {
-                    _this.showInfo('Status: DeviceInfo found: ' + device.name);
-                    var deviceInfo = {
-                        connected: false,
-                        _internalDevice: device,
-                        name: device.name,
-                        address: device.address,
-                        quality: 2 * (device.rssi + 100)
-                    };
-                    _this.addDevice(deviceInfo);
-                    if (deviceFound && deviceFound(deviceInfo)) {
-                        _this.connectToDevice(deviceInfo.name);
+            try {
+                this.checkInitDriver();
+                this._devices = [];
+                // Save it for next time we use the this.
+                //localStorage.setItem('deviceName', this._deviceName);
+                // Call stop before you start, just in case something else is running.
+                this.stopScan();
+                this.changeConnectionState(ergometer.MonitorConnectionState.scanning);
+                // Only report s once.
+                //evothings.easyble.reportDeviceOnce(true);
+                return this.driver.startScan(function (device) {
+                    // Do not show un-named devices.
+                    /*var deviceName = device.advertisementData ?
+                     device.advertisementData.kCBAdvDataLocalName : null;
+                     */
+                    if (!device.name) {
+                        return;
                     }
-                }
-            }).then(function () {
-                _this.showInfo('Status: Scanning...');
-            }).catch(this.getErrorHandlerFunc("Scan error", errorFn));
+                    // Print "name : mac address" for every device found.
+                    _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+                    // If my device is found connect to it.
+                    //find any thing starting with PM and then a number a space and a serial number
+                    if (device.name.match(/PM\d \d*/g)) {
+                        _this.showInfo('Status: DeviceInfo found: ' + device.name);
+                        var deviceInfo = {
+                            connected: false,
+                            _internalDevice: device,
+                            name: device.name,
+                            address: device.address,
+                            quality: 2 * (device.rssi + 100)
+                        };
+                        _this.addDevice(deviceInfo);
+                        if (deviceFound && deviceFound(deviceInfo)) {
+                            _this.connectToDevice(deviceInfo.name);
+                        }
+                    }
+                }).then(function () {
+                    _this.showInfo('Status: Scanning...');
+                }).catch(this.getErrorHandlerFunc("Scan error", function (e) {
+                    if (errorFn)
+                        errorFn(e);
+                    if (_this.connectionState < ergometer.MonitorConnectionState.connected)
+                        _this.changeConnectionState(ergometer.MonitorConnectionState.deviceReady);
+                }));
+            }
+            catch (e) {
+                if (this.connectionState < ergometer.MonitorConnectionState.connected)
+                    this.changeConnectionState(ergometer.MonitorConnectionState.inactive);
+                this.getErrorHandlerFunc("Scan error", errorFn)(e);
+                return Promise.reject(e);
+            }
         };
         /**
          * connect to a specific device. This should be a PM5 device which is found by the startScan. You can
@@ -5027,7 +5112,7 @@ var ergometer;
                     driveLength: data.getUint8(6 /* DRIVE_LENGTH */) / 100,
                     driveTime: data.getUint8(7 /* DRIVE_TIME */) * 10,
                     strokeRecoveryTime: (data.getUint8(8 /* STROKE_RECOVERY_TIME_LO */) + data.getUint8(9 /* STROKE_RECOVERY_TIME_HI */) * 256) * 10,
-                    strokeDistance: data.getUint16(10 /* STROKE_DISTANCE_LO */) / 100,
+                    strokeDistance: (data.getUint8(10 /* STROKE_DISTANCE_LO */) + data.getUint8(11 /* STROKE_DISTANCE_HI */) * 256) / 100,
                     peakDriveForce: data.getUint16(12 /* PEAK_DRIVE_FORCE_LO */) / 10,
                     averageDriveForce: data.getUint16(14 /* AVG_DRIVE_FORCE_LO */) / 10,
                     workPerStroke: data.getUint16(16 /* WORK_PER_STROKE_LO */) / 10,
@@ -5041,7 +5126,7 @@ var ergometer;
                     driveLength: data.getUint8(6 /* DRIVE_LENGTH */) / 100,
                     driveTime: data.getUint8(7 /* DRIVE_TIME */) * 10,
                     strokeRecoveryTime: data.getUint16(8 /* STROKE_RECOVERY_TIME_LO */) * 10,
-                    strokeDistance: data.getUint16(10 /* STROKE_DISTANCE_LO */) / 100,
+                    strokeDistance: (data.getUint8(10 /* STROKE_DISTANCE_LO */) + data.getUint8(11 /* STROKE_DISTANCE_HI */) * 256) / 100,
                     peakDriveForce: data.getUint16(12 /* PEAK_DRIVE_FORCE_LO */) / 10,
                     averageDriveForce: data.getUint16(14 /* AVG_DRIVE_FORCE_LO */) / 10,
                     workPerStroke: null,
@@ -5349,18 +5434,27 @@ var ergometer;
             get: function () {
                 return this._driver;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(HeartRateMonitorBle.prototype, "heartRateDataEvent", {
             get: function () {
                 return this._heartRateDataEvent;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         HeartRateMonitorBle.prototype.initialize = function () {
             _super.prototype.initialize.call(this);
+            this.initDriver();
+        };
+        HeartRateMonitorBle.prototype.checkInitDriver = function () {
+            if (!this._driver)
+                this.initDriver();
+            if (!this._driver)
+                throw "No suitable driver found";
+        };
+        HeartRateMonitorBle.prototype.initDriver = function () {
             if (bleCentral.available())
                 this._driver = new bleCentral.DriverBleCentral([ergometer.ble.HEART_RATE_DEVICE_SERVICE]);
             else if ((typeof bleat !== 'undefined') && bleat)
@@ -5382,7 +5476,7 @@ var ergometer;
             get: function () {
                 return this._deviceInfo;
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         HeartRateMonitorBle.prototype.currentDriverIsWebBlueTooth = function () {
@@ -5434,41 +5528,49 @@ var ergometer;
          */
         HeartRateMonitorBle.prototype.startScan = function (deviceFound, errorFn) {
             var _this = this;
-            this._devices = [];
-            // Save it for next time we use the this.
-            //localStorage.setItem('deviceName', this._deviceName);
-            // Call stop before you start, just in case something else is running.
-            this.stopScan();
-            this.changeConnectionState(ergometer.MonitorConnectionState.scanning);
-            // Only report s once.
-            //evothings.easyble.reportDeviceOnce(true);
-            return this.driver.startScan(function (device) {
-                // Do not show un-named devices.
-                /*var deviceName = device.advertisementData ?
-                 device.advertisementData.kCBAdvDataLocalName : null;
-                 */
-                if (!device.name) {
-                    return;
-                }
-                // Print "name : mac address" for every device found.
-                _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
-                // If my device is found connect to it.
-                //find any thing starting with PM and then a number a space and a serial number
-                _this.showInfo('Status: DeviceInfo found: ' + device.name);
-                var deviceInfo = {
-                    connected: false,
-                    _internalDevice: device,
-                    name: device.name,
-                    address: device.address,
-                    quality: 2 * (device.rssi + 100)
-                };
-                _this.addDevice(deviceInfo);
-                if (deviceFound && deviceFound(deviceInfo)) {
-                    _this.connectToDevice(deviceInfo.name);
-                }
-            }).then(function () {
-                _this.showInfo('Status: Scanning...');
-            }).catch(this.getErrorHandlerFunc("Scan error", errorFn));
+            try {
+                this.checkInitDriver();
+                this._devices = [];
+                // Save it for next time we use the this.
+                //localStorage.setItem('deviceName', this._deviceName);
+                // Call stop before you start, just in case something else is running.
+                this.stopScan();
+                this.changeConnectionState(ergometer.MonitorConnectionState.scanning);
+                // Only report s once.
+                //evothings.easyble.reportDeviceOnce(true);
+                return this.driver.startScan(function (device) {
+                    // Do not show un-named devices.
+                    /*var deviceName = device.advertisementData ?
+                    device.advertisementData.kCBAdvDataLocalName : null;
+                    */
+                    if (!device.name) {
+                        return;
+                    }
+                    // Print "name : mac address" for every device found.
+                    _this.debugInfo(device.name + ' : ' + device.address.toString().split(':').join(''));
+                    // If my device is found connect to it.
+                    //find any thing starting with PM and then a number a space and a serial number
+                    _this.showInfo('Status: DeviceInfo found: ' + device.name);
+                    var deviceInfo = {
+                        connected: false,
+                        _internalDevice: device,
+                        name: device.name,
+                        address: device.address,
+                        quality: 2 * (device.rssi + 100)
+                    };
+                    _this.addDevice(deviceInfo);
+                    if (deviceFound && deviceFound(deviceInfo)) {
+                        _this.connectToDevice(deviceInfo.name);
+                    }
+                }).then(function () {
+                    _this.showInfo('Status: Scanning...');
+                }).catch(this.getErrorHandlerFunc("Scan error", errorFn));
+            }
+            catch (e) {
+                this.changeConnectionState(ergometer.MonitorConnectionState.inactive);
+                this.getErrorHandlerFunc("Scan error", errorFn)(e);
+                return Promise.reject(e);
+            }
         };
         /**
          * connect to a specific device. This should be a PM5 device which is found by the startScan. You can
@@ -5582,7 +5684,7 @@ var Demo = /** @class */ (function () {
         get: function () {
             return this._performanceMonitor;
         },
-        enumerable: true,
+        enumerable: false,
         configurable: true
     });
     Object.defineProperty(Demo.prototype, "lastDeviceName", {
@@ -5602,7 +5704,7 @@ var Demo = /** @class */ (function () {
                 localStorage.setItem("lastDeviceName", value);
             }
         },
-        enumerable: true,
+        enumerable: false,
         configurable: true
     });
     /**
@@ -5811,7 +5913,7 @@ var App = /** @class */ (function () {
         get: function () {
             return this._demo;
         },
-        enumerable: true,
+        enumerable: false,
         configurable: true
     });
     App.prototype.onPause = function () {

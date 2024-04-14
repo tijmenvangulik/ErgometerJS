@@ -61,6 +61,10 @@ namespace ergometer {
         totCalories =0; // accumulated calories burned  CSAFE_GETCALORIES_CMD
 	    caloriesPerHour =0;  // calories/Hr derived from pace (GETPACE)
         heartRate =0;
+        strokeDistance: number;
+        driveTime: number;
+        strokeRecoveryTime: number;
+        strokeCount: number;
     }
     export class TrainingData 
     { 
@@ -285,8 +289,7 @@ namespace ergometer {
                         this.newStrokeState(strokeState);
                         
                     }
-                })
-                
+                })              
                 .send()
                 .then(()=>{  //send returns a promise
                     this.traceInfo("end high res update");
@@ -337,7 +340,7 @@ namespace ergometer {
             
         }
         private handlePowerCurve() : Promise<void>{
-            return this.newCsafeBuffer()
+            return this.newCsafeBuffer()                
                 .getPowerCurve({
                     onDataReceived: (curve : number[]) =>{
                         this.powerCurveEvent.pub(curve);
@@ -534,6 +537,16 @@ namespace ergometer {
                 }
                 
             })
+            .getStrokeStats({
+                onDataReceived: (strokeDistance : number,driveTime : number,strokeRecoveryTime : number,strokeCount : number )=> {		
+                    this.strokeData.strokeDistance=strokeDistance;
+                    this.strokeData.driveTime=driveTime;
+                    this.strokeData.strokeRecoveryTime=strokeRecoveryTime;
+                    this.strokeData.strokeCount=strokeCount;
+                    this.strokeDataEvent.pub(this.strokeData);
+                   }    
+                })  
+            
             .send()
             .then(()=>{
                 /*console.log({
@@ -544,6 +557,7 @@ namespace ergometer {
                 });*/
                 this.traceInfo("after low res update");
                 this.strokeDataEvent.pub(this.strokeData);
+                
             });
         }
         

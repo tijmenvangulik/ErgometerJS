@@ -213,7 +213,7 @@ namespace ergometer.csafe {
     //----------------------------- get power curve ------------------------------------
 
     export interface ICommandStrokeStats {
-        onDataReceived: (driveTime : number,strokeRecoveryTime : number) => void;
+        onDataReceived: (strokeDistance : number,driveTime : number,strokeRecoveryTime : number,strokeCount : number) => void;
         onError?: ErrorHandler;
     }
     export interface IBuffer {
@@ -227,16 +227,34 @@ namespace ergometer.csafe {
             buffer.addRawCommand({
                 waitForResponse: true,
                 command: csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
+                data:[0],
                 detailCommand: csafe.defs.PM_LONG_PULL_DATA_CMDS.CSAFE_PM_GET_STROKESTATS,
-                data: [],
                 onError: params.onError,
                 onDataReceived: (data: DataView) => {
+                    /*
+Byte 0: Stroke Distance (MSB)
+Byte 1: Stroke Distance (LSB)
+Byte 2: Stroke Drive Time
+Byte 3: Stroke Recovery Time (MSB) 
+Byte 4: Stroke Recovery Time (LSB) 
+Byte 5: Stroke Length 
+Byte 6: Drive Counter (MSB)
+Byte 7: Drive Counter (LSB)
+Byte 8: Peak Drive Force (MSB)
+Byte 9: Peak Drive Force (LSB)
+Byte 10: Impulse Drive Force (MSB)
+Byte 11: Impulse Drive Force (LSB)
+Byte 12: Avg Drive Force (MSB)
+Byte 13: Avg Drive Force (LSB)
+Byte 14: Work Per Stroke (MSB)
+Byte 15: Work Per Stroke (LSB)
+                    */
                     if (params.onDataReceived && data.byteLength>=3) {
-                        var driveTime=data.getUint8(0);
-                        var strokeRecoveryTime=
-                            data.getUint8(1) +
-                            data.getUint8(2)*256;
-                        params.onDataReceived(driveTime,strokeRecoveryTime);
+                        var strokeDistance= (data.getUint8(0)+data.getUint8(1)*256)/100;
+                        var driveTime=data.getUint8(2);
+                        var strokeRecoveryTime= data.getUint8(3)+data.getUint8(4)*256;
+                        var strokeCount=  data.getUint8(6)+data.getUint8(7)*256;
+                        params.onDataReceived(strokeDistance,driveTime,strokeRecoveryTime,strokeCount);
                     }
                     
                 }

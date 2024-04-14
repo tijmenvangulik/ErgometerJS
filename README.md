@@ -30,6 +30,12 @@ Basically ErgometerJS needs javascript and a blue tooth driver which can be (nob
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
 
 # Change Log
+- 1.4.8
+   New values for usb,:
+   * strokeDistance;
+   * driveTime;
+   * strokeRecoveryTime;
+   * strokeCount;
 - 1.4.6
   * Fixed PM5 usb communication problem, On some hardware/firmware combinations the buffer size was higher than expected. This gives problems with newer PM5 devices.
 - 1.4.5
