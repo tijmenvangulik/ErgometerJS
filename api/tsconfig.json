@@ -42,7 +42,7 @@
     "typescript/ergometer/csafe/command_core.ts",
     "typescript/ergometer/csafe/long_commands.ts",
     "typescript/ergometer/csafe/short_commands.ts",
-    "typescript/ergometer/csafe/push_config_commands.ts",
+    "typescript/ergometer/csafe/proprietary_program_commands.ts",
     "typescript/ergometer/typedefinitions.ts",
     "typescript/ergometer/performancemonitorBase.ts",
     "typescript/ergometer/performancemonitorUsb.ts",

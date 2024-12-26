@@ -70,6 +70,7 @@ class Demo {
         this.performanceMonitor.logEvent.sub(this,this.onLog);
         this.performanceMonitor.connectionStateChangedEvent.sub(this,this.onConnectionStateChanged);
         //connect to the rowing
+        
         this.performanceMonitor.rowingGeneralStatusEvent.sub(this,this.onRowingGeneralStatus);
         this.performanceMonitor.rowingAdditionalStatus1Event.sub(this,this.onRowingAdditionalStatus1);
         this.performanceMonitor.rowingAdditionalStatus2Event.sub(this,this.onRowingAdditionalStatus2);
@@ -90,6 +91,7 @@ class Demo {
             this.startScan()
         });
         $("#getinfo").click(this.csafeTest.bind(this));
+        $("#testWorkout").click(this.testWorkout.bind(this));
         
     }
     public startRecording() {
@@ -157,7 +159,7 @@ class Demo {
             this.showData(JSON.stringify( this._performanceMonitor.deviceInfo));
 
             //send two commands and show the results in a jquery way
-            this.csafeTest();            
+          //  this.csafeTest();            
         }
     }
     protected csafeTest() {
@@ -179,6 +181,118 @@ class Demo {
         }).catch(e=>{
             console.error(e);
         });
+    }
+    async testWorkout() {
+         //set a distance
+        
+        await this.performanceMonitor.newCsafeBuffer()
+           .setDistance({value:3000,unit:ergometer.Unit.distanceMeter})
+           .setProgram({value:ergometer.Program.Programmed})
+           .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})
+           .send();
+
+        //set a fixed time
+        //20:00/4:00 splits, power goal of 100 watts
+/*
+        await this.performanceMonitor.newCsafeBuffer()
+            .setWork({hour:0,minute:20,second:0})
+            .setProgram({value:ergometer.Program.Programmed})
+            .send();
+        await this.performanceMonitor.newCsafeBuffer()
+            .setSplitDuration({value:400,durationType:ergometer.WorkoutDurationType.distance})
+            .send();
+        await this.performanceMonitor.newCsafeBuffer()
+            .setPower({value:100,unit:ergometer.Unit.powerWatts})
+            .setProgram({value:ergometer.Program.Programmed})
+            .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})
+            .send();
+*/
+
+/*
+        //JustRow
+        await this.performanceMonitor.newCsafeBuffer()
+           .setWorkoutType({value: ergometer.WorkoutType.justRowSplits})
+           .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})
+           .send();
+*/
+        /*
+        //2000m/400m splits
+        //web blue tooth has only a small packet size of 20 bytes, so we need to split the commands
+        await this.performanceMonitor.newCsafeBuffer()
+        .setWorkoutType({value: ergometer.WorkoutType.fixedDistanceSplits})
+        .setWorkoutDuration({value:2000,durationType:ergometer.WorkoutDurationType.distance})        
+        .send()
+        await this.performanceMonitor.newCsafeBuffer()
+        .setSplitDuration({value:400,durationType:ergometer.WorkoutDurationType.distance})
+        .setConfigureWorkout({programmingMode:true})
+        .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})        
+        .send()
+*/
+/*
+        //20:00/4:00 splits
+        await this.performanceMonitor.newCsafeBuffer()
+        .setWorkoutType({value: ergometer.WorkoutType.fixedTimeSplits})
+        .setWorkoutDuration({value:20*60*100,durationType:ergometer.WorkoutDurationType.time})        
+        .send();
+        await this.performanceMonitor.newCsafeBuffer()
+        .setSplitDuration({value:4*60*100,durationType:ergometer.WorkoutDurationType.time})
+        .setConfigureWorkout({programmingMode:true})
+        .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})        
+        .send();
+*/
+       //Fixed Time Interval 2:00/:30 rest
+       /*
+       await this.performanceMonitor.newCsafeBuffer()
+       .setWorkoutType({value: ergometer.WorkoutType.fixedTimeInterval})
+       .setWorkoutDuration({value:2*60*100,durationType:ergometer.WorkoutDurationType.time})        
+       .send();
+       await this.performanceMonitor.newCsafeBuffer()
+       .setRestDuration({value:30})
+       .setConfigureWorkout({programmingMode:true})
+       .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})                
+       .send();
+       */
+// variable interval
+//v500m/1:00r…4
+//Interval 1: 500m/1:00r, target pace of 1:40
+//Interval 2: 3:00/0:00r, target pace of 1:40
+/*
+        await this.performanceMonitor.newCsafeBuffer()
+        .setWorkoutIntervalCount({value:0}) //start set workout interval #1
+        .setWorkoutType({value: ergometer.WorkoutType.variableInterval})
+        .setIntervalType({value: ergometer.IntervalType.distance})
+        .send()
+        await this.performanceMonitor.newCsafeBuffer()
+        .setWorkoutDuration({value:500,durationType:ergometer.WorkoutDurationType.distance})        
+        .setRestDuration({value:60})
+        .send();
+        
+        await this.performanceMonitor.newCsafeBuffer()
+        .setTargetPaceTime({value:(1*60+40)*100})
+        .setConfigureWorkout({programmingMode:true})
+        .send();
+
+        //Interval 2: 3:00/0:00r, target pace of 1:40
+        await this.performanceMonitor.newCsafeBuffer()
+        .setWorkoutIntervalCount({value:1}) //start set workout interval #2
+        .setIntervalType({value: ergometer.IntervalType.time})
+        .send()
+
+        await this.performanceMonitor.newCsafeBuffer()
+        .setWorkoutDuration({value:3*60*100,durationType:ergometer.WorkoutDurationType.time})        
+        .setRestDuration({value:0})
+        .send();
+
+        await this.performanceMonitor.newCsafeBuffer()
+        .setTargetPaceTime({value:(1*60+40)*100})
+        .setConfigureWorkout({programmingMode:true})
+        .send();
+
+        //go to screen
+        await this.performanceMonitor.newCsafeBuffer()
+        .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})                
+        .send();
+*/
     }
     protected onPowerCurve(curve : number[]) {
         this.showData("Curve in gui: "+JSON.stringify(curve));

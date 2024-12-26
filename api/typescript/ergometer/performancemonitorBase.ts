@@ -86,7 +86,7 @@ namespace ergometer {
         removeRemainingCommands() {
             this._commands.forEach(command=>{
                 if (this._monitor.logLevel>=LogLevel.error)
-                   this._monitor.handleError(`command removed without result command=${command.command} detial= ${command.detailCommand}`);
+                   this._monitor.handleError(`command removed without result command=${command.command} detail= ${command.detailCommand}`);
                 if (command.onError) command.onError("command removed without result");
 
             });
@@ -294,12 +294,12 @@ namespace ergometer {
                     }
                     else {
                         if (command.detailCommand) {
-                            if (prevCommand===command.command) {
+                            if ( prevCommand===command.command) {
                                 //add it to the last command if it is the same command
                                 //this is more efficent
                                 var dataLength=1;
                                 if (command.data  && command.data.length>0)
-                                    dataLength+=command.data.length;
+                                    dataLength+=(command.data.length+1);
                                 commandArray[prevCommandIndex+1]+=dataLength;
                                 commandMerged=true;
                             }
@@ -421,7 +421,7 @@ namespace ergometer {
                                 bufferIndex++;
                             }
                             if (this.logLevel==LogLevel.trace)
-                              this.traceInfo("send csafe: "+utils.typedArrayToHexString(buffer));
+                              this.traceInfo("send csafe: "+utils.typedArrayToHexString(buffer,true));
                             
                             this.driver_write(dataView).then(
                                 ()=>{
@@ -471,7 +471,7 @@ namespace ergometer {
                 var waitBuffer=this._waitResonseBuffers[0];
                 
                 if (this.logLevel==LogLevel.trace)
-                   this.traceInfo("continious receive csafe: "+utils.typedArrayToHexString(dataView.buffer));
+                   this.traceInfo("continious receive csafe: "+utils.typedArrayToHexString(dataView.buffer,true));
                 var i=0;
                 
                 var moveToNextBuffer=false;

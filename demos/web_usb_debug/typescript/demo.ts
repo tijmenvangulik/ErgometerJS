@@ -52,8 +52,7 @@ class Demo {
     }
     protected initialize() {
         this._performanceMonitor= new ergometer.PerformanceMonitorUsb();
-        //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
-        //this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
+//        this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
         this.performanceMonitor.logEvent.sub(this,this.onLog);
         this.performanceMonitor.connectionStateChangedEvent.sub(this,this.onConnectionStateChanged);
         //connect to the rowing
@@ -77,7 +76,7 @@ class Demo {
             $('#info').text("Your browser does not support web blue tooth or web blue tooth is not enabled.")
             $("#StartScan").hide();
         }
-
+        $("#testWorkout").click(this.testWorkout.bind(this));
 
     }
 
@@ -106,7 +105,42 @@ class Demo {
             console.log("Error on top level:"+e)
         });
     }
+    async testWorkout() {
+        //set a distance
+       
+        await this.performanceMonitor.newCsafeBuffer()
+        .setDistance({value:3000,unit:ergometer.Unit.distanceMeter})
+        .setProgram({value:ergometer.Program.Programmed})
+        .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})
+        .send();
 
+     //set a fixed time
+     //20:00/4:00 splits, power goal of 100 watts
+/*
+     await this.performanceMonitor.newCsafeBuffer()
+         .setWork({hour:0,minute:20,second:0})
+         .setProgram({value:ergometer.Program.Programmed})
+         .send();
+     await this.performanceMonitor.newCsafeBuffer()
+         .setSplitDuration({value:400,durationType:ergometer.WorkoutDurationType.distance})
+         .send();
+     await this.performanceMonitor.newCsafeBuffer()
+         .setPower({value:100,unit:ergometer.Unit.powerWatts})
+         .setProgram({value:ergometer.Program.Programmed})
+         .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})
+         .send();
+*/
+
+/*
+     //JustRow
+     await this.performanceMonitor.newCsafeBuffer()
+        .setWorkoutType({value: ergometer.WorkoutType.justRowSplits})
+        .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})
+        .send();
+*/
+
+      
+   }
     protected onConnectionStateChanged(oldState : ergometer.MonitorConnectionState, newState : ergometer.MonitorConnectionState) {
 
         if (newState==ergometer.MonitorConnectionState.readyForCommunication) {

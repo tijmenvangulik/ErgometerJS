@@ -271,7 +271,7 @@ Byte 15: Work Per Stroke (LSB)
         getWorkoutType(params: ICommandParamsBase): IBuffer;
     }
 
-    registerStandardLongGet<ICommandGetWorkoutType, WorkoutType>("getWorkoutType",
+    registerStandardGetConfig<ICommandGetWorkoutType, WorkoutType>("getWorkoutType",
         csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_WORKOUTTYPE,
         data=>data.getUint8(0));
 
@@ -284,7 +284,7 @@ export interface IBuffer {
     getWorkoutState(params: ICommandParamsBase): IBuffer;
 }
 
-registerStandardLongGet<ICommandGetWorkoutState, WorkoutState>("getWorkoutState",
+registerStandardGetConfig<ICommandGetWorkoutState, WorkoutState>("getWorkoutState",
     csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_WORKOUTSTATE,
     data=>data.getUint8(0));
 
@@ -297,7 +297,7 @@ registerStandardLongGet<ICommandGetWorkoutState, WorkoutState>("getWorkoutState"
         getWorkoutIntervalCount(params: ICommandParamsBase): IBuffer;
     }
 
-    registerStandardLongGet<ICommandGetWorkoutIntervalCount, number>("getWorkoutIntervalCount",
+    registerStandardGetConfig<ICommandGetWorkoutIntervalCount, number>("getWorkoutIntervalCount",
         csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_WORKOUTINTERVALCOUNT,
         data=>data.getUint8(0));    
 
@@ -310,7 +310,7 @@ registerStandardLongGet<ICommandGetWorkoutState, WorkoutState>("getWorkoutState"
         getWorkoutIntervalType(params: ICommandParamsBase): IBuffer;
     }
 
-    registerStandardLongGet<ICommandGetWorkoutIntervalType, IntervalType>("getWorkoutIntervalType",
+    registerStandardGetConfig<ICommandGetWorkoutIntervalType, IntervalType>("getWorkoutIntervalType",
         csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_INTERVALTYPE,
         data=>data.getUint8(0));   
          
@@ -323,7 +323,7 @@ export interface IBuffer {
     getWorkoutIntervalRestTime(params: ICommandParamsBase): IBuffer;
 }
 
-registerStandardLongGet<ICommandGetWorkoutIntervalCount, number>("getWorkoutIntervalRestTime",
+registerStandardGetConfig<ICommandGetWorkoutIntervalCount, number>("getWorkoutIntervalRestTime",
     csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_RESTTIME,
     data=>data.getUint16(0,true));    
 
@@ -336,7 +336,7 @@ export interface IBuffer {
     getWork(params: ICommandParamsBase): IBuffer;
 }
 
-registerStandardLongGet<ICommandGetWork, number>("getWork",
+registerStandardGetConfig<ICommandGetWork, number>("getWork",
     csafe.defs.SHORT_DATA_CMDS.GETTWORK_CMD,
     data=>{
         var result=data.getUint8(0)*60*60+
@@ -358,6 +358,7 @@ registerStandardLongGet<ICommandGetWork, number>("getWork",
         csafe.defs.LONG_DATA_CMDS.SETPROGRAM_CMD,
         (params) => { return [utils.getByte(params.value, 0), 0]; });
 
+    
     //----------------------------- set time ------------------------------------
 
     export interface ICommandTimeParams extends ICommandParamsBase {
@@ -422,7 +423,7 @@ registerStandardLongGet<ICommandGetWork, number>("getWork",
 
     registerStandardSet<ICommandDistanceParams>("setDistance",
         csafe.defs.LONG_DATA_CMDS.SETHORIZONTAL_CMD,
-        (params) => { return [utils.getByte(params.value, 0), utils.getByte(params.value, 1), params.unit]; });
+        (params) => { return [utils.getByte(params.value, 0),utils.getByte(params.value, 1), params.unit]; });
 
 
     //----------------------------- set total calories ------------------------------------

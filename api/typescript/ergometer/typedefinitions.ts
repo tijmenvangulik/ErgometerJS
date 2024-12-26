@@ -36,7 +36,7 @@ namespace ergometer {
         fixedDistanceNoAplits,
         fixedDistanceSplits,
         fixedTimeNoAplits,
-        fixedTimeAplits,
+        fixedTimeSplits,
         fixedTimeInterval,
         fixedDistanceInterval,
         variableInterval,
@@ -44,15 +44,64 @@ namespace ergometer {
         fixedCalorie,
         fixedWattMinutes
     }
+    export const enum ScreenType {
+        None,
+        Workout,
+        Race,
+        Csave,
+        Diagnostic,
+        Manufacturing
+    }
+    
+    export const enum  ScreenValue {
+        None, /**< None value (0). */
+        PrepareToRowWorkout, /**< Prepare to workout type (1). */
+        TerminateWorkout, /**< Terminate workout type (2). */
+        RearmWorkout, /**< Rearm workout type (3). */
+        RefreshLogCard, /**< Refresh local copies of logcard structures(4). */
+        PrepareToRaceStart, /**< Prepare to race start (5). */
+        GoToMainScreen, /**< Goto to main screen (6). */
+        LogCardBusyWarning, /**< Log device busy warning (7). */
+        LogCardSelectUser, /**< Log device select user (8). */
+        ResetRaceParams, /**< Reset race parameters (9). */
+        CableTestSlave, /**< Cable test slave indication(10). */
+        FishGame, /**< Fish game (11). */
+        DisplayParticipantInfo, /**< Display participant info (12). */
+        DisplayParticipantInfoConfirm, /**< Display participant info w/ confirmation (13). */
+        ChangeDisplayTypeTarget = 20, /**< Display type set to target (20). */
+        ChangeDisplayTypeStandard, /**< Display type set to standard (21). */
+        ChangeDisplayTypeForceVelocity, /**< Display type set to forcevelocity (22). */
+        ChangeDisplayTypePaceBoat, /**< Display type set to Paceboat (23). */
+        ChangeDisplayTypePerStroke, /**< Display type set to perstroke (24). */
+        ChangeDisplayTypeSimple, /**< Display type set to simple (25). */
+        ChangeUnitsTypeTimeMeters = 30, /**< Units type set to timemeters (30). */
+        ChangeUnitsTypePace, /**< Units type set to pace (31). */
+        ChangeUnitsTypeWatts, /**< Units type set to watts (32). */
+        ChangeUnitsTypeCaloricBurnRate, /**< Units type set to caloric burn rate(33). */
+        TargetGameBasic, /**< Basic target game (34). */
+        TargetGameAdvanced, /**< Advanced target game (35). */
+        DartGame, /**< Dart game (36). */
+        GoToUsbWaitReady, /**< USB wait ready (37). */
+        TachCableTestDisable, /**< Tach cable test disable (38). */
+        TachSimDisable, /**< Tach simulator disable (39). */
+        TachSimEnableRate1, /**< Tach simulator enable, rate = 1:12 (40). */
+        TachSimEnableRate2, /**< Tach simulator enable, rate = 1:35 (41). */
+        TachSimEnableRate3, /**< Tach simulator enable, rate = 1:42 (42). */
+        TachSimEnableRate4, /**< Tach simulator enable, rate = 3:04 (43). */
+        TachSimEnableRate5, /**< Tach simulator enable, rate = 3:14 (44). */
+        TachCableTestEnable, /**< Tach cable test enable (45). */
+        ChangeUnitsTypeCalories, /**< Units type set to calories(46). */
+        ScreenRedraw = 255 /**< Screen redraw (255). */
+    }
     //Interval Type
     export const enum IntervalType {
         time,
-        dist,
+        distance,
         rest,
         timertUndefined,
         distanceRestUndefined,
         restUndefined,
-        cal,
+        calories,
         calRestUndefined,
         wattMinute,
         wattMinuteRestUndefined,
@@ -92,10 +141,11 @@ namespace ergometer {
     }
     //Workout Duration Type
     export const enum WorkoutDurationType {
-        timeDuration = 0,
-        caloriesDuration = 0x40,
-        distanceDuration = 0x80,
-        wattsDuration = 0xc0
+        time = 0,
+        calories = 0x40,
+        wattMin =0x60,
+        distance = 0x80,
+        watts = 0xC0
     }
     export const enum SampleRate {
         rate1sec,

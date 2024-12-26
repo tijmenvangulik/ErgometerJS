@@ -234,7 +234,10 @@ namespace ergometer.csafe.defs {
         GETUSERCAPS2_CMD = 0x7F,                         // 0x7F
         CAP_CMD_LONG_MAX
     }
-
+    export const enum PROPRIETARY_GET_CMDS {
+       GETPMCFG_CMD = 0x7E,  //GETUSERCAPS1_CMD
+       GETPMDATA_CMD = 0x7F //GETUSERCAPS2_CMD
+    }
     /*
      The currently defined CSAFE command space is augmented by adding 4 command
      wrappers to allow pushing and pulling of configuration/data from the

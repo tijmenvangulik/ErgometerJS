@@ -103,6 +103,20 @@ namespace ergometer.csafe {
             }
         })
     }
+    export function registerStandardGetConfig<T extends ICommandParamsBase,U>(functionName :string , detailCommand : number,converter : (data : DataView)=> U) {
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
+            buffer[functionName]= function (params : T) : IBuffer {
+                buffer.addRawCommand({
+                    waitForResponse:true,
+                    command : csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
+                    detailCommand: detailCommand,
+                    onDataReceived : (data : DataView)=>{params.onDataReceived(<U>converter(data)) }  ,
+                    onError:params.onError
+                });
+                return buffer;
+            }
+        })
+    }
 
     export function registerStandardShortGet<T extends ICommandParamsBase,U>(functionName :string , command : number,converter : (data : DataView)=> U) {
         commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
@@ -117,13 +131,67 @@ namespace ergometer.csafe {
             }
         })
     }
+    //
 
-    export function registerStandardLongGet<T extends ICommandParamsBase,U>(functionName :string , detailCommand : number,converter : (data : DataView)=> U) {
+    //Proprietary Short Set Configuration Commands 
+	//C2 Proprietary Long Set Configuration Commands
+    export function registerStandardProprietarySetConfig<T extends ICommandParamsBase>(functionName :string , command : number, setParams : (params : T)=> number[]) {
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
+            buffer[functionName]= function (params : T) : IBuffer {
+                buffer.addRawCommand({
+                    waitForResponse:false,
+                    command : csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMCFG_CMD ,
+                    detailCommand: command,
+                    data: setParams(params),
+                    onError:params.onError
+                });
+                return buffer;
+            }
+        })
+    }
+    //Proprietary Short Set Data Commands 
+	//C2 Proprietary Long Set Data Commands
+    export function registerStandardProprietarySetData<T extends ICommandParamsBase>(functionName :string , command : number, setParams : (params : T)=> number[]) {
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
+            buffer[functionName]= function (params : T) : IBuffer {
+                buffer.addRawCommand({
+                    waitForResponse:false,
+                    command : csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMDATA_CMD ,
+                    detailCommand: command,
+                    data: setParams(params),
+                    onError:params.onError
+                });
+                return buffer;
+            }
+        })
+    }
+
+    
+
+    //hoofdstuk C2 Proprietary Short Get Configuration
+
+    export function registerStandardProprietaryGetConfig<T extends ICommandParamsBase,U>(functionName :string , detailCommand : number,converter : (data : DataView)=> U) {
         commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
             buffer[functionName]= function (params : T) : IBuffer {
                 buffer.addRawCommand({
                     waitForResponse:true,
-                    command : csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD,
+                    command : csafe.defs.PROPRIETARY_GET_CMDS.GETPMCFG_CMD, 
+                    detailCommand: detailCommand,
+                    onDataReceived : (data : DataView)=>{params.onDataReceived(<U>converter(data)) }  ,
+                    onError:params.onError
+                });
+                return buffer;
+            }
+        })
+    }
+
+    //C2 Proprietary Short Get Data Commands
+    export function registerStandardProprietaryGetData<T extends ICommandParamsBase,U>(functionName :string , detailCommand : number,converter : (data : DataView)=> U) {
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
+            buffer[functionName]= function (params : T) : IBuffer {
+                buffer.addRawCommand({
+                    waitForResponse:true,
+                    command : csafe.defs.PROPRIETARY_GET_CMDS.GETPMDATA_CMD,
                     detailCommand: detailCommand,
                     onDataReceived : (data : DataView)=>{params.onDataReceived(<U>converter(data)) }  ,
                     onError:params.onError

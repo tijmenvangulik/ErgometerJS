@@ -721,6 +721,10 @@ declare namespace ergometer.csafe.defs {
         GETUSERCAPS2_CMD = 127,
         CAP_CMD_LONG_MAX = 128
     }
+    const enum PROPRIETARY_GET_CMDS {
+        GETPMCFG_CMD = 126,
+        GETPMDATA_CMD = 127
+    }
     const enum LONG_PMPROPRIETARY_CMDS {
         SETPMCFG_CMD = 118,
         SETPMDATA_CMD = 119,
@@ -1075,8 +1079,12 @@ declare namespace ergometer.csafe {
     }
     function registerStandardSet<T extends ICommandParamsBase>(functionName: string, command: number, setParams: (params: T) => number[]): void;
     function registerStandardSetConfig<T extends ICommandParamsBase>(functionName: string, command: number, setParams: (params: T) => number[]): void;
+    function registerStandardGetConfig<T extends ICommandParamsBase, U>(functionName: string, detailCommand: number, converter: (data: DataView) => U): void;
     function registerStandardShortGet<T extends ICommandParamsBase, U>(functionName: string, command: number, converter: (data: DataView) => U): void;
-    function registerStandardLongGet<T extends ICommandParamsBase, U>(functionName: string, detailCommand: number, converter: (data: DataView) => U): void;
+    function registerStandardProprietarySetConfig<T extends ICommandParamsBase>(functionName: string, command: number, setParams: (params: T) => number[]): void;
+    function registerStandardProprietarySetData<T extends ICommandParamsBase>(functionName: string, command: number, setParams: (params: T) => number[]): void;
+    function registerStandardProprietaryGetConfig<T extends ICommandParamsBase, U>(functionName: string, detailCommand: number, converter: (data: DataView) => U): void;
+    function registerStandardProprietaryGetData<T extends ICommandParamsBase, U>(functionName: string, detailCommand: number, converter: (data: DataView) => U): void;
 }
 /**
  * Created by tijmen on 19-01-16.
@@ -1270,15 +1278,75 @@ declare namespace ergometer.csafe {
         getHeartRate(params: ICommandParamsBase): IBuffer;
     }
 }
-/**
- * Created by tijmen on 06-02-16.
- */
 declare namespace ergometer.csafe {
-    interface ICommandSetWorkOutType extends ICommandParamsBase {
+    interface ICommandSetWorkoutTypeParams extends ICommandParamsBase {
         value: WorkoutType;
     }
     interface IBuffer {
-        setWorkoutType(params: ICommandSetWorkOutType): IBuffer;
+        setWorkoutType(params: ICommandSetWorkoutTypeParams): IBuffer;
+    }
+    interface ICommandSetWorkoutDurationParams extends ICommandParamsBase {
+        durationType: WorkoutDurationType;
+        value: number;
+    }
+    interface IBuffer {
+        setWorkoutDuration(params: ICommandSetWorkoutDurationParams): IBuffer;
+    }
+    interface ICommandsetRestDurationParams extends ICommandParamsBase {
+        value: number;
+    }
+    interface IBuffer {
+        setRestDuration(params: ICommandsetRestDurationParams): IBuffer;
+    }
+    interface ICommandSetSplitDurationParams extends ICommandParamsBase {
+        durationType: WorkoutDurationType;
+        value: number;
+    }
+    interface IBuffer {
+        setSplitDuration(params: ICommandSetSplitDurationParams): IBuffer;
+    }
+    interface ICommandSetTargetPaceTimeParams extends ICommandParamsBase {
+        value: number;
+    }
+    interface IBuffer {
+        setTargetPaceTime(params: ICommandSetTargetPaceTimeParams): IBuffer;
+    }
+    interface ICommandSetScreenStateParams extends ICommandParamsBase {
+        screenType: ScreenType;
+        value: ScreenValue;
+    }
+    interface IBuffer {
+        setScreenState(params: ICommandSetScreenStateParams): IBuffer;
+    }
+    interface ICommandsetConfigureWorkoutParams extends ICommandParamsBase {
+        programmingMode: boolean;
+    }
+    interface IBuffer {
+        setConfigureWorkout(params: ICommandsetConfigureWorkoutParams): IBuffer;
+    }
+    interface ICommandsetTargetAverageWattParams extends ICommandParamsBase {
+        value: number;
+    }
+    interface IBuffer {
+        setTargetAverageWatt(params: ICommandsetTargetAverageWattParams): IBuffer;
+    }
+    interface ICommandssTargetCaloriesPerHourParams extends ICommandParamsBase {
+        value: number;
+    }
+    interface IBuffer {
+        setTargetCaloriesPerHour(params: ICommandssTargetCaloriesPerHourParams): IBuffer;
+    }
+    interface ICommandsIntervalTypeParams extends ICommandParamsBase {
+        value: IntervalType;
+    }
+    interface IBuffer {
+        setIntervalType(params: ICommandsIntervalTypeParams): IBuffer;
+    }
+    interface ICommandsWorkoutIntervalCountParams extends ICommandParamsBase {
+        value: number;
+    }
+    interface IBuffer {
+        setWorkoutIntervalCount(params: ICommandsWorkoutIntervalCountParams): IBuffer;
     }
 }
 /**
@@ -1314,7 +1382,7 @@ declare namespace ergometer {
         fixedDistanceNoAplits = 2,
         fixedDistanceSplits = 3,
         fixedTimeNoAplits = 4,
-        fixedTimeAplits = 5,
+        fixedTimeSplits = 5,
         fixedTimeInterval = 6,
         fixedDistanceInterval = 7,
         variableInterval = 8,
@@ -1322,14 +1390,62 @@ declare namespace ergometer {
         fixedCalorie = 10,
         fixedWattMinutes = 11
     }
+    const enum ScreenType {
+        None = 0,
+        Workout = 1,
+        Race = 2,
+        Csave = 3,
+        Diagnostic = 4,
+        Manufacturing = 5
+    }
+    const enum ScreenValue {
+        None = /**< None value (0). */ 0,
+        PrepareToRowWorkout = /**< Prepare to workout type (1). */ 1,
+        TerminateWorkout = /**< Terminate workout type (2). */ 2,
+        RearmWorkout = /**< Rearm workout type (3). */ 3,
+        RefreshLogCard = /**< Refresh local copies of logcard structures(4). */ 4,
+        PrepareToRaceStart = /**< Prepare to race start (5). */ 5,
+        GoToMainScreen = /**< Goto to main screen (6). */ 6,
+        LogCardBusyWarning = /**< Log device busy warning (7). */ 7,
+        LogCardSelectUser = /**< Log device select user (8). */ 8,
+        ResetRaceParams = /**< Reset race parameters (9). */ 9,
+        CableTestSlave = /**< Cable test slave indication(10). */ 10,
+        FishGame = /**< Fish game (11). */ 11,
+        DisplayParticipantInfo = /**< Display participant info (12). */ 12,
+        DisplayParticipantInfoConfirm = /**< Display participant info w/ confirmation (13). */ 13,
+        ChangeDisplayTypeTarget = 20,
+        ChangeDisplayTypeStandard = /**< Display type set to standard (21). */ 21,
+        ChangeDisplayTypeForceVelocity = /**< Display type set to forcevelocity (22). */ 22,
+        ChangeDisplayTypePaceBoat = /**< Display type set to Paceboat (23). */ 23,
+        ChangeDisplayTypePerStroke = /**< Display type set to perstroke (24). */ 24,
+        ChangeDisplayTypeSimple = /**< Display type set to simple (25). */ 25,
+        ChangeUnitsTypeTimeMeters = 30,
+        ChangeUnitsTypePace = /**< Units type set to pace (31). */ 31,
+        ChangeUnitsTypeWatts = /**< Units type set to watts (32). */ 32,
+        ChangeUnitsTypeCaloricBurnRate = /**< Units type set to caloric burn rate(33). */ 33,
+        TargetGameBasic = /**< Basic target game (34). */ 34,
+        TargetGameAdvanced = /**< Advanced target game (35). */ 35,
+        DartGame = /**< Dart game (36). */ 36,
+        GoToUsbWaitReady = /**< USB wait ready (37). */ 37,
+        TachCableTestDisable = /**< Tach cable test disable (38). */ 38,
+        TachSimDisable = /**< Tach simulator disable (39). */ 39,
+        TachSimEnableRate1 = /**< Tach simulator enable, rate = 1:12 (40). */ 40,
+        TachSimEnableRate2 = /**< Tach simulator enable, rate = 1:35 (41). */ 41,
+        TachSimEnableRate3 = /**< Tach simulator enable, rate = 1:42 (42). */ 42,
+        TachSimEnableRate4 = /**< Tach simulator enable, rate = 3:04 (43). */ 43,
+        TachSimEnableRate5 = /**< Tach simulator enable, rate = 3:14 (44). */ 44,
+        TachCableTestEnable = /**< Tach cable test enable (45). */ 45,
+        ChangeUnitsTypeCalories = /**< Units type set to calories(46). */ 46,
+        ScreenRedraw = 255 /**< Screen redraw (255). */
+    }
     const enum IntervalType {
         time = 0,
-        dist = 1,
+        distance = 1,
         rest = 2,
         timertUndefined = 3,
         distanceRestUndefined = 4,
         restUndefined = 5,
-        cal = 6,
+        calories = 6,
         calRestUndefined = 7,
         wattMinute = 8,
         wattMinuteRestUndefined = 9,
@@ -1363,10 +1479,11 @@ declare namespace ergometer {
         recoveryState = 4
     }
     const enum WorkoutDurationType {
-        timeDuration = 0,
-        caloriesDuration = 64,
-        distanceDuration = 128,
-        wattsDuration = 192
+        time = 0,
+        calories = 64,
+        wattMin = 96,
+        distance = 128,
+        watts = 192
     }
     const enum SampleRate {
         rate1sec = 0,

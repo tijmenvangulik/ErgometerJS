@@ -1094,7 +1094,7 @@
                 workoutDurationType :data.getUint8(ble.PM_Rowing_Status_BLE_Payload.WORKOUT_DURATION_TYPE),
                 dragFactor : data.getUint8(ble.PM_Rowing_Status_BLE_Payload.DRAG_FACTOR),
             };
-            if (parsed.workoutDurationType==WorkoutDurationType.timeDuration)
+            if (parsed.workoutDurationType==WorkoutDurationType.time)
                 parsed.workoutDuration=parsed.workoutDuration*10;//in mili seconds
             if (JSON.stringify(this.rowingGeneralStatus) !== JSON.stringify(parsed)) {
                 this.rowingGeneralStatusEvent.pub(parsed);

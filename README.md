@@ -30,6 +30,16 @@ Basically ErgometerJS needs javascript and a blue tooth driver which can be (nob
     http://www.concept2.com/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
 
 # Change Log
+- 1.5.0
+   * fix problem when combining large commands with a detail code. The length was not set correctly which resulted into not executing the commands 
+   * Support for creating workouts. Blue tooth supports all features. For USB you need authentication to use all proprietary commands . Please contact concept2 for full USB support.
+   * Included documentation and examples for the new workout features
+   * Breaking changes
+     * Renamed WorkoutType.fixedTimeAplits to WorkoutType.fixedTimeSplits
+     * Removed  registerStandardLongGet
+     * Moved setWorkoutType 
+     * IntervalType renamed dist and cal to distance and calories
+
 - 1.4.8
    New values for usb,:
    * strokeDistance;
@@ -356,7 +366,7 @@ calculated. (except when there is an additional length in the data of a command,
     
 There are many commands, I have not yet found time to add all the commands. If you added new ones
 please commit them to github. When you not care about writing a user friendly command wrapper you can
-allways send raw commands. For example
+always send raw commands. For example
 
     this.performanceMonitor.newCsafeBuffer()
         .addRawCommand({
@@ -376,7 +386,132 @@ Command merging
 Long config commands can be merged into one command for efficency when they are directly after each other in the buffer.
 
 When you set sortCommands to true the commands are sorted so they can be merged without caring about the the order in which you add the commands. 
-  
+
+### Creating workouts
+
+#### public commands
+
+setProgram,setDistance,setWorkoutType, setScreenState and setConfigureWorkout are public and work fine for USB and bluetooth. 
+
+Web bluetooth has only a small packet size of 20 bytes, so we need to split the commands to make it work on the web.
+
+##### distance
+
+Use the following code to set a distance and go to the workout screen: 
+
+    await performanceMonitor.newCsafeBuffer()
+        .setDistance({value:3000,unit:ergometer.Unit.distanceMeter})
+        .setProgram({value:ergometer.Program.Programmed})
+        .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})
+        .send();
+
+##### Configure JustRow
+        await this.performanceMonitor.newCsafeBuffer()
+           .setWorkoutType({value: ergometer.WorkoutType.justRowSplits})
+           .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})
+           .send();
+
+##### Configure 2000m/400m splits
+
+    await performanceMonitor.newCsafeBuffer()
+        .setWorkoutType({value: ergometer.WorkoutType.fixedDistanceSplits})
+        .setWorkoutDuration({value:2000,durationType:ergometer.WorkoutDurationType.distance})        
+        .send()
+    await this.performanceMonitor.newCsafeBuffer()
+        .setSplitDuration({value:400,durationType:ergometer.WorkoutDurationType.distance})
+        .setConfigureWorkout({programmingMode:true})
+        .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})        
+        .send()
+
+#### proprietary commands
+
+The next examples only work for blue tooth. For USB you need authentication to use these proprietary commands. Please contact Concept2 for information how to do the authentication. 
+
+##### Configure fixe time
+ 
+20:00/4:00 splits, power goal of 100 watts
+
+    await this.performanceMonitor.newCsafeBuffer()
+        .setWork({hour:0,minute:20,second:0})
+        .setProgram({value:ergometer.Program.Programmed})
+        .send();
+    await this.performanceMonitor.newCsafeBuffer()
+        .setSplitDuration({value:400,durationType:ergometer.WorkoutDurationType.distance})
+        .send();
+    await this.performanceMonitor.newCsafeBuffer()
+        .setPower({value:100,unit:ergometer.Unit.powerWatts})
+        .setProgram({value:ergometer.Program.Programmed})
+        .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})
+        .send();
+
+##### Configure 20:00/4:00 splits
+
+    await performanceMonitor.newCsafeBuffer()
+        .setWorkoutType({value: ergometer.WorkoutType.fixedTimeSplits})
+        .setWorkoutDuration({value:20*60*100,durationType:ergometer.WorkoutDurationType.time})        
+        .send();
+
+    await performanceMonitor.newCsafeBuffer()
+        .setSplitDuration({value:4*60*100,durationType:ergometer.WorkoutDurationType.time})
+        .setConfigureWorkout({programmingMode:true})
+        .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})        
+        .send();
+
+##### Configure Fixed Time Interval 2:00/:30 rest
+
+    await performanceMonitor.newCsafeBuffer()
+       .setWorkoutType({value: ergometer.WorkoutType.fixedTimeInterval})
+       .setWorkoutDuration({value:2*60*100,durationType:ergometer.WorkoutDurationType.time})        
+       .send();
+       
+    await performanceMonitor.newCsafeBuffer()
+       .setRestDuration({value:30})
+       .setConfigureWorkout({programmingMode:true})
+       .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})                
+       .send();
+
+##### Configure variable interval v500m/1:00r…4
+
+Interval 1: 500m/1:00r, target pace of 1:40
+Interval 2: 3:00/0:00r, target pace of 1:40
+
+    await performanceMonitor.newCsafeBuffer()
+        .setWorkoutIntervalCount({value:0}) //start set workout interval #1
+        .setWorkoutType({value: ergometer.WorkoutType.variableInterval})
+        .setIntervalType({value: ergometer.IntervalType.distance})
+        .send()
+
+    await performanceMonitor.newCsafeBuffer()
+        .setWorkoutDuration({value:500,durationType:ergometer.WorkoutDurationType.distance})        
+        .setRestDuration({value:60})
+        .send();
+        
+    await performanceMonitor.newCsafeBuffer()
+        .setTargetPaceTime({value:(1*60+40)*100})
+        .setConfigureWorkout({programmingMode:true})
+        .send();
+
+    //Interval 2: 3:00/0:00r, target pace of 1:40
+    await performanceMonitor.newCsafeBuffer()
+        .setWorkoutIntervalCount({value:1}) //start set workout interval #2
+        .setIntervalType({value: ergometer.IntervalType.time})
+        .send()
+
+    await performanceMonitor.newCsafeBuffer()
+        .setWorkoutDuration({value:3*60*100,durationType:ergometer.WorkoutDurationType.time})        
+        .setRestDuration({value:0})
+        .send();
+
+    await this.performanceMonitor.newCsafeBuffer()
+        .setTargetPaceTime({value:(1*60+40)*100})
+        .setConfigureWorkout({programmingMode:true})
+        .send();
+
+        //go to screen
+    await this.performanceMonitor.newCsafeBuffer()
+        .setScreenState({screenType:ergometer.ScreenType.Workout,value:ergometer.ScreenValue.PrepareToRowWorkout})                
+        .send();
+
 # Usage for Usb
 
 An usb device has a quicker way of finding devices but does not have all the concept2 BLE events. So the api is a bit different. The csafe part is exactly the same as for the ble device.

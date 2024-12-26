@@ -66,7 +66,7 @@
       * @param data
       * @public
       **/
-     export function typedArrayToHexString(data : ArrayBuffer | Uint8Array) : string {
+     export function typedArrayToHexString(data : ArrayBuffer | Uint8Array,addComma = false) : string {
          // view data as a Uint8Array, unless it already is one.
 
          if((<Uint8Array>data).buffer) {
@@ -79,7 +79,8 @@
          }
          var str = '';
          for(var i=0; i<(<Uint8Array>data).length; i++) {
-             str += toHexString(data[i], 1);
+            if (addComma && str) str+=',';
+            str += toHexString(data[i], 1);
          }
          return str;
      }

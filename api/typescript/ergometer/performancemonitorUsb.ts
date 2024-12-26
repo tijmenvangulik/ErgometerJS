@@ -674,7 +674,7 @@ namespace ergometer {
                            (this.trainingData.endDistance===0)) ) {
                         //otherwise the work time does not reflect the last time and distance
                         if ( this.trainingData.workoutType>=WorkoutType.fixedDistanceNoAplits &&
-                            this.trainingData.workoutType<=WorkoutType.fixedTimeAplits ) {
+                            this.trainingData.workoutType<=WorkoutType.fixedTimeSplits ) {
                             
                             if (this.trainingData.duration && this.trainingData.duration>0) { //doing an fixed time
                                 this.strokeData.workTime = this.trainingData.duration;

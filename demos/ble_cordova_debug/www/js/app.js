@@ -90,8 +90,9 @@ var ergometer;
          * @param data
          * @public
          **/
-        function typedArrayToHexString(data) {
+        function typedArrayToHexString(data, addComma) {
             // view data as a Uint8Array, unless it already is one.
+            if (addComma === void 0) { addComma = false; }
             if (data.buffer) {
                 if (!(data instanceof Uint8Array))
                     data = new Uint8Array(data.buffer);
@@ -104,6 +105,8 @@ var ergometer;
             }
             var str = '';
             for (var i = 0; i < data.length; i++) {
+                if (addComma && str)
+                    str += ',';
                 str += toHexString(data[i], 1);
             }
             return str;
@@ -1179,7 +1182,7 @@ var ergometer;
                         })
                             .then(function (data) {
                             if (_this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
-                                _this._performanceMonitor.traceInfo("doReadCharacteristic " + characteristicUUID + " : " + ergometer.utils.typedArrayToHexString(data.buffer) + " ");
+                                _this._performanceMonitor.traceInfo("doReadCharacteristic " + characteristicUUID + " : " + ergometer.utils.typedArrayToHexString(data.buffer, true) + " ");
                             resolve(data.buffer);
                         })
                             .catch(function (e) {
@@ -1197,7 +1200,7 @@ var ergometer;
             };
             DriverWebBlueTooth.prototype.onCharacteristicValueChanged = function (event) {
                 if (this._performanceMonitor.logLevel == ergometer.LogLevel.trace)
-                    this._performanceMonitor.traceInfo("onCharacteristicValueChanged " + event.target.uuid + " : " + ergometer.utils.typedArrayToHexString(event.target.value.buffer) + " ");
+                    this._performanceMonitor.traceInfo("onCharacteristicValueChanged " + event.target.uuid + " : " + ergometer.utils.typedArrayToHexString(event.target.value.buffer, true) + " ");
                 try {
                     if (!this._device.gatt.connected) {
                         this.onDisconnected(null);
@@ -2333,6 +2336,21 @@ var ergometer;
             });
         }
         csafe.registerStandardSetConfig = registerStandardSetConfig;
+        function registerStandardGetConfig(functionName, detailCommand, converter) {
+            csafe.commandManager.register(function (buffer, monitor) {
+                buffer[functionName] = function (params) {
+                    buffer.addRawCommand({
+                        waitForResponse: true,
+                        command: 26 /* SETUSERCFG1_CMD */,
+                        detailCommand: detailCommand,
+                        onDataReceived: function (data) { params.onDataReceived(converter(data)); },
+                        onError: params.onError
+                    });
+                    return buffer;
+                };
+            });
+        }
+        csafe.registerStandardGetConfig = registerStandardGetConfig;
         function registerStandardShortGet(functionName, command, converter) {
             csafe.commandManager.register(function (buffer, monitor) {
                 buffer[functionName] = function (params) {
@@ -2347,12 +2365,48 @@ var ergometer;
             });
         }
         csafe.registerStandardShortGet = registerStandardShortGet;
-        function registerStandardLongGet(functionName, detailCommand, converter) {
+        //
+        //Proprietary Short Set Configuration Commands 
+        //C2 Proprietary Long Set Configuration Commands
+        function registerStandardProprietarySetConfig(functionName, command, setParams) {
+            csafe.commandManager.register(function (buffer, monitor) {
+                buffer[functionName] = function (params) {
+                    buffer.addRawCommand({
+                        waitForResponse: false,
+                        command: 118 /* SETPMCFG_CMD */,
+                        detailCommand: command,
+                        data: setParams(params),
+                        onError: params.onError
+                    });
+                    return buffer;
+                };
+            });
+        }
+        csafe.registerStandardProprietarySetConfig = registerStandardProprietarySetConfig;
+        //Proprietary Short Set Data Commands 
+        //C2 Proprietary Long Set Data Commands
+        function registerStandardProprietarySetData(functionName, command, setParams) {
+            csafe.commandManager.register(function (buffer, monitor) {
+                buffer[functionName] = function (params) {
+                    buffer.addRawCommand({
+                        waitForResponse: false,
+                        command: 119 /* SETPMDATA_CMD */,
+                        detailCommand: command,
+                        data: setParams(params),
+                        onError: params.onError
+                    });
+                    return buffer;
+                };
+            });
+        }
+        csafe.registerStandardProprietarySetData = registerStandardProprietarySetData;
+        //hoofdstuk C2 Proprietary Short Get Configuration
+        function registerStandardProprietaryGetConfig(functionName, detailCommand, converter) {
             csafe.commandManager.register(function (buffer, monitor) {
                 buffer[functionName] = function (params) {
                     buffer.addRawCommand({
                         waitForResponse: true,
-                        command: 26 /* SETUSERCFG1_CMD */,
+                        command: 126 /* GETPMCFG_CMD */,
                         detailCommand: detailCommand,
                         onDataReceived: function (data) { params.onDataReceived(converter(data)); },
                         onError: params.onError
@@ -2361,7 +2415,23 @@ var ergometer;
                 };
             });
         }
-        csafe.registerStandardLongGet = registerStandardLongGet;
+        csafe.registerStandardProprietaryGetConfig = registerStandardProprietaryGetConfig;
+        //C2 Proprietary Short Get Data Commands
+        function registerStandardProprietaryGetData(functionName, detailCommand, converter) {
+            csafe.commandManager.register(function (buffer, monitor) {
+                buffer[functionName] = function (params) {
+                    buffer.addRawCommand({
+                        waitForResponse: true,
+                        command: 127 /* GETPMDATA_CMD */,
+                        detailCommand: detailCommand,
+                        onDataReceived: function (data) { params.onDataReceived(converter(data)); },
+                        onError: params.onError
+                    });
+                    return buffer;
+                };
+            });
+        }
+        csafe.registerStandardProprietaryGetData = registerStandardProprietaryGetData;
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -2568,12 +2638,12 @@ var ergometer;
                 return buffer;
             };
         });
-        csafe.registerStandardLongGet("getWorkoutType", 137 /* PM_GET_WORKOUTTYPE */, function (data) { return data.getUint8(0); });
-        csafe.registerStandardLongGet("getWorkoutState", 141 /* PM_GET_WORKOUTSTATE */, function (data) { return data.getUint8(0); });
-        csafe.registerStandardLongGet("getWorkoutIntervalCount", 159 /* PM_GET_WORKOUTINTERVALCOUNT */, function (data) { return data.getUint8(0); });
-        csafe.registerStandardLongGet("getWorkoutIntervalType", 142 /* PM_GET_INTERVALTYPE */, function (data) { return data.getUint8(0); });
-        csafe.registerStandardLongGet("getWorkoutIntervalRestTime", 207 /* PM_GET_RESTTIME */, function (data) { return data.getUint16(0, true); });
-        csafe.registerStandardLongGet("getWork", 160 /* GETTWORK_CMD */, function (data) {
+        csafe.registerStandardGetConfig("getWorkoutType", 137 /* PM_GET_WORKOUTTYPE */, function (data) { return data.getUint8(0); });
+        csafe.registerStandardGetConfig("getWorkoutState", 141 /* PM_GET_WORKOUTSTATE */, function (data) { return data.getUint8(0); });
+        csafe.registerStandardGetConfig("getWorkoutIntervalCount", 159 /* PM_GET_WORKOUTINTERVALCOUNT */, function (data) { return data.getUint8(0); });
+        csafe.registerStandardGetConfig("getWorkoutIntervalType", 142 /* PM_GET_INTERVALTYPE */, function (data) { return data.getUint8(0); });
+        csafe.registerStandardGetConfig("getWorkoutIntervalRestTime", 207 /* PM_GET_RESTTIME */, function (data) { return data.getUint16(0, true); });
+        csafe.registerStandardGetConfig("getWork", 160 /* GETTWORK_CMD */, function (data) {
             var result = data.getUint8(0) * 60 * 60 +
                 data.getUint8(1) * 60 +
                 data.getUint8(2);
@@ -2644,18 +2714,21 @@ var ergometer;
         });
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
-/**
- * Created by tijmen on 06-02-16.
- */
 var ergometer;
-/**
- * Created by tijmen on 06-02-16.
- */
 (function (ergometer) {
     var csafe;
     (function (csafe) {
-        //----------------------------- workout type ------------------------------------
-        csafe.registerStandardSetConfig("setWorkoutType", 1 /* PM_SET_WORKOUTTYPE */, function (params) { return [params.value]; });
+        csafe.registerStandardProprietarySetConfig("setWorkoutType", 1 /* PM_SET_WORKOUTTYPE */, function (params) { return [ergometer.utils.getByte(params.value, 0)]; });
+        csafe.registerStandardProprietarySetConfig("setWorkoutDuration", 3 /* PM_SET_WORKOUTDURATION */, function (params) { return [params.durationType, ergometer.utils.getByte(params.value, 3), ergometer.utils.getByte(params.value, 2), ergometer.utils.getByte(params.value, 1), ergometer.utils.getByte(params.value, 0)]; });
+        csafe.registerStandardProprietarySetConfig("setRestDuration", 4 /* PM_SET_RESTDURATION */, function (params) { return [ergometer.utils.getByte(params.value, 1), ergometer.utils.getByte(params.value, 0)]; });
+        csafe.registerStandardProprietarySetConfig("setSplitDuration", 5 /* PM_SET_SPLITDURATION */, function (params) { return [params.durationType, ergometer.utils.getByte(params.value, 3), ergometer.utils.getByte(params.value, 2), ergometer.utils.getByte(params.value, 1), ergometer.utils.getByte(params.value, 0)]; });
+        csafe.registerStandardProprietarySetConfig("setTargetPaceTime", 6 /* PM_SET_TARGETPACETIME */, function (params) { return [ergometer.utils.getByte(params.value, 3), ergometer.utils.getByte(params.value, 2), ergometer.utils.getByte(params.value, 1), ergometer.utils.getByte(params.value, 0)]; });
+        csafe.registerStandardProprietarySetConfig("setScreenState", 19 /* PM_SET_SCREENSTATE */, function (params) { return [ergometer.utils.getByte(params.screenType, 0), ergometer.utils.getByte(params.value, 0)]; });
+        csafe.registerStandardProprietarySetConfig("setConfigureWorkout", 20 /* PM_CONFIGURE_WORKOUT */, function (params) { return [params.programmingMode ? 1 : 0]; });
+        csafe.registerStandardProprietarySetConfig("setTargetAverageWatt", 21 /* PM_SET_TARGETAVGWATTS */, function (params) { return [ergometer.utils.getByte(params.value, 1), ergometer.utils.getByte(params.value, 0)]; });
+        csafe.registerStandardProprietarySetConfig("setTargetCaloriesPerHour", 22 /* PM_SET_TARGETCALSPERHR */, function (params) { return [ergometer.utils.getByte(params.value, 1), ergometer.utils.getByte(params.value, 0)]; });
+        csafe.registerStandardProprietarySetConfig("setIntervalType", 23 /* PM_SET_INTERVALTYPE */, function (params) { return [params.value]; });
+        csafe.registerStandardProprietarySetConfig("setWorkoutIntervalCount", 24 /* PM_SET_WORKOUTINTERVALCOUNT */, function (params) { return [params.value]; });
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -2748,7 +2821,7 @@ var ergometer;
             var _this = this;
             this._commands.forEach(function (command) {
                 if (_this._monitor.logLevel >= ergometer.LogLevel.error)
-                    _this._monitor.handleError("command removed without result command=" + command.command + " detial= " + command.detailCommand);
+                    _this._monitor.handleError("command removed without result command=" + command.command + " detail= " + command.detailCommand);
                 if (command.onError)
                     command.onError("command removed without result");
             });
@@ -2929,7 +3002,7 @@ var ergometer;
                                 //this is more efficent
                                 var dataLength = 1;
                                 if (command.data && command.data.length > 0)
-                                    dataLength += command.data.length;
+                                    dataLength += (command.data.length + 1);
                                 commandArray[prevCommandIndex + 1] += dataLength;
                                 commandMerged = true;
                             }
@@ -3046,7 +3119,7 @@ var ergometer;
                                 bufferIndex++;
                             }
                             if (_this.logLevel == ergometer.LogLevel.trace)
-                                _this.traceInfo("send csafe: " + ergometer.utils.typedArrayToHexString(buffer));
+                                _this.traceInfo("send csafe: " + ergometer.utils.typedArrayToHexString(buffer, true));
                             _this.driver_write(dataView).then(function () {
                                 _this.traceInfo("csafe command send");
                                 if (sendBytesIndex >= bytesToSend.length) {
@@ -3089,7 +3162,7 @@ var ergometer;
             if (this._waitResonseBuffers.length > 0 && (dataView.byteLength != 1 || dataView.getUint8(0) != 0)) {
                 var waitBuffer = this._waitResonseBuffers[0];
                 if (this.logLevel == ergometer.LogLevel.trace)
-                    this.traceInfo("continious receive csafe: " + ergometer.utils.typedArrayToHexString(dataView.buffer));
+                    this.traceInfo("continious receive csafe: " + ergometer.utils.typedArrayToHexString(dataView.buffer, true));
                 var i = 0;
                 var moveToNextBuffer = false;
                 while (i < dataView.byteLength && !moveToNextBuffer) {
@@ -3914,7 +3987,7 @@ var ergometer;
                         (_this.trainingData.endDistance === 0))) {
                     //otherwise the work time does not reflect the last time and distance
                     if (_this.trainingData.workoutType >= 2 /* fixedDistanceNoAplits */ &&
-                        _this.trainingData.workoutType <= 5 /* fixedTimeAplits */) {
+                        _this.trainingData.workoutType <= 5 /* fixedTimeSplits */) {
                         if (_this.trainingData.duration && _this.trainingData.duration > 0) { //doing an fixed time
                             _this.strokeData.workTime = _this.trainingData.duration;
                             _this.strokeData.workDistance = distance;
@@ -5029,7 +5102,7 @@ var ergometer;
                 workoutDurationType: data.getUint8(17 /* WORKOUT_DURATION_TYPE */),
                 dragFactor: data.getUint8(18 /* DRAG_FACTOR */),
             };
-            if (parsed.workoutDurationType == 0 /* timeDuration */)
+            if (parsed.workoutDurationType == 0 /* time */)
                 parsed.workoutDuration = parsed.workoutDuration * 10; //in mili seconds
             if (JSON.stringify(this.rowingGeneralStatus) !== JSON.stringify(parsed)) {
                 this.rowingGeneralStatusEvent.pub(parsed);

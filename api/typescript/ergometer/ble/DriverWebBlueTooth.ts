@@ -226,7 +226,7 @@ namespace ergometer.ble {
               })
               .then((data : DataView)=>{
             if (this._performanceMonitor.logLevel==LogLevel.trace)
-                  this._performanceMonitor.traceInfo(`doReadCharacteristic ${characteristicUUID} : ${utils.typedArrayToHexString(data.buffer)} `);
+                  this._performanceMonitor.traceInfo(`doReadCharacteristic ${characteristicUUID} : ${utils.typedArrayToHexString(data.buffer,true)} `);
 
                 resolve(data.buffer);
             })
@@ -246,7 +246,7 @@ namespace ergometer.ble {
 
     private onCharacteristicValueChanged(event:webbluetooth.CharacteristicsValueChangedEvent) {
       if (this._performanceMonitor.logLevel==LogLevel.trace)
-        this._performanceMonitor.traceInfo(`onCharacteristicValueChanged ${event.target.uuid} : ${utils.typedArrayToHexString(event.target.value.buffer)} `);
+        this._performanceMonitor.traceInfo(`onCharacteristicValueChanged ${event.target.uuid} : ${utils.typedArrayToHexString(event.target.value.buffer,true)} `);
       
       try {
         if (!this._device.gatt.connected) {
