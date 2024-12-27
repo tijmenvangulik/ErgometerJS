@@ -21,7 +21,7 @@ Tijmen@vangulik
   * Mobile react native: iOS,android   
   * Desktop using Electron  MacOS X, Windows, Linux
   * Server using Node MacOS X, Windows, Linux (inc Raspberry PI)
-  * Web: chrome canary (still beta) 
+  * Web: chromium based browsers
 
 Basically ErgometerJS needs javascript and a blue tooth driver which can be (noble,cordova-plugin-ble or web bluetooth)
 
@@ -45,7 +45,7 @@ Components
 
 # platforms
 
-|            | pm3-5 usb   | Blue tooth |
+|            | pm3-5 usb   | Bluetooth  |
 |------------|-------------|------------|    
 |Web         | beta        | yes        |
 |Cordova     | android     | yes        |
@@ -112,7 +112,7 @@ To use the library you need all the files in the lib directory and include it in
 	<script src="libs/jquery/jquery.js"></script>
 
 
-# Usage for Ble                                                                                                                                                                                                                            
+# Usage for Bluetooth (BLE)                                                                                                                                                                                                                            
 Create this class to acCess the performance data
                                                                      
     var performanceMonitor= new ergometer.PerformanceMonitorBle();                                                       
@@ -149,7 +149,7 @@ when you connect to a device the scan is stopped, when you want to stop the scan
     
 More information can be found in the typescript definitions:
     
-    https://github.com/tijmenvangulik/MobileErgometer/blob/master/api/lib/ergometer.d.ts
+[ergometer.d.ts](https://github.com/tijmenvangulik/MobileErgometer/blob/master/api/lib/ergometer.d.ts)
     
 ## CSafe
 
