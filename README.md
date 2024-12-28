@@ -47,14 +47,14 @@ Components
 
 |            | pm3-5 usb   | Bluetooth  |
 |------------|-------------|------------|    
-|Web         | beta        | yes        |
+|Web         | yes **      | yes **     |
 |Cordova     | android     | yes        |
 |Electron    | yes         | yes        |
 |React native|             | *          |
 
 * the demo contains an limeted proof of concept, there are other libraries
  which have better suport. it is not difficult to support other usb/ble drivers ( react-native-ble-plx may be an better option)
-
+** chromium based browsers
 
 # Todo
 * usb ios support
@@ -63,20 +63,12 @@ Components
 # Known problems
                   
 * There are problems in the PM5 BLE firmware. Some csafe commands give back invalid responses. 
-I hope they fix it soon. See
+I hope concept2 will it. See
 
 http://www.c2forum.com/viewtopic.php?f=15&t=93321
 
-* ES6-Promises
-The library uses ES6-Promises. I assume that the library is uses in modern browsers. If this is
-not the case you need to include a poly fill javascript library:
-
- https://github.com/lahmatiy/es6-promise-polyfill
-
 * React native: the used blue tooth library does not (yet?) support direct reading and writing to characteristics.
 due to this the csafe commands and the power curve do not work.
-
-* Web bluetooth is not yet supported by all browsers 
 
 # Installation
 
