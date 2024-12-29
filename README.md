@@ -374,21 +374,21 @@ An usb device has a quicker way of finding devices but does not have all the con
 
 To create an Usb monitor:
 
-  var performanceMonitor= new ergometer.PerformanceMonitorUsb();  
+    var performanceMonitor= new ergometer.PerformanceMonitorUsb();  
 
-  //to find out which concept2 devices are connected
-   var foundDevice;
-   this.performanceMonitor.requestDevics().then(devices=>{
-       //here a list of concept 2 devices are returned
-       //you can loop the devices
-       devices.forEach( (device) => {
-         console.log(device.productName);
-         foundDevice=device;
-       })
-   });
-   //to connect to an device you can use the connectToDevice
-   if (foundDevice)
-     performanceMonitor.connectToDevice(foundDevice);
+    //to find out which concept2 devices are connected
+    var foundDevice;
+    this.performanceMonitor.requestDevics().then(devices=>{
+        //here a list of concept 2 devices are returned
+        //you can loop the devices
+        devices.forEach( (device) => {
+            console.log(device.productName);
+            foundDevice=device;
+        })
+    });
+    //to connect to an device you can use the connectToDevice
+    if (foundDevice)
+        performanceMonitor.connectToDevice(foundDevice);
 
 to disconnect from the performance monitor call the disconnect method.
 
