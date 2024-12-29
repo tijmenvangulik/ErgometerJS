@@ -35,7 +35,7 @@ Basically ErgometerJS needs javascript and a blue tooth driver which can be (nob
 
 # Licenses
 
-[License text](License.txt)
+[License text](LICENSE.txt)
 
 Components
 
