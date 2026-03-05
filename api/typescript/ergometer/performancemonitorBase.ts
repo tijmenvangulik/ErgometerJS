@@ -402,7 +402,7 @@ namespace ergometer {
                     //prepare all the data to be send in one array
                     //begin with a start byte ad end with a checksum and an end byte
                     var bytesToSend : number[] =
-                        ([csafe.defs.FRAME_START_BYTE].concat(byteArray)).concat([checksum,csafe.defs.FRAME_END_BYTE]);
+                        ([csafe.defs.FRAME_START_BYTE].concat(newArray)).concat([checksum,csafe.defs.FRAME_END_BYTE]);
                     if (this._splitCommandsWhenToBig && bytesToSend.length>this.getPacketSize())
                       reject(`Csafe commands with length ${bytesToSend.length} does not fit into buffer with size ${this.getPacketSize()} `)
                     else {
