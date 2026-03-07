@@ -1790,7 +1790,7 @@ declare namespace ergometer {
     class PerformanceMonitorBase extends MonitorBase {
         private _waitResonseBuffers;
         protected _powerCurve: number[];
-        protected _splitCommandsWhenToBig: boolean;
+        protected _splitCommandsWhenToBigErrorMessage: boolean;
         protected _receivePartialBuffers: boolean;
         private _powerCurveEvent;
         private _checksumCheckEnabled;

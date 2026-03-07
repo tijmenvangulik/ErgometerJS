@@ -1,3 +1,6 @@
+- 1.5.1
+  * Fix stuffing
+  * Renamed internal split command variable
 - 1.5.0
    * fix problem when combining large commands with a detail code. The length was not set correctly which resulted into not executing the commands 
    * Support for creating workouts. Blue tooth supports all features. For USB you need authentication to use all proprietary commands . Please contact concept2 for full USB support.

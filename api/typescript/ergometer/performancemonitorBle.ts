@@ -785,7 +785,7 @@
          */
         protected initialize() {
             super.initialize();
-            this._splitCommandsWhenToBig=true;
+            this._splitCommandsWhenToBigErrorMessage=true;
             this._receivePartialBuffers=true;
             /*document.addEventListener(
                 'deviceready',
