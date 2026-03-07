@@ -197,7 +197,7 @@ namespace ergometer {
         
         protected _powerCurve : number[];
         
-        protected _splitCommandsWhenToBig : boolean;
+        protected _splitCommandsWhenToBigErrorMessage : boolean;
 
         protected _receivePartialBuffers : boolean;
 
@@ -215,7 +215,7 @@ namespace ergometer {
             
             this._powerCurveEvent = new pubSub.Event<PowerCurveEvent>();
             this._powerCurveEvent.registerChangedEvent(this.enableDisableNotification.bind(this));
-            this._splitCommandsWhenToBig=false;
+            this._splitCommandsWhenToBigErrorMessage=false;
             this._receivePartialBuffers=false;
             this._commandTimeout=1000;
         }
@@ -394,16 +394,18 @@ namespace ergometer {
                         if (value>=0xF0 && value<=0xF3) {
                             newArray.push(0xF3);
                             newArray.push(value-0xF0);
+                            
                             if (this.logLevel==LogLevel.trace)
                               this.traceInfo("stuffed to byte:"+value);
                         }
                         else newArray.push(value);
                     }
+
                     //prepare all the data to be send in one array
                     //begin with a start byte ad end with a checksum and an end byte
                     var bytesToSend : number[] =
                         ([csafe.defs.FRAME_START_BYTE].concat(newArray)).concat([checksum,csafe.defs.FRAME_END_BYTE]);
-                    if (this._splitCommandsWhenToBig && bytesToSend.length>this.getPacketSize())
+                    if (this._splitCommandsWhenToBigErrorMessage && bytesToSend.length>this.getPacketSize())
                       reject(`Csafe commands with length ${bytesToSend.length} does not fit into buffer with size ${this.getPacketSize()} `)
                     else {
                         var sendBytesIndex=0;

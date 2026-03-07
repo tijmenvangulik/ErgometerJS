@@ -2920,7 +2920,7 @@ var ergometer;
         PerformanceMonitorBase.prototype.initialize = function () {
             this._powerCurveEvent = new ergometer.pubSub.Event();
             this._powerCurveEvent.registerChangedEvent(this.enableDisableNotification.bind(this));
-            this._splitCommandsWhenToBig = false;
+            this._splitCommandsWhenToBigErrorMessage = false;
             this._receivePartialBuffers = false;
             this._commandTimeout = 1000;
         };
@@ -3101,8 +3101,8 @@ var ergometer;
                     }
                     //prepare all the data to be send in one array
                     //begin with a start byte ad end with a checksum and an end byte
-                    var bytesToSend = ([ergometer.csafe.defs.FRAME_START_BYTE].concat(byteArray)).concat([checksum, ergometer.csafe.defs.FRAME_END_BYTE]);
-                    if (_this._splitCommandsWhenToBig && bytesToSend.length > _this.getPacketSize())
+                    var bytesToSend = ([ergometer.csafe.defs.FRAME_START_BYTE].concat(newArray)).concat([checksum, ergometer.csafe.defs.FRAME_END_BYTE]);
+                    if (_this._splitCommandsWhenToBigErrorMessage && bytesToSend.length > _this.getPacketSize())
                         reject("Csafe commands with length " + bytesToSend.length + " does not fit into buffer with size " + _this.getPacketSize() + " ");
                     else {
                         var sendBytesIndex = 0;
@@ -3508,7 +3508,7 @@ var ergometer;
         PerformanceMonitorUsb.prototype.initialize = function () {
             _super.prototype.initialize.call(this);
             this.initDriver();
-            this._splitCommandsWhenToBig = false;
+            this._splitCommandsWhenToBigErrorMessage = false;
             this._receivePartialBuffers = false;
         };
         PerformanceMonitorUsb.prototype.initDriver = function () {
@@ -4847,7 +4847,7 @@ var ergometer;
         PerformanceMonitorBle.prototype.initialize = function () {
             var _this = this;
             _super.prototype.initialize.call(this);
-            this._splitCommandsWhenToBig = true;
+            this._splitCommandsWhenToBigErrorMessage = true;
             this._receivePartialBuffers = true;
             /*document.addEventListener(
                 'deviceready',

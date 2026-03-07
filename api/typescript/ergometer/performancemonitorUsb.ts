@@ -141,7 +141,7 @@ namespace ergometer {
         protected initialize() {
             super.initialize();
             this.initDriver();
-            this._splitCommandsWhenToBig=false;
+            this._splitCommandsWhenToBigErrorMessage=false;
             this._receivePartialBuffers=false;  
         }
 
