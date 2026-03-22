@@ -514,7 +514,12 @@ this.performanceMonitor.newCsafeBuffer()
 # heart rate
 
 When the end user has an PM5 he will normally connect a heart rate device to the concept2 performance monitor and the
-device will send the heart rate to ergometerjs. Hover older devices like the PM3 do not have heart rate support. For
+```ts
+  performanceMonitor.heartRateBeltInformationEvent.sub(this,(data : ergometer.HeartRateBeltInformation)=>{
+    //do some thing with the data
+  });
+```
+device will send the heart rate to ergometerjs. However older devices like the PM3 do not have heart rate support. For
 this I have included a class HeartRateMonitorBle which can directly to a blue tooth heart rate device. 
 
 HeartRateMonitorBle makes use of the same driver infra structure as the ergometer PerformanceMonitorBle class. The inter face of the heart rate monitor is similar to the blue tooth class the main difference is that this class has a heartRateDataEvent for reading the heart rate.
@@ -523,7 +528,8 @@ To start the connection first start scanning for a device,
 you should call when the cordova deviceready event is called (or later)  
                                            
 ```ts
-performanceMonitor.startScan((device : ergometer.HeartRateDeviceInfo) : boolean => {                                        
+var heartRateMonitor=new ergometer.HeartRateMonitorBle();
+heartRateMonitor.startScan((device : ergometer.HeartRateDeviceInfo) : boolean => {                                        
   //return true when you want to connect to the device                                                            
    return device.name=='My device name';                                                                         
 });  
@@ -532,30 +538,30 @@ performanceMonitor.startScan((device : ergometer.HeartRateDeviceInfo) : boolean 
 to connect at at a later time 
                                                                                      
 ```ts
-performanceMonitor.connectToDevice('my device name');
+heartRateMonitor.connectToDevice('my device name');
 ```
                                                            
 the devices which where found during the scan are collected in
                                                      
 ```ts
-performanceMonitor.devices   
+heartRateMonitor.devices   
 ```
                                                                                         
 when you connect to a device the scan is stopped, when you want to stop the scan earlier you need to call 
          
 ```ts
-performanceMonitor.stopScan()
+heartRateMonitor.stopScan()
 ```
 
 To disconnect call
 
 ```ts
-performanceMonitor.disconnect()
+heartRateMonitor.disconnect()
 ```
 to receive the heart rate information you have to subscribe to the heartRateDataEvent event
 
 ```ts
-performanceMonitor.heartRateDataEvent.sub(this,this.hearRateData);
+heartRateMonitor.heartRateDataEvent.sub(this,this.hearRateData);
 ```
 
 An demo of the api is in included in the electron usb debug example.
