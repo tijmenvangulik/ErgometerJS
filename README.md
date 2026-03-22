@@ -114,10 +114,11 @@ To use the library you need all the files in the lib directory and include it in
 ```
 # npm
 
-You can also install ergometer-js using npm with the command:
+You can also install ergometer-js as package using npm with the command:
+```sh
   npm install ergometer-js
-
-The npm version only includes the files for web usage
+```
+This npm package only includes the files for web usage for nodejs third party libraries are required
 
 # Usage for Bluetooth (BLE)                                                                                                                                                                                                                            
 Create this class to acCess the performance data
