@@ -1,3 +1,6 @@
+- 1.5.3
+  * update typescript compiler and output ES6
+  * Update docs
 - 1.5.1
   * Fix stuffing
   * Renamed internal split command variable
