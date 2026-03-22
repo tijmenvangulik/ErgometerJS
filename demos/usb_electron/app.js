@@ -22,23 +22,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var App = /** @class */ (function () {
-    function App() {
-        var _this = this;
-        $().ready(function () {
-            _this._demo = new Demo();
-            _this.demo.pageLoaded();
+class App {
+    get demo() {
+        return this._demo;
+    }
+    constructor() {
+        $().ready(() => {
+            this._demo = new Demo();
+            this.demo.pageLoaded();
         });
     }
-    Object.defineProperty(App.prototype, "demo", {
-        get: function () {
-            return this._demo;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    return App;
-}());
+}
 var app = new App();
 /**
  * Demo of Concept 2 ergometer Performance Monitor
@@ -64,133 +58,125 @@ var app = new App();
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var Demo = /** @class */ (function () {
-    function Demo() {
-        this.initialize();
+class Demo {
+    get performanceMonitor() {
+        return this._performanceMonitor;
     }
-    Object.defineProperty(Demo.prototype, "performanceMonitor", {
-        get: function () {
-            return this._performanceMonitor;
-        },
-        enumerable: false,
-        configurable: true
-    });
     /**
      * Print debug info to console and application UI.
      */
-    Demo.prototype.addText = function (id, text) {
+    addText(id, text) {
         var ctrl = $("#" + id);
         var txtCtrl = $("<p/>");
         txtCtrl.text(text);
         ctrl.prepend(txtCtrl);
-    };
-    Demo.prototype.showInfo = function (info) {
+    }
+    showInfo(info) {
         this.addText("data", info);
-    };
-    Demo.prototype.showError = function (error) {
+    }
+    showError(error) {
         this.addText("data", error);
-    };
-    Demo.prototype.showData = function (data) {
+    }
+    showData(data) {
         this.addText("data", data);
-    };
-    Demo.prototype.initialize = function () {
-        var _this = this;
+    }
+    initialize() {
         this._performanceMonitor = new ergometer.PerformanceMonitorUsb();
         this.performanceMonitor.logEvent.sub(this, this.onLog);
         //this.performanceMonitor.logLevel=ergometer.LogLevel.trace;
         var self = this;
-        $('#connect').click(function () {
+        $('#connect').click(() => {
             var indexstr = $('#devices').val();
             if (indexstr) {
                 var index = parseInt(indexstr);
-                if (function (index) { return 0 && self._foundDevices && self._foundDevices.length > 0; })
+                if (index >= 0 && self._foundDevices && self._foundDevices.length > 0)
                     self.performanceMonitor.connectToDevice(self._foundDevices[index])
-                        .then(_this.connected.bind(self))
-                        .catch(self.showError.bind(_this));
+                        .then(this.connected.bind(self))
+                        .catch(self.showError.bind(this));
             }
             else
-                _this.showError("first select a pm device");
+                this.showError("first select a pm device");
         });
-        $('#disconnect').click(function () {
-            _this.performanceMonitor.disconnect();
+        $('#disconnect').click(() => {
+            this.performanceMonitor.disconnect();
         });
-        $('#getinfo').click(function () {
-            _this.getInfo();
+        $('#getinfo').click(() => {
+            this.getInfo();
         });
-        this.performanceMonitor.connectionStateChangedEvent.sub(this, function (oldState, newState) {
-            _this.showInfo("new connection state=" + newState.toString());
+        this.performanceMonitor.connectionStateChangedEvent.sub(this, (oldState, newState) => {
+            this.showInfo("new connection state=" + newState.toString());
             //when disconnected
             if (oldState > newState && newState <= ergometer.MonitorConnectionState.deviceReady) {
-                _this.fillDevices(); // try to find the device again
+                this.fillDevices(); // try to find the device again
             }
         });
-        this.performanceMonitor.strokeStateEvent.sub(this, function (oldState, newState) {
-            _this.showInfo("New state:" + newState.toString());
+        this.performanceMonitor.strokeStateEvent.sub(this, (oldState, newState) => {
+            this.showInfo("New state:" + newState.toString());
         });
-        this.performanceMonitor.trainingDataEvent.sub(this, function (data) {
-            _this.showInfo("training data :" + JSON.stringify(data, null, "  "));
+        this.performanceMonitor.trainingDataEvent.sub(this, (data) => {
+            this.showInfo("training data :" + JSON.stringify(data, null, "  "));
         });
-        this.performanceMonitor.strokeDataEvent.sub(this, function (data) {
-            _this.showInfo("stroke data:" + JSON.stringify(data, null, "  "));
+        this.performanceMonitor.strokeDataEvent.sub(this, (data) => {
+            this.showInfo("stroke data:" + JSON.stringify(data, null, "  "));
         });
-        this.performanceMonitor.powerCurveEvent.sub(this, function (data) {
-            _this.showInfo("stroke data:" + JSON.stringify(data, null, "  "));
+        this.performanceMonitor.powerCurveEvent.sub(this, (data) => {
+            this.showInfo("stroke data:" + JSON.stringify(data, null, "  "));
         });
-    };
-    Demo.prototype.connected = function () {
+    }
+    connected() {
         this.getInfo();
-    };
-    Demo.prototype.getInfo = function () {
-        var _this = this;
+    }
+    getInfo() {
         //send an csafe command to get some info
         this.performanceMonitor.newCsafeBuffer()
             .getStrokeState({
-            onDataReceived: function (strokeState) {
-                _this.showData("stroke state: " + strokeState);
+            onDataReceived: (strokeState) => {
+                this.showData(`stroke state: ${strokeState}`);
             }
         })
             .getVersion({
-            onDataReceived: function (version) {
-                _this.showData("Version hardware " + version.HardwareVersion + " software:" + version.FirmwareVersion);
+            onDataReceived: (version) => {
+                this.showData(`Version hardware ${version.HardwareVersion} software:${version.FirmwareVersion}`);
             }
         })
-            .setProgram({ value: 1 /* StandardList1 */ })
+            .setProgram({ value: 1 /* ergometer.Program.StandardList1 */ })
             .send()
-            .then(function () {
+            .then(() => {
             console.log("send done, you can send th next");
         });
-    };
-    Demo.prototype.onLog = function (info, logLevel) {
+    }
+    onLog(info, logLevel) {
         this.showData(info);
-    };
-    Demo.prototype.pageLoaded = function () {
+    }
+    pageLoaded() {
         this.start();
-    };
-    Demo.prototype.fillDevices = function () {
+    }
+    constructor() {
+        this.initialize();
+    }
+    fillDevices() {
         //if (this.performanceMonitor.connectionState<=ergometer.MonitorConnectionState.readyForCommunication) {
-        var _this = this;
         //}
         //fill the drop down
-        this.performanceMonitor.requestDevics().then(function (devices) {
+        this.performanceMonitor.requestDevics().then(devices => {
             //if nothing found, try again later
             if (!devices || devices.length == 0) {
-                setTimeout(function () { _this.fillDevices(); }, 1000);
+                setTimeout(() => { this.fillDevices(); }, 1000);
             }
             else {
                 var options = $('#devices');
                 options.find('option').remove();
-                _this._foundDevices = devices;
+                this._foundDevices = devices;
                 var i = 0;
-                devices.forEach(function (device) {
+                devices.forEach((device) => {
                     options.append($("<option />").val(i.toString()).text(device.productName));
                     i++;
                 });
             }
         }).catch(this.showError.bind(this));
-    };
-    Demo.prototype.start = function () {
+    }
+    start() {
         this.fillDevices();
-    };
-    return Demo;
-}());
+    }
+}
 //# sourceMappingURL=app.js.map

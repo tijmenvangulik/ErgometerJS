@@ -22,29 +22,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var Demo = /** @class */ (function () {
-    function Demo() {
-        this.initialize();
+class Demo {
+    get performanceMonitor() {
+        return this._performanceMonitor;
     }
-    Object.defineProperty(Demo.prototype, "performanceMonitor", {
-        get: function () {
-            return this._performanceMonitor;
-        },
-        enumerable: false,
-        configurable: true
-    });
     /**
      * Print debug info to console and application UI.
      */
-    Demo.prototype.showInfo = function (info) {
+    showInfo(info) {
         $("#info").text(info);
-    };
-    Demo.prototype.showData = function (data) {
+    }
+    showData(data) {
         $("#data").text($("#data").text() + data);
         console.debug(data);
-    };
-    Demo.prototype.initialize = function () {
-        var _this = this;
+    }
+    initialize() {
         this._performanceMonitor = new ergometer.PerformanceMonitorBle();
         //this.performanceMonitor.multiplex=true; //needed for some older android devices which limited device capablity. This must be set before ting
         //this.performanceMonitor.logLevel=ergometer.LogLevel.trace; //by default it is error, for more debug info  change the level
@@ -63,89 +55,90 @@ var Demo = /** @class */ (function () {
         this.performanceMonitor.heartRateBeltInformationEvent.sub(this, this.onHeartRateBeltInformation);
         this.performanceMonitor.additionalWorkoutSummaryData2Event.sub(this, this.onAdditionalWorkoutSummaryData2);
         this.performanceMonitor.powerCurveEvent.sub(this, this.onPowerCurve);
-        $("#StartScan").click(function () {
-            _this.startScan();
+        $("#StartScan").click(() => {
+            this.startScan();
         });
         if (!ergometer.ble.hasWebBlueTooth()) {
             $('#info').text("Your browser does not support web blue tooth or web blue tooth is not enabled.");
             $("#StartScan").hide();
         }
-    };
-    Demo.prototype.onLog = function (info, logLevel) {
+    }
+    onLog(info, logLevel) {
         this.showData(info);
-    };
-    Demo.prototype.onRowingGeneralStatus = function (data) {
+    }
+    onRowingGeneralStatus(data) {
         this.showData('RowingGeneralStatus:' + JSON.stringify(data));
-    };
-    Demo.prototype.onRowingAdditionalStatus1 = function (data) {
+    }
+    onRowingAdditionalStatus1(data) {
         this.showData('RowingAdditionalStatus1:' + JSON.stringify(data));
-    };
-    Demo.prototype.onRowingAdditionalStatus2 = function (data) {
+    }
+    onRowingAdditionalStatus2(data) {
         this.showData('RowingAdditionalStatus2:' + JSON.stringify(data));
-    };
-    Demo.prototype.onRowingStrokeData = function (data) {
+    }
+    onRowingStrokeData(data) {
         this.showData('RowingStrokeData:' + JSON.stringify(data));
-    };
-    Demo.prototype.onRowingAdditionalStrokeData = function (data) {
+    }
+    onRowingAdditionalStrokeData(data) {
         this.showData('RowingAdditionalStrokeData:' + JSON.stringify(data));
-    };
-    Demo.prototype.onRowingSplitIntervalData = function (data) {
+    }
+    onRowingSplitIntervalData(data) {
         this.showData('RowingSplitIntervalData:' + JSON.stringify(data));
-    };
-    Demo.prototype.onRowingAdditionalSplitIntervalData = function (data) {
+    }
+    onRowingAdditionalSplitIntervalData(data) {
         this.showData('RowingAdditionalSplitIntervalData:' + JSON.stringify(data));
-    };
+    }
     //
-    Demo.prototype.onWorkoutSummaryData = function (data) {
+    onWorkoutSummaryData(data) {
         this.showData('WorkoutSummaryData' + JSON.stringify(data));
-    };
-    Demo.prototype.onAdditionalWorkoutSummaryData = function (data) {
+    }
+    onAdditionalWorkoutSummaryData(data) {
         this.showData('AdditionalWorkoutSummaryData' + JSON.stringify(data));
-    };
-    Demo.prototype.onAdditionalWorkoutSummaryData2 = function (data) {
+    }
+    onAdditionalWorkoutSummaryData2(data) {
         this.showData('AdditionalWorkoutSummaryData2:' + JSON.stringify(data));
-    };
-    Demo.prototype.onHeartRateBeltInformation = function (data) {
+    }
+    onHeartRateBeltInformation(data) {
         this.showData('HeartRateBeltInformation:' + JSON.stringify(data));
-    };
-    Demo.prototype.onConnectionStateChanged = function (oldState, newState) {
-        var _this = this;
+    }
+    onConnectionStateChanged(oldState, newState) {
         if (newState == ergometer.MonitorConnectionState.readyForCommunication) {
             //this.performanceMonitor.sampleRate=SampleRate.rate250ms;
             this.showData(JSON.stringify(this._performanceMonitor.deviceInfo));
             //send two commands and show the results in a jquery way
             this.performanceMonitor.newCsafeBuffer()
                 .getStrokeState({
-                onDataReceived: function (strokeState) {
-                    _this.showData("stroke state: " + strokeState);
+                onDataReceived: (strokeState) => {
+                    this.showData(`stroke state: ${strokeState}`);
                 }
             })
                 .getVersion({
-                onDataReceived: function (version) {
-                    _this.showData("Version hardware " + version.HardwareVersion + " software:" + version.FirmwareVersion);
+                onDataReceived: (version) => {
+                    this.showData(`Version hardware ${version.HardwareVersion} software:${version.FirmwareVersion}`);
                 }
             })
-                .setProgram({ value: 1 /* StandardList1 */ })
+                .setProgram({ value: 1 /* ergometer.Program.StandardList1 */ })
                 .send()
-                .then(function () {
+                .then(() => {
                 console.log("send done, you can send th next");
             });
         }
-    };
-    Demo.prototype.onPowerCurve = function (curve) {
+    }
+    onPowerCurve(curve) {
         this.showData("Curve in gui: " + JSON.stringify(curve));
-    };
-    Demo.prototype.startScan = function () {
-        this.performanceMonitor.startScan(function (device) {
+    }
+    constructor() {
+        this.initialize();
+    }
+    startScan() {
+        this.performanceMonitor.startScan((device) => {
             //in web blue tooth the device selection is done by the user
             //just return true to to accept the user selection
             return true;
         });
-    };
-    Demo.prototype.pageLoaded = function () {
-    };
-    return Demo;
-}());
+    }
+    pageLoaded() {
+    }
+}
 /**
  * Demo of Concept 2 ergometer Performance Monitor for Cordova
  *
@@ -171,22 +164,16 @@ var Demo = /** @class */ (function () {
  * limitations under the License.
  */
 /// <reference path="demo.ts"/>
-var App = /** @class */ (function () {
-    function App() {
-        var _this = this;
-        $().ready(function () {
-            _this._demo = new Demo();
-            _this.demo.pageLoaded();
+class App {
+    get demo() {
+        return this._demo;
+    }
+    constructor() {
+        $().ready(() => {
+            this._demo = new Demo();
+            this.demo.pageLoaded();
         });
     }
-    Object.defineProperty(App.prototype, "demo", {
-        get: function () {
-            return this._demo;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    return App;
-}());
+}
 var app = new App();
 //# sourceMappingURL=app.js.map

@@ -67,7 +67,7 @@ class Demo {
             var indexstr=$('#devices').val();
             if (indexstr) {
                 var index=parseInt(indexstr) ;
-                if (index=>0 && self._foundDevices && self._foundDevices.length>0)
+                if (index>=0 && self._foundDevices && self._foundDevices.length>0)
                    self.performanceMonitor.connectToDevice(self._foundDevices[index])
                    .then(this.connected.bind(self))
                    .catch(self.showError.bind(this)) 

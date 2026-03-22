@@ -112,6 +112,12 @@ To use the library you need all the files in the lib directory and include it in
 <script src="libs/ergometer.js"></script>
 <script src="libs/jquery/jquery.js"></script>
 ```
+# npm
+
+You can also install ergometer-js using npm with the command:
+  npm install ergometer-js
+
+The npm version only includes the files for web usage
 
 # Usage for Bluetooth (BLE)                                                                                                                                                                                                                            
 Create this class to acCess the performance data

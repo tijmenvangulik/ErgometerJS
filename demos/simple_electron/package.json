@@ -30,5 +30,6 @@
     "electron": "^5.0.1",
     "electron-builder": "^20.39.0",
     "electron-rebuild": "^1.8.4"
+    
   }
 }

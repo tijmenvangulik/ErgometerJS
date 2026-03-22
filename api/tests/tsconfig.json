@@ -1,14 +1,14 @@
 {
   "compilerOptions": {
     "module": "system",
-    "target": "es5",
+    "target": "es6",
     "sourceMap": true,
     "outFile": "tests.js",
     "declaration": true,
     "stripInternal": true,
     "noResolve":true,
     "lib": [
-      "es5",
+      "es6",
       "es2015"
     ]
 

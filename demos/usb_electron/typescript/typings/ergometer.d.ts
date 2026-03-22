@@ -598,138 +598,138 @@ declare namespace ergometer.csafe.defs {
     const TEXTCFG_CMD_SHORT_MIN = 224;
     const TEXTSTATUS_CMD_SHORT_MIN = 229;
     const enum SHORT_CTRL_CMDS {
-        GETSTATUS_CMD = 128,
-        RESET_CMD = 129,
-        GOIDLE_CMD = 130,
-        GOHAVEID_CMD = 131,
-        GOINUSE_CMD = 133,
-        GOFINISHED_CMD = 134,
-        GOREADY_CMD = 135,
-        BADID_CMD = 136,
+        GETSTATUS_CMD = 128,//CTRL_CMD_SHORT_MIN
+        RESET_CMD = 129,// 0x81
+        GOIDLE_CMD = 130,// 0x82
+        GOHAVEID_CMD = 131,// 0x83
+        GOINUSE_CMD = 133,// 0x85
+        GOFINISHED_CMD = 134,// 0x86
+        GOREADY_CMD = 135,// 0x87
+        BADID_CMD = 136,// 0x88
         CTRL_CMD_SHORT_MAX = 137
     }
     const enum SHORT_STATUS_CMDS {
-        GETVERSION_CMD = 145,
-        GETID_CMD = 146,
-        GETUNITS_CMD = 147,
-        GETSERIAL_CMD = 148,
-        GETLIST_CMD = 152,
-        GETUTILIZATION_CMD = 153,
-        GETMOTORCURRENT_CMD = 154,
-        GETODOMETER_CMD = 155,
-        GETERRORCODE_CMD = 156,
-        GETSERVICECODE_CMD = 157,
-        GETUSERCFG1_CMD = 158,
-        GETUSERCFG2_CMD = 159,
+        GETVERSION_CMD = 145,// STATUS_CMD_SHORT_MIN
+        GETID_CMD = 146,// 0x92
+        GETUNITS_CMD = 147,// 0x93
+        GETSERIAL_CMD = 148,// 0x94
+        GETLIST_CMD = 152,// 0x98
+        GETUTILIZATION_CMD = 153,// 0x99
+        GETMOTORCURRENT_CMD = 154,// 0x9A
+        GETODOMETER_CMD = 155,// 0x9B
+        GETERRORCODE_CMD = 156,// 0x9C
+        GETSERVICECODE_CMD = 157,// 0x9D
+        GETUSERCFG1_CMD = 158,// 0x9E
+        GETUSERCFG2_CMD = 159,// 0x9F
         STATUS_CMD_SHORT_MAX = 160
     }
     const enum SHORT_DATA_CMDS {
-        GETTWORK_CMD = 160,
-        GETHORIZONTAL_CMD = 161,
-        GETVERTICAL_CMD = 162,
-        GETCALORIES_CMD = 163,
-        GETPROGRAM_CMD = 164,
-        GETSPEED_CMD = 165,
-        GETPACE_CMD = 166,
-        GETCADENCE_CMD = 167,
-        GETGRADE_CMD = 168,
-        GETGEAR_CMD = 169,
-        GETUPLIST_CMD = 170,
-        GETUSERINFO_CMD = 171,
-        GETTORQUE_CMD = 172,
-        GETHRCUR_CMD = 176,
-        GETHRTZONE_CMD = 178,
-        GETMETS_CMD = 179,
-        GETPOWER_CMD = 180,
-        GETHRAVG_CMD = 181,
-        GETHRMAX_CMD = 182,
-        GETUSERDATA1_CMD = 190,
-        GETUSERDATA2_CMD = 191,
+        GETTWORK_CMD = 160,// DATA_CMD_SHORT_MIN
+        GETHORIZONTAL_CMD = 161,// 0xA1
+        GETVERTICAL_CMD = 162,// 0xA2
+        GETCALORIES_CMD = 163,// 0xA3
+        GETPROGRAM_CMD = 164,// 0xA4
+        GETSPEED_CMD = 165,// 0xA5
+        GETPACE_CMD = 166,// 0xA6
+        GETCADENCE_CMD = 167,// 0xA7
+        GETGRADE_CMD = 168,// 0xA8
+        GETGEAR_CMD = 169,// 0xA9
+        GETUPLIST_CMD = 170,// 0xAA
+        GETUSERINFO_CMD = 171,// 0xAB
+        GETTORQUE_CMD = 172,// 0xAC
+        GETHRCUR_CMD = 176,// 0xB0
+        GETHRTZONE_CMD = 178,// 0xB2
+        GETMETS_CMD = 179,// 0xB3
+        GETPOWER_CMD = 180,// 0xB4
+        GETHRAVG_CMD = 181,// 0xB5
+        GETHRMAX_CMD = 182,// 0xB6
+        GETUSERDATA1_CMD = 190,// 0xBE
+        GETUSERDATA2_CMD = 191,// 0xBF
         DATA_CMD_SHORT_MAX = 192
     }
     const enum SHORT_AUDIO_CMDS {
-        GETAUDIOCHANNEL_CMD = 192,
-        GETAUDIOVOLUME_CMD = 193,
-        GETAUDIOMUTE_CMD = 194,
+        GETAUDIOCHANNEL_CMD = 192,//AUDIO_CMD_SHORT_MIN
+        GETAUDIOVOLUME_CMD = 193,// 0xC1
+        GETAUDIOMUTE_CMD = 194,// 0xC2
         AUDIO_CMD_SHORT_MAX = 195
     }
     const enum SHORT_TEXTCFG_CMDS {
-        ENDTEXT_CMD = 224,
-        DISPLAYPOPUP_CMD = 225,
+        ENDTEXT_CMD = 224,//TEXTCFG_CMD_SHORT_MIN
+        DISPLAYPOPUP_CMD = 225,// 0xE1
         TEXTCFG_CMD_SHORT_MAX = 226
     }
     const enum SHORT_TEXTSTATUS_CMDS {
-        GETPOPUPSTATUS_CMD = 229,
+        GETPOPUPSTATUS_CMD = 229,// TEXTSTATUS_CMD_SHORT_MIN
         TEXTSTATUS_CMD_SHORT_MAX = 230
     }
     const enum LONG_CTRL_CMDS {
-        AUTOUPLOAD_CMD = 1,
-        UPLIST_CMD = 2,
-        UPSTATUSSEC_CMD = 4,
-        UPLISTSEC_CMD = 5,
+        AUTOUPLOAD_CMD = 1,// CTRL_CMD_LONG_MIN
+        UPLIST_CMD = 2,// 0x02
+        UPSTATUSSEC_CMD = 4,// 0x04
+        UPLISTSEC_CMD = 5,// 0x05
         CTRL_CMD_LONG_MAX = 6
     }
     const enum LONG_CFG_CMDS {
-        IDDIGITS_CMD = 16,
-        SETTIME_CMD = 17,
-        SETDATE_CMD = 18,
-        SETTIMEOUT_CMD = 19,
-        SETUSERCFG1_CMD = 26,
-        SETUSERCFG2_CMD = 27,
+        IDDIGITS_CMD = 16,//  CFG_CMD_LONG_MIN
+        SETTIME_CMD = 17,// 0x11
+        SETDATE_CMD = 18,// 0x12
+        SETTIMEOUT_CMD = 19,// 0x13
+        SETUSERCFG1_CMD = 26,// 0x1A
+        SETUSERCFG2_CMD = 27,// 0x1B
         CFG_CMD_LONG_MAX = 28
     }
     const enum LONG_DATA_CMDS {
-        SETTWORK_CMD = 32,
-        SETHORIZONTAL_CMD = 33,
-        SETVERTICAL_CMD = 34,
-        SETCALORIES_CMD = 35,
-        SETPROGRAM_CMD = 36,
-        SETSPEED_CMD = 37,
-        SETGRADE_CMD = 40,
-        SETGEAR_CMD = 41,
-        SETUSERINFO_CMD = 43,
-        SETTORQUE_CMD = 44,
-        SETLEVEL_CMD = 45,
-        SETTARGETHR_CMD = 48,
-        SETGOAL_CMD = 50,
-        SETMETS_CMD = 51,
-        SETPOWER_CMD = 52,
-        SETHRZONE_CMD = 53,
-        SETHRMAX_CMD = 54,
+        SETTWORK_CMD = 32,//DATA_CMD_LONG_MIN
+        SETHORIZONTAL_CMD = 33,// 0x21
+        SETVERTICAL_CMD = 34,// 0x22
+        SETCALORIES_CMD = 35,// 0x23
+        SETPROGRAM_CMD = 36,// 0x24
+        SETSPEED_CMD = 37,// 0x25
+        SETGRADE_CMD = 40,// 0x28
+        SETGEAR_CMD = 41,// 0x29
+        SETUSERINFO_CMD = 43,// 0x2B
+        SETTORQUE_CMD = 44,// 0x2C
+        SETLEVEL_CMD = 45,// 0x2D
+        SETTARGETHR_CMD = 48,// 0x30
+        SETGOAL_CMD = 50,// 0x32
+        SETMETS_CMD = 51,// 0x33
+        SETPOWER_CMD = 52,// 0x34
+        SETHRZONE_CMD = 53,// 0x35
+        SETHRMAX_CMD = 54,// 0x36
         DATA_CMD_LONG_MAX = 55
     }
     const enum LONG_AUDIO_CMDS {
-        SETCHANNELRANGE_CMD = 64,
-        SETVOLUMERANGE_CMD = 65,
-        SETAUDIOMUTE_CMD = 66,
-        SETAUDIOCHANNEL_CMD = 67,
-        SETAUDIOVOLUME_CMD = 68,
+        SETCHANNELRANGE_CMD = 64,// AUDIO_CMD_LONG_MIN
+        SETVOLUMERANGE_CMD = 65,// 0x41
+        SETAUDIOMUTE_CMD = 66,// 0x42
+        SETAUDIOCHANNEL_CMD = 67,// 0x43
+        SETAUDIOVOLUME_CMD = 68,// 0x44
         AUDIO_CMD_LONG_MAX = 69
     }
     const enum LONG_TEXTCFG_CMDS {
-        STARTTEXT_CMD = 96,
-        APPENDTEXT_CMD = 97,
+        STARTTEXT_CMD = 96,// TEXTCFG_CMD_LONG_MIN
+        APPENDTEXT_CMD = 97,// 0x61
         TEXTCFG_CMD_LONG_MAX = 98
     }
     const enum LONG_TEXTSTATUS_CMDS {
-        GETTEXTSTATUS_CMD = 101,
+        GETTEXTSTATUS_CMD = 101,//  TEXTSTATUS_CMD_LONG_MIN,
         TEXTSTATUS_CMD_LONG_MAX = 102
     }
     const enum LONG_CAP_CMDS {
-        GETCAPS_CMD = 112,
-        GETUSERCAPS1_CMD = 126,
-        GETUSERCAPS2_CMD = 127,
+        GETCAPS_CMD = 112,//  CAP_CMD_LONG_MIN
+        GETUSERCAPS1_CMD = 126,// 0x7E
+        GETUSERCAPS2_CMD = 127,// 0x7F
         CAP_CMD_LONG_MAX = 128
     }
     const enum PROPRIETARY_GET_CMDS {
-        GETPMCFG_CMD = 126,
+        GETPMCFG_CMD = 126,//GETUSERCAPS1_CMD
         GETPMDATA_CMD = 127
     }
     const enum LONG_PMPROPRIETARY_CMDS {
-        SETPMCFG_CMD = 118,
-        SETPMDATA_CMD = 119,
-        GETPMCFG_CMD = 126,
-        GETPMDATA_CMD = 127,
+        SETPMCFG_CMD = 118,//   PMPROPRIETARY_CMD_LONG_MIN
+        SETPMDATA_CMD = 119,// 0x77
+        GETPMCFG_CMD = 126,// 0x7E
+        GETPMDATA_CMD = 127,// 0x7F
         PMPROPRIETARY_CMD_LONG_MAX = 128
     }
     const GETPMCFG_CMD_SHORT_MIN = 128;
@@ -741,187 +741,187 @@ declare namespace ergometer.csafe.defs {
     const SETPMDATA_CMD_SHORT_MIN = 208;
     const SETPMDATA_CMD_LONG_MIN = 48;
     const enum PM_SHORT_PULL_CFG_CMDS {
-        PM_GET_FW_VERSION = 128,
-        PM_GET_HW_VERSION = 129,
-        PM_GET_HW_ADDRESS = 130,
-        PM_GET_TICK_TIMEBASE = 131,
-        PM_GET_HRM = 132,
-        PM_GET_SCREENSTATESTATUS = 134,
-        PM_GET_RACE_LANE_REQUEST = 135,
-        PM_GET_ERG_LOGICALADDR_REQUEST = 136,
-        PM_GET_WORKOUTTYPE = 137,
-        PM_GET_DISPLAYTYPE = 138,
-        PM_GET_DISPLAYUNITS = 139,
-        PM_GET_LANGUAGETYPE = 140,
-        PM_GET_WORKOUTSTATE = 141,
-        PM_GET_INTERVALTYPE = 142,
-        PM_GET_OPERATIONALSTATE = 143,
-        PM_GET_LOGCARDSTATE = 144,
-        PM_GET_LOGCARDSTATUS = 145,
-        PM_GET_POWERUPSTATE = 146,
-        PM_GET_ROWINGSTATE = 147,
-        PM_GET_SCREENCONTENT_VERSION = 148,
-        PM_GET_COMMUNICATIONSTATE = 149,
-        PM_GET_RACEPARTICIPANTCOUNT = 150,
-        PM_GET_BATTERYLEVELPERCENT = 151,
-        PM_GET_RACEMODESTATUS = 152,
-        PM_GET_INTERNALLOGPARAMS = 153,
-        PM_GET_PRODUCTCONFIGURATION = 154,
-        PM_GET_ERGSLAVEDISCOVERREQUESTSTATUS = 155,
-        PM_GET_WIFICONFIG = 156,
-        PM_GET_CPUTICKRATE = 157,
-        PM_GET_LOGCARDCENSUS = 158,
-        PM_GET_WORKOUTINTERVALCOUNT = 159,
+        PM_GET_FW_VERSION = 128,// GETPMCFG_CMD_SHORT_MIN
+        PM_GET_HW_VERSION = 129,// 0x81
+        PM_GET_HW_ADDRESS = 130,// 0x82
+        PM_GET_TICK_TIMEBASE = 131,// 0x83
+        PM_GET_HRM = 132,// 0x84
+        PM_GET_SCREENSTATESTATUS = 134,// 0x86
+        PM_GET_RACE_LANE_REQUEST = 135,// 0x87
+        PM_GET_ERG_LOGICALADDR_REQUEST = 136,// 0x88
+        PM_GET_WORKOUTTYPE = 137,// 0x89
+        PM_GET_DISPLAYTYPE = 138,// 0x8A
+        PM_GET_DISPLAYUNITS = 139,// 0x8B
+        PM_GET_LANGUAGETYPE = 140,// 0x8C
+        PM_GET_WORKOUTSTATE = 141,// 0x8D
+        PM_GET_INTERVALTYPE = 142,// 0x8E
+        PM_GET_OPERATIONALSTATE = 143,// 0x8F
+        PM_GET_LOGCARDSTATE = 144,// 0x90
+        PM_GET_LOGCARDSTATUS = 145,// 0x91
+        PM_GET_POWERUPSTATE = 146,// 0x92
+        PM_GET_ROWINGSTATE = 147,// 0x93
+        PM_GET_SCREENCONTENT_VERSION = 148,// 0x94
+        PM_GET_COMMUNICATIONSTATE = 149,// 0x95
+        PM_GET_RACEPARTICIPANTCOUNT = 150,// 0x96
+        PM_GET_BATTERYLEVELPERCENT = 151,// 0x97
+        PM_GET_RACEMODESTATUS = 152,// 0x98
+        PM_GET_INTERNALLOGPARAMS = 153,// 0x99
+        PM_GET_PRODUCTCONFIGURATION = 154,// 0x9A
+        PM_GET_ERGSLAVEDISCOVERREQUESTSTATUS = 155,// 0x9B
+        PM_GET_WIFICONFIG = 156,// 0x9C
+        PM_GET_CPUTICKRATE = 157,// 0x9D
+        PM_GET_LOGCARDCENSUS = 158,// 0x9E
+        PM_GET_WORKOUTINTERVALCOUNT = 159,// 0x9F
         GETPMCFG_CMD_SHORT_MAX = 160
     }
     const enum PM_SHORT_PULL_DATA_CMDS {
-        PM_GET_WORKTIME = 160,
-        PM_GET_PROJECTED_WORKTIME = 161,
-        PM_GET_TOTAL_RESTTIME = 162,
-        PM_GET_WORKDISTANCE = 163,
-        PM_GET_TOTAL_WORKDISTANCE = 164,
-        PM_GET_PROJECTED_WORKDISTANCE = 165,
-        PM_GET_RESTDISTANCE = 166,
-        PM_GET_TOTAL_RESTDISTANCE = 167,
-        PM_GET_STROKE_500MPACE = 168,
-        PM_GET_STROKE_POWER = 169,
-        PM_GET_STROKE_CALORICBURNRATE = 170,
-        PM_GET_SPLIT_AVG_500MPACE = 171,
-        PM_GET_SPLIT_AVG_POWER = 172,
-        PM_GET_SPLIT_AVG_CALORICBURNRATE = 173,
-        PM_GET_SPLIT_AVG_CALORIES = 174,
-        PM_GET_TOTAL_AVG_500MPACE = 175,
-        PM_GET_TOTAL_AVG_POWER = 176,
-        PM_GET_TOTAL_AVG_CALORICBURNRATE = 177,
-        PM_GET_TOTAL_AVG_CALORIES = 178,
-        PM_GET_STROKERATE = 179,
-        PM_GET_SPLIT_AVG_STROKERATE = 180,
-        PM_GET_TOTAL_AVG_STROKERATE = 181,
-        PM_GET_AVG_HEARTRATE = 182,
-        PM_GET_ENDING_AVG_HEARTRATE = 183,
-        PM_GET_REST_AVG_HEARTRATE = 184,
-        PM_GET_SPLITTIME = 185,
-        PM_GET_LASTSPLITTIME = 186,
-        PM_GET_SPLITDISTANCE = 187,
-        PM_GET_LASTSPLITDISTANCE = 188,
-        PM_GET_LASTRESTDISTANCE = 189,
-        PM_GET_TARGETPACETIME = 190,
-        PM_GET_STROKESTATE = 191,
-        PM_GET_STROKERATESTATE = 192,
-        PM_GET_DRAGFACTOR = 193,
-        PM_GET_ENCODERPERIOD = 194,
-        PM_GET_HEARTRATESTATE = 195,
-        PM_GET_SYNCDATA = 196,
-        PM_GET_SYNCDATAALL = 197,
-        PM_GET_RACEDATA = 198,
-        PM_GET_TICKTIME = 199,
-        PM_GET_ERRORTYPE = 200,
-        PM_GET_ERRORVALUE = 201,
-        PM_GET_STATUSTYPE = 202,
-        PM_GET_STATUSVALUE = 203,
-        PM_GET_EPMSTATUS = 204,
-        PM_GET_DISPLAYUPDATETIME = 205,
-        PM_GET_SYNCFRACTIONALTIME = 206,
-        PM_GET_RESTTIME = 207,
+        PM_GET_WORKTIME = 160,// GETPMDATA_CMD_SHORT_MIN
+        PM_GET_PROJECTED_WORKTIME = 161,// 0xA1
+        PM_GET_TOTAL_RESTTIME = 162,// 0xA2
+        PM_GET_WORKDISTANCE = 163,// 0xA3
+        PM_GET_TOTAL_WORKDISTANCE = 164,// 0xA4
+        PM_GET_PROJECTED_WORKDISTANCE = 165,// 0xA5
+        PM_GET_RESTDISTANCE = 166,// 0xA6
+        PM_GET_TOTAL_RESTDISTANCE = 167,// 0xA7
+        PM_GET_STROKE_500MPACE = 168,// 0xA8
+        PM_GET_STROKE_POWER = 169,// 0xA9
+        PM_GET_STROKE_CALORICBURNRATE = 170,// 0xAA
+        PM_GET_SPLIT_AVG_500MPACE = 171,// 0xAB
+        PM_GET_SPLIT_AVG_POWER = 172,// 0xAC
+        PM_GET_SPLIT_AVG_CALORICBURNRATE = 173,// 0xAD
+        PM_GET_SPLIT_AVG_CALORIES = 174,// 0xAE
+        PM_GET_TOTAL_AVG_500MPACE = 175,// 0xAF
+        PM_GET_TOTAL_AVG_POWER = 176,// 0xB0
+        PM_GET_TOTAL_AVG_CALORICBURNRATE = 177,// 0xB1
+        PM_GET_TOTAL_AVG_CALORIES = 178,// 0xB2
+        PM_GET_STROKERATE = 179,// 0xB3
+        PM_GET_SPLIT_AVG_STROKERATE = 180,// 0xB4
+        PM_GET_TOTAL_AVG_STROKERATE = 181,// 0xB5
+        PM_GET_AVG_HEARTRATE = 182,// 0xB6
+        PM_GET_ENDING_AVG_HEARTRATE = 183,// 0xB7
+        PM_GET_REST_AVG_HEARTRATE = 184,// 0xB8
+        PM_GET_SPLITTIME = 185,// 0xB9
+        PM_GET_LASTSPLITTIME = 186,// 0xBA
+        PM_GET_SPLITDISTANCE = 187,// 0xBB
+        PM_GET_LASTSPLITDISTANCE = 188,// 0xBC
+        PM_GET_LASTRESTDISTANCE = 189,// 0xBD
+        PM_GET_TARGETPACETIME = 190,// 0xBE
+        PM_GET_STROKESTATE = 191,// 0xBF
+        PM_GET_STROKERATESTATE = 192,// 0xC0
+        PM_GET_DRAGFACTOR = 193,// 0xC1
+        PM_GET_ENCODERPERIOD = 194,// 0xC2
+        PM_GET_HEARTRATESTATE = 195,// 0xC3
+        PM_GET_SYNCDATA = 196,// 0xC4
+        PM_GET_SYNCDATAALL = 197,// 0xC5
+        PM_GET_RACEDATA = 198,// 0xC6
+        PM_GET_TICKTIME = 199,// 0xC7
+        PM_GET_ERRORTYPE = 200,// 0xC8
+        PM_GET_ERRORVALUE = 201,// 0xC9
+        PM_GET_STATUSTYPE = 202,// 0xCA
+        PM_GET_STATUSVALUE = 203,// 0xCB
+        PM_GET_EPMSTATUS = 204,// 0xCC
+        PM_GET_DISPLAYUPDATETIME = 205,// 0xCD
+        PM_GET_SYNCFRACTIONALTIME = 206,// 0xCE
+        PM_GET_RESTTIME = 207,// 0xCF
         GETPMDATA_CMD_SHORT_MAX = 208
     }
     const enum PM_SHORT_PUSH_DATA_CMDS {
-        PM_SET_SYNC_DISTANCE = 208,
-        PM_SET_SYNC_STROKEPACE = 209,
-        PM_SET_SYNC_AVG_HEARTRATE = 210,
-        PM_SET_SYNC_TIME = 211,
-        PM_SET_SYNC_SPLIT_DATA = 212,
-        PM_SET_SYNC_ENCODER_PERIOD = 213,
-        PM_SET_SYNC_VERSION_INFO = 214,
-        PM_SET_SYNC_RACETICKTIME = 215,
-        PM_SET_SYNC_DATAALL = 216,
+        PM_SET_SYNC_DISTANCE = 208,// SETPMDATA_CMD_SHORT_MIN
+        PM_SET_SYNC_STROKEPACE = 209,// 0xD1
+        PM_SET_SYNC_AVG_HEARTRATE = 210,// 0xD2
+        PM_SET_SYNC_TIME = 211,// 0xD3
+        PM_SET_SYNC_SPLIT_DATA = 212,// 0xD4
+        PM_SET_SYNC_ENCODER_PERIOD = 213,// 0xD5
+        PM_SET_SYNC_VERSION_INFO = 214,// 0xD6
+        PM_SET_SYNC_RACETICKTIME = 215,// 0xD7
+        PM_SET_SYNC_DATAALL = 216,// 0xD8
         SETPMDATA_CMD_SHORT_MAX = 217
     }
     const enum PM_SHORT_PUSH_CFG_CMDS {
-        PM_SET_RESET_ALL = 224,
-        PM_SET_RESET_ERGNUMBER = 225,
+        PM_SET_RESET_ALL = 224,// SETPMCFG_CMD_SHORT_MIN
+        PM_SET_RESET_ERGNUMBER = 225,// 0xE1
         SETPMCFG_CMD_SHORT_MAX = 226
     }
     const enum PM_LONG_PUSH_CFG_CMDS {
-        PM_SET_BAUDRATE = 0,
-        PM_SET_WORKOUTTYPE = 1,
-        PM_SET_STARTTYPE = 2,
-        PM_SET_WORKOUTDURATION = 3,
-        PM_SET_RESTDURATION = 4,
-        PM_SET_SPLITDURATION = 5,
-        PM_SET_TARGETPACETIME = 6,
-        PM_SET_INTERVALIDENTIFIER = 7,
-        PM_SET_OPERATIONALSTATE = 8,
-        PM_SET_RACETYPE = 9,
-        PM_SET_WARMUPDURATION = 10,
-        PM_SET_RACELANESETUP = 11,
-        PM_SET_RACELANEVERIFY = 12,
-        PM_SET_RACESTARTPARAMS = 13,
-        PM_SET_ERGSLAVEDISCOVERYREQUEST = 14,
-        PM_SET_BOATNUMBER = 15,
-        PM_SET_ERGNUMBER = 16,
-        PM_SET_COMMUNICATIONSTATE = 17,
-        PM_SET_CMDUPLIST = 18,
-        PM_SET_SCREENSTATE = 19,
-        PM_CONFIGURE_WORKOUT = 20,
-        PM_SET_TARGETAVGWATTS = 21,
-        PM_SET_TARGETCALSPERHR = 22,
-        PM_SET_INTERVALTYPE = 23,
-        PM_SET_WORKOUTINTERVALCOUNT = 24,
-        PM_SET_DISPLAYUPDATERATE = 25,
-        PM_SET_AUTHENPASSWORD = 26,
-        PM_SET_TICKTIME = 27,
-        PM_SET_TICKTIMEOFFSET = 28,
-        PM_SET_RACEDATASAMPLETICKS = 29,
-        PM_SET_RACEOPERATIONTYPE = 30,
-        PM_SET_RACESTATUSDISPLAYTICKS = 31,
-        PM_SET_RACESTATUSWARNINGTICKS = 32,
-        PM_SET_RACEIDLEMODEPARAMS = 33,
-        PM_SET_DATETIME = 34,
-        PM_SET_LANGUAGETYPE = 35,
-        PM_SET_WIFICONFIG = 36,
-        PM_SET_CPUTICKRATE = 37,
-        PM_SET_LOGCARDUSER = 38,
-        PM_SET_SCREENERRORMODE = 39,
-        PM_SET_CABLETEST = 40,
-        PM_SET_USER_ID = 41,
-        PM_SET_USER_PROFILE = 42,
-        PM_SET_HRM = 43,
-        PM_SET_SENSOR_CHANNEL = 47,
+        PM_SET_BAUDRATE = 0,// SETPMCFG_CMD_LONG_MIN
+        PM_SET_WORKOUTTYPE = 1,// 0x01
+        PM_SET_STARTTYPE = 2,// 0x02
+        PM_SET_WORKOUTDURATION = 3,// 0x03
+        PM_SET_RESTDURATION = 4,// 0x04
+        PM_SET_SPLITDURATION = 5,// 0x05
+        PM_SET_TARGETPACETIME = 6,// 0x06
+        PM_SET_INTERVALIDENTIFIER = 7,// 0x07
+        PM_SET_OPERATIONALSTATE = 8,// 0x08
+        PM_SET_RACETYPE = 9,// 0x09
+        PM_SET_WARMUPDURATION = 10,// 0x0A
+        PM_SET_RACELANESETUP = 11,// 0x0B
+        PM_SET_RACELANEVERIFY = 12,// 0x0C
+        PM_SET_RACESTARTPARAMS = 13,// 0x0D
+        PM_SET_ERGSLAVEDISCOVERYREQUEST = 14,// 0x0E
+        PM_SET_BOATNUMBER = 15,// 0x0F
+        PM_SET_ERGNUMBER = 16,// 0x10
+        PM_SET_COMMUNICATIONSTATE = 17,// 0x11
+        PM_SET_CMDUPLIST = 18,// 0x12
+        PM_SET_SCREENSTATE = 19,// 0x13
+        PM_CONFIGURE_WORKOUT = 20,// 0x14
+        PM_SET_TARGETAVGWATTS = 21,// 0x15
+        PM_SET_TARGETCALSPERHR = 22,// 0x16
+        PM_SET_INTERVALTYPE = 23,// 0x17
+        PM_SET_WORKOUTINTERVALCOUNT = 24,// 0x18
+        PM_SET_DISPLAYUPDATERATE = 25,// 0x19
+        PM_SET_AUTHENPASSWORD = 26,// 0x1A
+        PM_SET_TICKTIME = 27,// 0x1B
+        PM_SET_TICKTIMEOFFSET = 28,// 0x1C
+        PM_SET_RACEDATASAMPLETICKS = 29,// 0x1D
+        PM_SET_RACEOPERATIONTYPE = 30,// 0x1E
+        PM_SET_RACESTATUSDISPLAYTICKS = 31,// 0x1F
+        PM_SET_RACESTATUSWARNINGTICKS = 32,// 0x20
+        PM_SET_RACEIDLEMODEPARAMS = 33,// 0x21
+        PM_SET_DATETIME = 34,// 0x22
+        PM_SET_LANGUAGETYPE = 35,// 0x23
+        PM_SET_WIFICONFIG = 36,// 0x24
+        PM_SET_CPUTICKRATE = 37,// 0x25
+        PM_SET_LOGCARDUSER = 38,// 0x26
+        PM_SET_SCREENERRORMODE = 39,// 0x27
+        PM_SET_CABLETEST = 40,// 0x28
+        PM_SET_USER_ID = 41,// 0x29
+        PM_SET_USER_PROFILE = 42,// 0x2A
+        PM_SET_HRM = 43,// 0x2B
+        PM_SET_SENSOR_CHANNEL = 47,// 0x2F sensor channel
         SETPMCFG_CMD_LONG_MAX = 48
     }
     const enum PM_LONG_PUSH_DATA_CMDS {
-        PM_SET_TEAM_DISTANCE = 48,
-        PM_SET_TEAM_FINISH_TIME = 49,
-        PM_SET_RACEPARTICIPANT = 50,
-        PM_SET_RACESTATUS = 51,
-        PM_SET_LOGCARDMEMORY = 52,
-        PM_SET_DISPLAYSTRING = 53,
-        PM_SET_DISPLAYBITMAP = 54,
-        PM_SET_LOCALRACEPARTICIPANT = 55,
-        PM_SET_ANTRFMODE = 78,
-        PM_SET_MEMORY = 79,
+        PM_SET_TEAM_DISTANCE = 48,// SETPMDATA_CMD_LONG_MIN
+        PM_SET_TEAM_FINISH_TIME = 49,// 0x31
+        PM_SET_RACEPARTICIPANT = 50,// 0x32
+        PM_SET_RACESTATUS = 51,// 0x33
+        PM_SET_LOGCARDMEMORY = 52,// 0x34
+        PM_SET_DISPLAYSTRING = 53,// 0x35
+        PM_SET_DISPLAYBITMAP = 54,// 0x36
+        PM_SET_LOCALRACEPARTICIPANT = 55,// 0x37
+        PM_SET_ANTRFMODE = 78,// 0x4E mfg support only
+        PM_SET_MEMORY = 79,// 0x4F debug only
         SETPMDATA_CMD_LONG_MAX = 80
     }
     const enum PM_LONG_PULL_CFG_CMDS {
-        PM_GET_ERGNUMBER = 80,
-        PM_GET_ERGNUMBERREQUEST = 81,
-        PM_GET_USERIDSTRING = 82,
-        PM_GET_LOCALRACEPARTICIPANT = 83,
-        PM_GET_USER_ID = 84,
-        PM_GET_USER_PROFILE = 85,
+        PM_GET_ERGNUMBER = 80,// GETPMCFG_CMD_LONG_MIN
+        PM_GET_ERGNUMBERREQUEST = 81,// 0x51
+        PM_GET_USERIDSTRING = 82,// 0x52
+        PM_GET_LOCALRACEPARTICIPANT = 83,// 0x53
+        PM_GET_USER_ID = 84,// 0x54
+        PM_GET_USER_PROFILE = 85,// 0x55
         GETPMCFG_CMD_LONG_MAX = 86
     }
     const enum PM_LONG_PULL_DATA_CMDS {
-        PM_GET_MEMORY = 104,
-        PM_GET_LOGCARDMEMORY = 105,
-        PM_GET_INTERNALLOGMEMORY = 106,
-        PM_GET_FORCEPLOTDATA = 107,
-        PM_GET_HEARTBEATDATA = 108,
-        PM_GET_UI_EVENTS = 109,
-        CSAFE_PM_GET_STROKESTATS = 110,
-        CSAFE_PM_GET_DIAGLOG_RECORD_NUM = 112,
-        CSAFE_PM_GET_DIAGLOG_RECORD = 113,
+        PM_GET_MEMORY = 104,// GETPMDATA_CMD_LONG_MIN
+        PM_GET_LOGCARDMEMORY = 105,// 0x69
+        PM_GET_INTERNALLOGMEMORY = 106,// 0x6A
+        PM_GET_FORCEPLOTDATA = 107,// 0x6B
+        PM_GET_HEARTBEATDATA = 108,// 0x6C
+        PM_GET_UI_EVENTS = 109,// 0x6D
+        CSAFE_PM_GET_STROKESTATS = 110,// 0x6E
+        CSAFE_PM_GET_DIAGLOG_RECORD_NUM = 112,// 0x70
+        CSAFE_PM_GET_DIAGLOG_RECORD = 113,// 0x71
         GETPMDATA_CMD_LONG_MAX = 114
     }
     const PREVOK_FLG = 0;
@@ -1399,43 +1399,43 @@ declare namespace ergometer {
         Manufacturing = 5
     }
     const enum ScreenValue {
-        None = /**< None value (0). */ 0,
-        PrepareToRowWorkout = /**< Prepare to workout type (1). */ 1,
-        TerminateWorkout = /**< Terminate workout type (2). */ 2,
-        RearmWorkout = /**< Rearm workout type (3). */ 3,
-        RefreshLogCard = /**< Refresh local copies of logcard structures(4). */ 4,
-        PrepareToRaceStart = /**< Prepare to race start (5). */ 5,
-        GoToMainScreen = /**< Goto to main screen (6). */ 6,
-        LogCardBusyWarning = /**< Log device busy warning (7). */ 7,
-        LogCardSelectUser = /**< Log device select user (8). */ 8,
-        ResetRaceParams = /**< Reset race parameters (9). */ 9,
-        CableTestSlave = /**< Cable test slave indication(10). */ 10,
-        FishGame = /**< Fish game (11). */ 11,
-        DisplayParticipantInfo = /**< Display participant info (12). */ 12,
-        DisplayParticipantInfoConfirm = /**< Display participant info w/ confirmation (13). */ 13,
-        ChangeDisplayTypeTarget = 20,
-        ChangeDisplayTypeStandard = /**< Display type set to standard (21). */ 21,
-        ChangeDisplayTypeForceVelocity = /**< Display type set to forcevelocity (22). */ 22,
-        ChangeDisplayTypePaceBoat = /**< Display type set to Paceboat (23). */ 23,
-        ChangeDisplayTypePerStroke = /**< Display type set to perstroke (24). */ 24,
-        ChangeDisplayTypeSimple = /**< Display type set to simple (25). */ 25,
-        ChangeUnitsTypeTimeMeters = 30,
-        ChangeUnitsTypePace = /**< Units type set to pace (31). */ 31,
-        ChangeUnitsTypeWatts = /**< Units type set to watts (32). */ 32,
-        ChangeUnitsTypeCaloricBurnRate = /**< Units type set to caloric burn rate(33). */ 33,
-        TargetGameBasic = /**< Basic target game (34). */ 34,
-        TargetGameAdvanced = /**< Advanced target game (35). */ 35,
-        DartGame = /**< Dart game (36). */ 36,
-        GoToUsbWaitReady = /**< USB wait ready (37). */ 37,
-        TachCableTestDisable = /**< Tach cable test disable (38). */ 38,
-        TachSimDisable = /**< Tach simulator disable (39). */ 39,
-        TachSimEnableRate1 = /**< Tach simulator enable, rate = 1:12 (40). */ 40,
-        TachSimEnableRate2 = /**< Tach simulator enable, rate = 1:35 (41). */ 41,
-        TachSimEnableRate3 = /**< Tach simulator enable, rate = 1:42 (42). */ 42,
-        TachSimEnableRate4 = /**< Tach simulator enable, rate = 3:04 (43). */ 43,
-        TachSimEnableRate5 = /**< Tach simulator enable, rate = 3:14 (44). */ 44,
-        TachCableTestEnable = /**< Tach cable test enable (45). */ 45,
-        ChangeUnitsTypeCalories = /**< Units type set to calories(46). */ 46,
+        None = /**< None value (0). */ 0,/**< None value (0). */
+        PrepareToRowWorkout = /**< Prepare to workout type (1). */ 1,/**< Prepare to workout type (1). */
+        TerminateWorkout = /**< Terminate workout type (2). */ 2,/**< Terminate workout type (2). */
+        RearmWorkout = /**< Rearm workout type (3). */ 3,/**< Rearm workout type (3). */
+        RefreshLogCard = /**< Refresh local copies of logcard structures(4). */ 4,/**< Refresh local copies of logcard structures(4). */
+        PrepareToRaceStart = /**< Prepare to race start (5). */ 5,/**< Prepare to race start (5). */
+        GoToMainScreen = /**< Goto to main screen (6). */ 6,/**< Goto to main screen (6). */
+        LogCardBusyWarning = /**< Log device busy warning (7). */ 7,/**< Log device busy warning (7). */
+        LogCardSelectUser = /**< Log device select user (8). */ 8,/**< Log device select user (8). */
+        ResetRaceParams = /**< Reset race parameters (9). */ 9,/**< Reset race parameters (9). */
+        CableTestSlave = /**< Cable test slave indication(10). */ 10,/**< Cable test slave indication(10). */
+        FishGame = /**< Fish game (11). */ 11,/**< Fish game (11). */
+        DisplayParticipantInfo = /**< Display participant info (12). */ 12,/**< Display participant info (12). */
+        DisplayParticipantInfoConfirm = /**< Display participant info w/ confirmation (13). */ 13,/**< Display participant info w/ confirmation (13). */
+        ChangeDisplayTypeTarget = 20,/**< Display type set to target (20). */
+        ChangeDisplayTypeStandard = /**< Display type set to standard (21). */ 21,/**< Display type set to standard (21). */
+        ChangeDisplayTypeForceVelocity = /**< Display type set to forcevelocity (22). */ 22,/**< Display type set to forcevelocity (22). */
+        ChangeDisplayTypePaceBoat = /**< Display type set to Paceboat (23). */ 23,/**< Display type set to Paceboat (23). */
+        ChangeDisplayTypePerStroke = /**< Display type set to perstroke (24). */ 24,/**< Display type set to perstroke (24). */
+        ChangeDisplayTypeSimple = /**< Display type set to simple (25). */ 25,/**< Display type set to simple (25). */
+        ChangeUnitsTypeTimeMeters = 30,/**< Units type set to timemeters (30). */
+        ChangeUnitsTypePace = /**< Units type set to pace (31). */ 31,/**< Units type set to pace (31). */
+        ChangeUnitsTypeWatts = /**< Units type set to watts (32). */ 32,/**< Units type set to watts (32). */
+        ChangeUnitsTypeCaloricBurnRate = /**< Units type set to caloric burn rate(33). */ 33,/**< Units type set to caloric burn rate(33). */
+        TargetGameBasic = /**< Basic target game (34). */ 34,/**< Basic target game (34). */
+        TargetGameAdvanced = /**< Advanced target game (35). */ 35,/**< Advanced target game (35). */
+        DartGame = /**< Dart game (36). */ 36,/**< Dart game (36). */
+        GoToUsbWaitReady = /**< USB wait ready (37). */ 37,/**< USB wait ready (37). */
+        TachCableTestDisable = /**< Tach cable test disable (38). */ 38,/**< Tach cable test disable (38). */
+        TachSimDisable = /**< Tach simulator disable (39). */ 39,/**< Tach simulator disable (39). */
+        TachSimEnableRate1 = /**< Tach simulator enable, rate = 1:12 (40). */ 40,/**< Tach simulator enable, rate = 1:12 (40). */
+        TachSimEnableRate2 = /**< Tach simulator enable, rate = 1:35 (41). */ 41,/**< Tach simulator enable, rate = 1:35 (41). */
+        TachSimEnableRate3 = /**< Tach simulator enable, rate = 1:42 (42). */ 42,/**< Tach simulator enable, rate = 1:42 (42). */
+        TachSimEnableRate4 = /**< Tach simulator enable, rate = 3:04 (43). */ 43,/**< Tach simulator enable, rate = 3:04 (43). */
+        TachSimEnableRate5 = /**< Tach simulator enable, rate = 3:14 (44). */ 44,/**< Tach simulator enable, rate = 3:14 (44). */
+        TachCableTestEnable = /**< Tach cable test enable (45). */ 45,/**< Tach cable test enable (45). */
+        ChangeUnitsTypeCalories = /**< Units type set to calories(46). */ 46,/**< Units type set to calories(46). */
         ScreenRedraw = 255 /**< Screen redraw (255). */
     }
     const enum IntervalType {
@@ -1487,7 +1487,7 @@ declare namespace ergometer {
     }
     const enum SampleRate {
         rate1sec = 0,
-        rate500ms = 1,
+        rate500ms = 1,//default
         rate250ms = 2,
         rate100ms = 3
     }

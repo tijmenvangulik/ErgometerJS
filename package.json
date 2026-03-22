@@ -1,13 +1,21 @@
 {
   "name": "ergometer-js",
   "description": "Java script ergometer driver for concept 2 performance monitor with BLE and USB. (The PM5) Works on all major platforms using cordova and node/electron",
-  "version": "1.5.1",
+  "version": "1.5.2",
+  "main": "api/lib/ergometer.js",
+  "types": "api/lib/ergometer.d.ts",
+  "files": [
+    "api/lib/ergometer.js",
+    "api/lib/ergometer.js.map",
+    "api/lib/ergometer.min.js"
+  ],
   "engines": {
     "node": ">=5.5.0"
   },
   "devDependencies": {
     "copyfiles": ">=0.2.1",
-    "typescript": "^4.1.3"
+    "typescript": "^5.9.3",
+    "uglify-js": "^3.19.3"
   },
   "license": "Apache-2.0",
   "keywords": [
@@ -26,6 +34,7 @@
   ],
   "scripts": {
     "build:api": "tsc -p api && npm run build:compress",
+    "watch:api": "tsc -p api --watch",
     "build:compress": "uglifyjs -c --output api/lib/ergometer.min.js api/lib/ergometer.js",
     "build:copy_api_copytowebapp": "copyfiles -f api/lib/ergometer.js ../WebErgometer/WebApp/html/script/lib",
     "build:copy_api_copytowebapp_min": "copyfiles -f api/lib/ergometer.min.js ../WebErgometer/WebApp/html/script/lib",
@@ -46,13 +55,11 @@
     "build:ble_cordova_debug": "tsc -p demos/ble_cordova_debug ",
     "build": "npm run build:api && npm run build:copy_api && npm run build:simple_electron  && npm run build:recording && npm run build:webbluetooth && npm run build:usb_electron && npm run build:usb_electron_debug && npm run build:ble_cordova_debug",
     "watch:usb_electron_debug": "tsc  -p demos/usb_electron_debug --watch ",
-    "build:copy_api_webapp": "npm run build:copy_api_copytowebapp && npm run build:copy_api_copytowebapp_min && npm run build:copy_api_copytowebapp_ts && npm run build:copy_api_copytowebapp_ts2"
+    "build:copy_api_webapp": "npm run build:copy_api_copytowebapp && npm run build:copy_api_copytowebapp_min && npm run build:copy_api_copytowebapp_ts && npm run build:copy_api_copytowebapp_ts2",
+    "publish": "npm publish --access public"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/tijmenvangulik/MobileErgometer"
-  },
-  "dependencies": {
-    "uglify-js": "^3.6.7"
+    "url": "https://github.com/tijmenvangulik/ErgometerJS"
   }
 }

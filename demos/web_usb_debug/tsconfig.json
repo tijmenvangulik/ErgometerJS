@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
     "module": "system",
-    "target": "es5",
+    "target": "es6",
     "sourceMap": true,
     "outFile": "app.js",
     "lib": [
-      "es5",
+      "es6",
       "es2015",
       "dom"]
   },

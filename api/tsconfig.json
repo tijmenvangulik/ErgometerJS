@@ -1,14 +1,14 @@
 {
   "compilerOptions": {
     "module": "system",
-    "target": "es5",
+    "target": "es6",
     "sourceMap": true,
     "outFile": "lib/ergometer.js",
     "outDir": "lib",
     "declaration": true,
     "stripInternal": true,
     "lib": [
-      "es5",
+      "ES6",
       "es2015",
       "dom"]
 
