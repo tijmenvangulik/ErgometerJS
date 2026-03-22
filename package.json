@@ -1,13 +1,14 @@
 {
   "name": "ergometer-js",
   "description": "Java script ergometer driver for concept 2 performance monitor with BLE and USB. (The PM5) Works on all major platforms using cordova and node/electron",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "main": "api/lib/ergometer.js",
   "types": "api/lib/ergometer.d.ts",
   "files": [
     "api/lib/ergometer.js",
     "api/lib/ergometer.js.map",
-    "api/lib/ergometer.min.js"
+    "api/lib/ergometer.min.js",
+    "api/lib/ergometer.d.ts"
   ],
   "engines": {
     "node": ">=5.5.0"
