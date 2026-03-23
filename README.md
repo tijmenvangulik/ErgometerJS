@@ -621,8 +621,7 @@ Version which includes all the ergometer js source for debuging purpose.
 
 ## Web hid example
 
-Future versions will support web hid. With this you can connect using usb to your pm5 directly from chrome. The feature is not yet stable but 
-it works in in chrome canary. with experimental features turned on.
+With this you can connect using usb to your pm5 directly from chromium based browsers. 
 
 https://github.com/robatwilliams/awesome-webhid#status
 
