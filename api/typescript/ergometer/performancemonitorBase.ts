@@ -403,8 +403,10 @@ namespace ergometer {
 
                     //prepare all the data to be send in one array
                     //begin with a start byte ad end with a checksum and an end byte
+                    //the checksum is also stuffed when it has the value of a frame flag
+                    var checksumBytes = (checksum >= 0xF0 && checksum <= 0xF3) ? [0xF3, checksum - 0xF0] : [checksum];
                     var bytesToSend : number[] =
-                        ([csafe.defs.FRAME_START_BYTE].concat(newArray)).concat([checksum,csafe.defs.FRAME_END_BYTE]);
+                        ([csafe.defs.FRAME_START_BYTE].concat(newArray)).concat(checksumBytes).concat([csafe.defs.FRAME_END_BYTE]);
                     if (this._splitCommandsWhenToBigErrorMessage && bytesToSend.length>this.getPacketSize())
                       reject(`Csafe commands with length ${bytesToSend.length} does not fit into buffer with size ${this.getPacketSize()} `)
                     else {

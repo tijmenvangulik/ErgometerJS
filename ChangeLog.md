@@ -1,3 +1,5 @@
+- 1.5.4
+  * Checksum fix
 - 1.5.3
   * update typescript compiler and output ES6
   * Update docs
