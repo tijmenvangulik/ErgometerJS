@@ -2679,6 +2679,8 @@ var ergometer;
             //commands where we are waiting for
             this._commands = [];
             this.stuffByteActive = false;
+            /** bytes of the current wrapper command which are not yet parsed, also valid over multiple packets */
+            this.remainingCommandBytes = 0;
             this._monitor = monitor;
             this._resolve = resolve;
             this._reject = reject;
@@ -3008,6 +3010,14 @@ var ergometer;
                 var moveToNextBuffer = false;
                 while (i < dataView.byteLength && !moveToNextBuffer) {
                     var currentByte = dataView.getUint8(i);
+                    //an unstuffed end byte can only be the end of the frame. This keeps the parser in sync
+                    //when the content is not as expected. The checksum check is done in parseCommandLength
+                    if (currentByte == ergometer.csafe.defs.FRAME_END_BYTE && waitBuffer.frameState != 0 /* FrameState.initial */
+                        && waitBuffer.frameState != 3 /* FrameState.parseCommandLength */) {
+                        waitBuffer.stuffByteActive = false;
+                        moveToNextBuffer = true;
+                        break;
+                    }
                     if (waitBuffer.stuffByteActive && currentByte <= 3) {
                         currentByte = 0xF0 + currentByte; //unstuff
                         if (this.logLevel == ergometer.LogLevel.trace)
@@ -3077,6 +3087,7 @@ var ergometer;
                                 }
                                 else if (i < dataView.byteLength) {
                                     waitBuffer.endCommand = i + currentByte;
+                                    waitBuffer.remainingCommandBytes = currentByte;
                                     waitBuffer.nextDataLength = currentByte;
                                     if (waitBuffer.command >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN) {
                                         waitBuffer.frameState = 6 /* FrameState.parseCommandData */;
@@ -3087,11 +3098,19 @@ var ergometer;
                                 break;
                             }
                             case 4 /* FrameState.parseDetailCommand */: {
+                                waitBuffer.remainingCommandBytes--;
                                 waitBuffer.detailCommand = currentByte;
+                                //the reply on a set command is only the command id, it has no length and no data (spec page 69-71)
+                                if (this.isDetailSetCommand(currentByte)) {
+                                    waitBuffer.detailCommand = 0;
+                                    waitBuffer.frameState = waitBuffer.remainingCommandBytes > 0 ? 4 /* FrameState.parseDetailCommand */ : 2 /* FrameState.parseCommand */;
+                                    break;
+                                }
                                 waitBuffer.frameState = 5 /* FrameState.parseDetailCommandLength */;
                                 break;
                             }
                             case 5 /* FrameState.parseDetailCommandLength */: {
+                                waitBuffer.remainingCommandBytes--;
                                 waitBuffer.nextDataLength = currentByte;
                                 waitBuffer.frameState = 6 /* FrameState.parseCommandData */;
                                 break;
@@ -3101,12 +3120,13 @@ var ergometer;
                                     waitBuffer.commandDataIndex = 0;
                                     waitBuffer.commandData = new Uint8Array(waitBuffer.nextDataLength);
                                 }
+                                waitBuffer.remainingCommandBytes--;
                                 waitBuffer.commandData[waitBuffer.commandDataIndex] = currentByte;
                                 waitBuffer.nextDataLength--;
                                 waitBuffer.commandDataIndex++;
                                 if (waitBuffer.nextDataLength == 0) {
                                     if (waitBuffer.command < ergometer.csafe.defs.CTRL_CMD_SHORT_MIN
-                                        && i < waitBuffer.endCommand)
+                                        && waitBuffer.remainingCommandBytes > 0)
                                         waitBuffer.frameState = 4 /* FrameState.parseDetailCommand */;
                                     else
                                         waitBuffer.frameState = 2 /* FrameState.parseCommand */;
@@ -3145,6 +3165,10 @@ var ergometer;
                     waitBuffer = this.moveToNextBuffer();
                 }
             }
+        }
+        /** detail commands which only set a value: long push 0x00-0x4F and short push 0xD0-0xEF */
+        isDetailSetCommand(detailCommand) {
+            return detailCommand < 0x50 || (detailCommand >= 0xD0 && detailCommand <= 0xEF);
         }
         getPacketSize() {
             throw "getPacketSize not implemented";
@@ -3453,7 +3477,7 @@ var ergometer;
                         var doPowerCurveUpdate = this.strokeState == 4 /* StrokeState.recoveryState */;
                         if (doPowerCurveUpdate ||
                             this._lastLowResUpdate == null ||
-                            (!this.isWaiting && (now - this._lastLowResUpdate) > WAIT_TIME_LOW_RES)) {
+                            (!this.isWaiting() && (now - this._lastLowResUpdate) > WAIT_TIME_LOW_RES)) {
                             this._lastLowResUpdate = now;
                             this.traceInfo("Start low res update");
                             this.lowResolutionUpdate().then(() => {
@@ -3511,7 +3535,7 @@ var ergometer;
             //do not start the auto updating llop
             if (first && (this.strokeStateEvent.count == 0 &&
                 this.trainingDataEvent.count == 0 &&
-                this.strokeStateEvent.count == 0))
+                this.strokeDataEvent.count == 0))
                 return;
             //preventing starting update twice 
             //and stop when not connected any more
@@ -4544,7 +4568,9 @@ var ergometer;
          * @param device
          */
         removeDevice(device) {
-            this._devices = this._devices.splice(this._devices.indexOf(device), 1);
+            var index = this._devices.indexOf(device);
+            if (index >= 0)
+                this._devices.splice(index, 1);
         }
         /**
          *
@@ -4761,17 +4787,17 @@ var ergometer;
         handleRowingAdditionalStatus1(data) {
             var parsed = {
                 elapsedTime: ergometer.utils.getUint24(data, 0 /* ble.PM_Extra_Status1_BLE_Payload.ELAPSED_TIME_LO */) * 10, //in mili seconds
-                speed: data.getUint16(3 /* ble.PM_Extra_Status1_BLE_Payload.SPEED_LO */) / 1000, // m/s
+                speed: data.getUint16(3 /* ble.PM_Extra_Status1_BLE_Payload.SPEED_LO */, true) / 1000, // m/s
                 strokeRate: data.getUint8(5 /* ble.PM_Extra_Status1_BLE_Payload.STROKE_RATE */),
                 heartRate: ergometer.utils.valueToNullValue(data.getUint8(6 /* ble.PM_Extra_Status1_BLE_Payload.HEARTRATE */), 255),
                 currentPace: this.calcPace(data.getUint8(7 /* ble.PM_Extra_Status1_BLE_Payload.CURRENT_PACE_LO */), data.getUint8(8 /* ble.PM_Extra_Status1_BLE_Payload.CURRENT_PACE_HI */)),
                 averagePace: this.calcPace(data.getUint8(9 /* ble.PM_Extra_Status1_BLE_Payload.AVG_PACE_LO */), data.getUint8(10 /* ble.PM_Extra_Status1_BLE_Payload.AVG_PACE_HI */)),
-                restDistance: data.getUint16(11 /* ble.PM_Extra_Status1_BLE_Payload.REST_DISTANCE_LO */),
+                restDistance: data.getUint16(11 /* ble.PM_Extra_Status1_BLE_Payload.REST_DISTANCE_LO */, true),
                 restTime: ergometer.utils.getUint24(data, 13 /* ble.PM_Extra_Status1_BLE_Payload.REST_TIME_LO */) * 10, //mili seconds
                 averagePower: null
             };
             if (data.byteLength == 18 /* ble.PM_Mux_Extra_Status1_BLE_Payload.BLE_PAYLOAD_SIZE */)
-                parsed.averagePower = data.getUint16(16 /* ble.PM_Mux_Extra_Status1_BLE_Payload.AVG_POWER_LO */);
+                parsed.averagePower = data.getUint16(16 /* ble.PM_Mux_Extra_Status1_BLE_Payload.AVG_POWER_LO */, true);
             if (JSON.stringify(this.rowingAdditionalStatus1) !== JSON.stringify(parsed)) {
                 this.rowingAdditionalStatus1Event.pub(parsed);
                 this._rowingAdditionalStatus1 = parsed;
@@ -4787,12 +4813,12 @@ var ergometer;
                 parsed = {
                     elapsedTime: ergometer.utils.getUint24(data, 0 /* ble.PM_Extra_Status2_BLE_Payload.ELAPSED_TIME_LO */) * 10, //in mili seconds
                     intervalCount: data.getUint8(3 /* ble.PM_Extra_Status2_BLE_Payload.INTERVAL_COUNT */),
-                    averagePower: data.getUint16(4 /* ble.PM_Extra_Status2_BLE_Payload.AVG_POWER_LO */),
-                    totalCalories: data.getUint16(6 /* ble.PM_Extra_Status2_BLE_Payload.TOTAL_CALORIES_LO */),
+                    averagePower: data.getUint16(4 /* ble.PM_Extra_Status2_BLE_Payload.AVG_POWER_LO */, true),
+                    totalCalories: data.getUint16(6 /* ble.PM_Extra_Status2_BLE_Payload.TOTAL_CALORIES_LO */, true),
                     splitAveragePace: this.calcPace(data.getUint8(8 /* ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO */), data.getUint8(9 /* ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_HI */)), // ms,
-                    splitAveragePower: data.getUint16(10 /* ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO */), //watt
-                    splitAverageCalories: data.getUint16(12 /* ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO */), // cal/hour
-                    lastSplitTime: data.getUint16(14 /* ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO */) * 100, //the doc 0.1 factor is this right?
+                    splitAveragePower: data.getUint16(10 /* ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO */, true), //watt
+                    splitAverageCalories: data.getUint16(12 /* ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO */, true), // cal/hour
+                    lastSplitTime: data.getUint16(14 /* ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO */, true) * 100, //the doc 0.1 factor is this right?
                     lastSplitDistance: ergometer.utils.getUint24(data, 17 /* ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_DISTANCE_LO */)
                 };
             }
@@ -4801,11 +4827,11 @@ var ergometer;
                     elapsedTime: ergometer.utils.getUint24(data, 0 /* ble.PM_Mux_Extra_Status2_BLE_Payload.ELAPSED_TIME_LO */) * 10, //in mili seconds
                     intervalCount: data.getUint8(3 /* ble.PM_Mux_Extra_Status2_BLE_Payload.INTERVAL_COUNT */),
                     averagePower: null,
-                    totalCalories: data.getUint16(4 /* ble.PM_Mux_Extra_Status2_BLE_Payload.TOTAL_CALORIES_LO */),
+                    totalCalories: data.getUint16(4 /* ble.PM_Mux_Extra_Status2_BLE_Payload.TOTAL_CALORIES_LO */, true),
                     splitAveragePace: this.calcPace(data.getUint8(6 /* ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO */), data.getUint8(7 /* ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_HI */)), //ms,
-                    splitAveragePower: data.getUint16(8 /* ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO */), //watt
-                    splitAverageCalories: data.getUint16(10 /* ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO */), // cal/hour
-                    lastSplitTime: data.getUint16(12 /* ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO */) * 100, //the doc 0.1 factor is this right?
+                    splitAveragePower: data.getUint16(8 /* ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO */, true), //watt
+                    splitAverageCalories: data.getUint16(10 /* ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO */, true), // cal/hour
+                    lastSplitTime: data.getUint16(12 /* ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO */, true) * 100, //the doc 0.1 factor is this right?
                     lastSplitDistance: ergometer.utils.getUint24(data, 15 /* ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_DISTANCE_LO */)
                 };
             }
@@ -4828,9 +4854,9 @@ var ergometer;
                     driveTime: data.getUint8(7 /* ble.PM_Stroke_Data_BLE_Payload.DRIVE_TIME */) * 10, //ms
                     strokeRecoveryTime: (data.getUint8(8 /* ble.PM_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_LO */) + data.getUint8(9 /* ble.PM_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_HI */) * 256) * 10, //ms
                     strokeDistance: (data.getUint8(10 /* ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_LO */) + data.getUint8(11 /* ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_HI */) * 256) / 100, //meter
-                    peakDriveForce: data.getUint16(12 /* ble.PM_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO */) / 10, //lbs
-                    averageDriveForce: data.getUint16(14 /* ble.PM_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO */) / 10, //lbs
-                    workPerStroke: data.getUint16(16 /* ble.PM_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO */) / 10, //jouls
+                    peakDriveForce: data.getUint16(12 /* ble.PM_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO */, true) / 10, //lbs
+                    averageDriveForce: data.getUint16(14 /* ble.PM_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO */, true) / 10, //lbs
+                    workPerStroke: data.getUint16(16 /* ble.PM_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO */, true) / 10, //jouls
                     strokeCount: data.getUint8(18 /* ble.PM_Stroke_Data_BLE_Payload.STROKE_COUNT_LO */) + data.getUint8(19 /* ble.PM_Stroke_Data_BLE_Payload.STROKE_COUNT_HI */) * 256 //PM bug: LSB and MSB are swapped
                 };
             }
@@ -4840,10 +4866,10 @@ var ergometer;
                     distance: ergometer.utils.getUint24(data, 3 /* ble.PM_Mux_Stroke_Data_BLE_Payload.DISTANCE_LO */) / 10, //meter
                     driveLength: data.getUint8(6 /* ble.PM_Mux_Stroke_Data_BLE_Payload.DRIVE_LENGTH */) / 100, //meters
                     driveTime: data.getUint8(7 /* ble.PM_Mux_Stroke_Data_BLE_Payload.DRIVE_TIME */) * 10, //ms
-                    strokeRecoveryTime: data.getUint16(8 /* ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_LO */) * 10, //ms
+                    strokeRecoveryTime: data.getUint16(8 /* ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_LO */, true) * 10, //ms
                     strokeDistance: (data.getUint8(10 /* ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_LO */) + data.getUint8(11 /* ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_HI */) * 256) / 100, //meter
-                    peakDriveForce: data.getUint16(12 /* ble.PM_Mux_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO */) / 10, //lbs
-                    averageDriveForce: data.getUint16(14 /* ble.PM_Mux_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO */) / 10, //lbs
+                    peakDriveForce: data.getUint16(12 /* ble.PM_Mux_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO */, true) / 10, //lbs
+                    averageDriveForce: data.getUint16(14 /* ble.PM_Mux_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO */, true) / 10, //lbs
                     workPerStroke: null,
                     strokeCount: data.getUint8(16 /* ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_COUNT_LO */) + data.getUint8(17 /* ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_COUNT_HI */) * 256 //PM bug: LSB and MSB are swapped
                 };
@@ -4861,14 +4887,14 @@ var ergometer;
             var parsed = {
                 elapsedTime: ergometer.utils.getUint24(data, 0 /* ble.PM_Extra_Stroke_Data_BLE_Payload.ELAPSED_TIME_LO */) * 10, //in mili seconds
                 strokePower: data.getUint8(3 /* ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_POWER_LO */) + data.getUint8(4 /* ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_POWER_HI */) * 256, //watts
-                strokeCalories: data.getUint16(5 /* ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_CALORIES_LO */), //cal/hr
+                strokeCalories: data.getUint16(5 /* ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_CALORIES_LO */, true), //cal/hr
                 strokeCount: data.getUint8(7 /* ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_COUNT_LO */) + data.getUint8(8 /* ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_COUNT_HI */) * 256, //PM bug: LSB and MSB are swapped
                 projectedWorkTime: ergometer.utils.getUint24(data, 9 /* ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_TIME_LO */) * 1000, //ms
                 projectedWorkDistance: ergometer.utils.getUint24(data, 12 /* ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_DIST_LO */), //meter
                 workPerStroke: null //filled when multiplexed is true
             };
             if (data.byteLength == 17 /* ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.BLE_PAYLOAD_SIZE */)
-                parsed.workPerStroke = data.getUint16(15 /* ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO */);
+                parsed.workPerStroke = data.getUint16(15 /* ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO */, true);
             if (JSON.stringify(this.rowingAdditionalStrokeData) !== JSON.stringify(parsed)) {
                 this.rowingAdditionalStrokeDataEvent.pub(parsed);
                 this._rowingAdditionalStrokeData = parsed;
@@ -4884,8 +4910,8 @@ var ergometer;
                 distance: ergometer.utils.getUint24(data, 3 /* ble.PM_Split_Interval_Data_BLE_Payload.DISTANCE_LO */) / 10, //meters
                 intervalTime: ergometer.utils.getUint24(data, 6 /* ble.PM_Split_Interval_Data_BLE_Payload.SPLIT_TIME_LO */) * 100,
                 intervalDistance: ergometer.utils.getUint24(data, 9 /* ble.PM_Split_Interval_Data_BLE_Payload.SPLIT_DISTANCE_LO */),
-                intervalRestTime: data.getUint16(12 /* ble.PM_Split_Interval_Data_BLE_Payload.REST_TIME_LO */) * 1000,
-                intervalRestDistance: data.getUint16(14 /* ble.PM_Split_Interval_Data_BLE_Payload.REST_DISTANCE_LO */), //meter
+                intervalRestTime: data.getUint16(12 /* ble.PM_Split_Interval_Data_BLE_Payload.REST_TIME_LO */, true) * 1000,
+                intervalRestDistance: data.getUint16(14 /* ble.PM_Split_Interval_Data_BLE_Payload.REST_DISTANCE_LO */, true), //meter
                 intervalType: data.getUint8(16 /* ble.PM_Split_Interval_Data_BLE_Payload.TYPE */),
                 intervalNumber: data.getUint8(17 /* ble.PM_Split_Interval_Data_BLE_Payload.INT_NUMBER */),
             };
@@ -4904,11 +4930,11 @@ var ergometer;
                 intervalAverageStrokeRate: data.getUint8(3 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.STROKE_RATE */),
                 intervalWorkHeartrate: data.getUint8(4 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.WORK_HR */),
                 intervalRestHeartrate: data.getUint8(5 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.REST_HR */),
-                intervalAveragePace: data.getUint16(6 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_PACE_LO */) * 10, //ms lbs
-                intervalTotalCalories: data.getUint16(8 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.CALORIES_LO */),
-                intervalAverageCalories: data.getUint16(10 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_CALORIES_LO */),
-                intervalSpeed: data.getUint16(12 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.SPEED_LO */) / 1000, //m/s
-                intervalPower: data.getUint16(14 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.POWER_LO */),
+                intervalAveragePace: data.getUint16(6 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_PACE_LO */, true) * 10, //ms lbs
+                intervalTotalCalories: data.getUint16(8 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.CALORIES_LO */, true),
+                intervalAverageCalories: data.getUint16(10 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_CALORIES_LO */, true),
+                intervalSpeed: data.getUint16(12 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.SPEED_LO */, true) / 1000, //m/s
+                intervalPower: data.getUint16(14 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.POWER_LO */, true),
                 splitAverageDragFactor: data.getUint8(16 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_DRAG_FACTOR */),
                 intervalNumber: data.getUint8(17 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.INT_NUMBER */)
             };
@@ -4923,8 +4949,8 @@ var ergometer;
          */
         handleWorkoutSummaryData(data) {
             var parsed = {
-                logEntryDate: data.getUint16(0 /* ble.PM_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO */),
-                logEntryTime: data.getUint16(2 /* ble.PM_Workout_Summary_Data_BLE_Payload.LOG_TIME_LO */),
+                logEntryDate: data.getUint16(0 /* ble.PM_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO */, true),
+                logEntryTime: data.getUint16(2 /* ble.PM_Workout_Summary_Data_BLE_Payload.LOG_TIME_LO */, true),
                 elapsedTime: ergometer.utils.getUint24(data, 4 /* ble.PM_Workout_Summary_Data_BLE_Payload.ELAPSED_TIME_LO */) * 10,
                 distance: ergometer.utils.getUint24(data, 7 /* ble.PM_Workout_Summary_Data_BLE_Payload.DISTANCE_LO */) / 10,
                 averageStrokeRate: data.getUint8(10 /* ble.PM_Workout_Summary_Data_BLE_Payload.AVG_SPM */),
@@ -4938,7 +4964,7 @@ var ergometer;
                 averagePace: null
             };
             if (data.byteLength == 20 /* ble.PM_Workout_Summary_Data_BLE_Payload.BLE_PAYLOAD_SIZE */) {
-                parsed.averagePace = data.getUint16(18 /* ble.PM_Workout_Summary_Data_BLE_Payload.AVG_PACE_LO */);
+                parsed.averagePace = data.getUint16(18 /* ble.PM_Workout_Summary_Data_BLE_Payload.AVG_PACE_LO */, true);
             }
             if (JSON.stringify(this.workoutSummaryData) !== JSON.stringify(parsed)) {
                 this.workoutSummaryDataEvent.pub(parsed);
@@ -4953,30 +4979,30 @@ var ergometer;
             var parsed;
             if (data.byteLength == 19 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.DATA_BLE_PAYLOAD_SIZE */) {
                 parsed = {
-                    logEntryDate: data.getUint16(0 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO */),
-                    logEntryTime: data.getUint16(1 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_HI */),
+                    logEntryDate: data.getUint16(0 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO */, true),
+                    logEntryTime: data.getUint16(1 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_HI */, true),
                     intervalType: data.getUint8(4 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_TYPE */),
-                    intervalSize: data.getUint16(5 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_SIZE_LO */), //meters or seconds
+                    intervalSize: data.getUint16(5 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_SIZE_LO */, true), //meters or seconds
                     intervalCount: data.getUint8(7 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_COUNT */),
-                    totalCalories: data.getUint16(8 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.WORK_CALORIES_LO */),
-                    watts: data.getUint16(10 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.WATTS_LO */),
+                    totalCalories: data.getUint16(8 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.WORK_CALORIES_LO */, true),
+                    watts: data.getUint16(10 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.WATTS_LO */, true),
                     totalRestDistance: ergometer.utils.getUint24(data, 12 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.TOTAL_REST_DISTANCE_LO */),
-                    intervalRestTime: data.getUint16(15 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.INTERVAL_REST_TIME_LO */),
-                    averageCalories: data.getUint16(17 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.AVG_CALORIES_LO */)
+                    intervalRestTime: data.getUint16(15 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.INTERVAL_REST_TIME_LO */, true),
+                    averageCalories: data.getUint16(17 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.AVG_CALORIES_LO */, true)
                 };
             }
             else {
                 parsed = {
-                    logEntryDate: data.getUint16(0 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO */),
-                    logEntryTime: data.getUint16(2 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.LOG_TIME_LO */),
+                    logEntryDate: data.getUint16(0 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO */, true),
+                    logEntryTime: data.getUint16(2 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.LOG_TIME_LO */, true),
                     intervalType: null,
-                    intervalSize: data.getUint16(4 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_SIZE_LO */), //meters or seconds
+                    intervalSize: data.getUint16(4 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_SIZE_LO */, true), //meters or seconds
                     intervalCount: data.getUint8(6 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_COUNT */),
-                    totalCalories: data.getUint16(7 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.WORK_CALORIES_LO */),
-                    watts: data.getUint16(9 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.WATTS_LO */),
+                    totalCalories: data.getUint16(7 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.WORK_CALORIES_LO */, true),
+                    watts: data.getUint16(9 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.WATTS_LO */, true),
                     totalRestDistance: ergometer.utils.getUint24(data, 11 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.TOTAL_REST_DISTANCE_LO */),
-                    intervalRestTime: data.getUint16(14 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.INTERVAL_REST_TIME_LO */),
-                    averageCalories: data.getUint16(16 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.AVG_CALORIES_LO */)
+                    intervalRestTime: data.getUint16(14 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.INTERVAL_REST_TIME_LO */, true),
+                    averageCalories: data.getUint16(16 /* ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.AVG_CALORIES_LO */, true)
                 };
             }
             if (JSON.stringify(this.additionalWorkoutSummaryData) !== JSON.stringify(parsed)) {
@@ -4990,11 +5016,11 @@ var ergometer;
          */
         handleAdditionalWorkoutSummaryData2(data) {
             var parsed = {
-                logEntryDate: data.getUint16(0 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_LO */),
-                logEntryTime: data.getUint16(1 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_HI */),
-                averagePace: data.getUint16(4 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.AVG_PACE_LO */),
+                logEntryDate: data.getUint16(0 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_LO */, true),
+                logEntryTime: data.getUint16(1 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_HI */, true),
+                averagePace: data.getUint16(4 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.AVG_PACE_LO */, true),
                 gameIdentifier: data.getUint8(6 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_ID */),
-                gameScore: data.getUint16(7 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_SCORE_LO */),
+                gameScore: data.getUint16(7 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_SCORE_LO */, true),
                 ergMachineType: data.getUint8(9 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.MACHINE_TYPE */),
             };
             if (JSON.stringify(this.additionalWorkoutSummaryData2) !== JSON.stringify(parsed)) {
@@ -5010,7 +5036,7 @@ var ergometer;
             var parsed = {
                 manufacturerId: data.getUint8(0 /* ble.PM_Heart_Rate_Belt_Info_BLE_Payload.MANUFACTURER_ID */),
                 deviceType: data.getUint8(1 /* ble.PM_Heart_Rate_Belt_Info_BLE_Payload.DEVICE_TYPE */),
-                beltId: data.getUint32(2 /* ble.PM_Heart_Rate_Belt_Info_BLE_Payload.BELT_ID_LO */),
+                beltId: data.getUint32(2 /* ble.PM_Heart_Rate_Belt_Info_BLE_Payload.BELT_ID_LO */, true),
             };
             if (JSON.stringify(this.heartRateBeltInformation) !== JSON.stringify(parsed)) {
                 this.heartRateBeltInformationEvent.pub(parsed);

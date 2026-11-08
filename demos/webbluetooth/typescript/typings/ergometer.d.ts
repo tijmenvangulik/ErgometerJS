@@ -1749,7 +1749,10 @@ declare namespace ergometer {
         _responseState: number;
         private _timeOutHandle;
         stuffByteActive: boolean;
+        /** @deprecated only valid within one packet, use remainingCommandBytes */
         endCommand: number;
+        /** bytes of the current wrapper command which are not yet parsed, also valid over multiple packets */
+        remainingCommandBytes: number;
         get commands(): csafe.IRawCommand[];
         removeRemainingCommands(): void;
         private timeOut;
@@ -1824,6 +1827,8 @@ declare namespace ergometer {
         protected sendCsafeCommands(byteArray: number[]): Promise<void>;
         protected moveToNextBuffer(): WaitResponseBuffer;
         handeReceivedDriverData(dataView: DataView): void;
+        /** detail commands which only set a value: long push 0x00-0x4F and short push 0xD0-0xEF */
+        protected isDetailSetCommand(detailCommand: number): boolean;
         protected getPacketSize(): number;
         newCsafeBuffer(): ergometer.csafe.IBuffer;
     }
