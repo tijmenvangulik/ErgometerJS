@@ -1,3 +1,13 @@
+- 1.5.5
+  * Fix outgoing frames: the checksum is now byte-stuffed when it has the value of a frame flag (0xF0-0xF3).
+  * Fix Bluetooth data: 16-bit and 32-bit fields are now read in the correct byte order, so values like speed, rest distance, drive force and calories change to the correct numbers.
+  * Fix the device list: removing a device during a Bluetooth scan no longer drops the other devices.
+  * Fix responses over multiple Bluetooth packets: they no longer log a false "wrong csafe frame ending" error or lose the commands that follow.
+  * Fix responses to set commands: they are now read as a command id without a length, so they no longer cause a "wrong csafe frame ending" error or lose a get in the same frame.
+  * Fix frame parsing: an end-of-frame byte now always ends the frame, so an unexpected response can't leave the parser out of sync.
+  * Fix USB: low resolution stroke data is now also updated on time, as intended.
+  * Fix USB: polling now also starts when only strokeDataEvent has subscribers.
+Warning! if you made workarounds for byte order problems, this release maybe breaking
 - 1.5.4
   * Checksum fix
 - 1.5.3

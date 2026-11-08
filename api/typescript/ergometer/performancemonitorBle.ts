@@ -853,7 +853,8 @@
          * @param device
          */
         protected removeDevice(device : DeviceInfo) {
-            this._devices=this._devices.splice(this._devices.indexOf(device),1);
+            var index=this._devices.indexOf(device);
+            if (index>=0) this._devices.splice(index,1);
         }
 
         /**
@@ -1116,17 +1117,17 @@
         protected handleRowingAdditionalStatus1(data:DataView) {
             var parsed:RowingAdditionalStatus1 = {
                 elapsedTime: utils.getUint24(data, ble.PM_Extra_Status1_BLE_Payload.ELAPSED_TIME_LO)* 10, //in mili seconds
-                speed : data.getUint16(ble.PM_Extra_Status1_BLE_Payload.SPEED_LO)/1000,  // m/s
+                speed : data.getUint16(ble.PM_Extra_Status1_BLE_Payload.SPEED_LO,true)/1000,  // m/s
                 strokeRate : data.getUint8(ble.PM_Extra_Status1_BLE_Payload.STROKE_RATE),
                 heartRate : utils.valueToNullValue(data.getUint8(ble.PM_Extra_Status1_BLE_Payload.HEARTRATE),255),
                 currentPace : this.calcPace(data.getUint8(ble.PM_Extra_Status1_BLE_Payload.CURRENT_PACE_LO),data.getUint8(ble.PM_Extra_Status1_BLE_Payload.CURRENT_PACE_HI)),
                 averagePace : this.calcPace(data.getUint8(ble.PM_Extra_Status1_BLE_Payload.AVG_PACE_LO),data.getUint8(ble.PM_Extra_Status1_BLE_Payload.AVG_PACE_HI)),
-                restDistance : data.getUint16(ble.PM_Extra_Status1_BLE_Payload.REST_DISTANCE_LO),
+                restDistance : data.getUint16(ble.PM_Extra_Status1_BLE_Payload.REST_DISTANCE_LO,true),
                 restTime : utils.getUint24(data,ble.PM_Extra_Status1_BLE_Payload.REST_TIME_LO)*10, //mili seconds
                 averagePower : null
             };
             if (data.byteLength==ble.PM_Mux_Extra_Status1_BLE_Payload.BLE_PAYLOAD_SIZE)
-                parsed.averagePower=data.getUint16(ble.PM_Mux_Extra_Status1_BLE_Payload.AVG_POWER_LO);
+                parsed.averagePower=data.getUint16(ble.PM_Mux_Extra_Status1_BLE_Payload.AVG_POWER_LO,true);
 
             if ( JSON.stringify(this.rowingAdditionalStatus1) !== JSON.stringify(parsed)) {
                 this.rowingAdditionalStatus1Event.pub(parsed);
@@ -1144,12 +1145,12 @@
                 parsed = {
                     elapsedTime: utils.getUint24(data, ble.PM_Extra_Status2_BLE_Payload.ELAPSED_TIME_LO) * 10, //in mili seconds
                     intervalCount: data.getUint8(ble.PM_Extra_Status2_BLE_Payload.INTERVAL_COUNT),
-                    averagePower: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.AVG_POWER_LO),
-                    totalCalories: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.TOTAL_CALORIES_LO),
+                    averagePower: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.AVG_POWER_LO,true),
+                    totalCalories: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.TOTAL_CALORIES_LO,true),
                     splitAveragePace: this.calcPace(data.getUint8(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO),data.getUint8(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_HI)),// ms,
-                    splitAveragePower: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO),//watt
-                    splitAverageCalories: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO), // cal/hour
-                    lastSplitTime: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO) *100, //the doc 0.1 factor is this right?
+                    splitAveragePower: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO,true),//watt
+                    splitAverageCalories: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO,true), // cal/hour
+                    lastSplitTime: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO,true) *100, //the doc 0.1 factor is this right?
                     lastSplitDistance: utils.getUint24(data, ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_DISTANCE_LO)
                 };
             }
@@ -1158,11 +1159,11 @@
                     elapsedTime: utils.getUint24(data, ble.PM_Mux_Extra_Status2_BLE_Payload.ELAPSED_TIME_LO) * 10, //in mili seconds
                     intervalCount: data.getUint8(ble.PM_Mux_Extra_Status2_BLE_Payload.INTERVAL_COUNT),
                     averagePower: null,
-                    totalCalories: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.TOTAL_CALORIES_LO),
+                    totalCalories: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.TOTAL_CALORIES_LO,true),
                     splitAveragePace: this.calcPace(data.getUint8(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO),data.getUint8(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_HI)), //ms,
-                    splitAveragePower: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO),//watt
-                    splitAverageCalories: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO), // cal/hour
-                    lastSplitTime: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO) *100, //the doc 0.1 factor is this right?
+                    splitAveragePower: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO,true),//watt
+                    splitAverageCalories: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO,true), // cal/hour
+                    lastSplitTime: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO,true) *100, //the doc 0.1 factor is this right?
                     lastSplitDistance: utils.getUint24(data, ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_DISTANCE_LO)
 
                 }
@@ -1189,9 +1190,9 @@
                     driveTime: data.getUint8(ble.PM_Stroke_Data_BLE_Payload.DRIVE_TIME) * 10, //ms
                     strokeRecoveryTime: (data.getUint8(ble.PM_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_LO) + data.getUint8(ble.PM_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_HI)*256) * 10, //ms
                     strokeDistance: (data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_LO)+data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_HI)*256) / 100,//meter
-                    peakDriveForce: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO) / 10, //lbs
-                    averageDriveForce: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO) / 10, //lbs
-                    workPerStroke: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO) / 10, //jouls
+                    peakDriveForce: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO,true) / 10, //lbs
+                    averageDriveForce: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO,true) / 10, //lbs
+                    workPerStroke: data.getUint16(ble.PM_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO,true) / 10, //jouls
                     strokeCount: data.getUint8(ble.PM_Stroke_Data_BLE_Payload.STROKE_COUNT_LO)+data.getUint8(ble.PM_Stroke_Data_BLE_Payload.STROKE_COUNT_HI) * 256 //PM bug: LSB and MSB are swapped
                 }
             }
@@ -1201,10 +1202,10 @@
                     distance: utils.getUint24(data, ble.PM_Mux_Stroke_Data_BLE_Payload.DISTANCE_LO) / 10, //meter
                     driveLength: data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.DRIVE_LENGTH) / 100, //meters
                     driveTime: data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.DRIVE_TIME) * 10, //ms
-                    strokeRecoveryTime: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_LO) * 10, //ms
+                    strokeRecoveryTime: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_RECOVERY_TIME_LO,true) * 10, //ms
                     strokeDistance: (data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_LO)+data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_DISTANCE_HI)*256) / 100,//meter
-                    peakDriveForce: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO) / 10, //lbs
-                    averageDriveForce: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO) / 10, //lbs
+                    peakDriveForce: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.PEAK_DRIVE_FORCE_LO,true) / 10, //lbs
+                    averageDriveForce: data.getUint16(ble.PM_Mux_Stroke_Data_BLE_Payload.AVG_DRIVE_FORCE_LO,true) / 10, //lbs
                     workPerStroke: null,
                     strokeCount: data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_COUNT_LO)+data.getUint8(ble.PM_Mux_Stroke_Data_BLE_Payload.STROKE_COUNT_HI) * 256 //PM bug: LSB and MSB are swapped
                 }
@@ -1227,14 +1228,14 @@
             var parsed:RowingAdditionalStrokeData = {
                 elapsedTime: utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.ELAPSED_TIME_LO) * 10, //in mili seconds
                 strokePower : data.getUint8(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_POWER_LO) +data.getUint8(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_POWER_HI) *256,  //watts
-                strokeCalories : data.getUint16(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_CALORIES_LO), //cal/hr
+                strokeCalories : data.getUint16(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_CALORIES_LO,true), //cal/hr
                 strokeCount: data.getUint8(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_COUNT_LO)+data.getUint8(ble.PM_Extra_Stroke_Data_BLE_Payload.STROKE_COUNT_HI) * 256, //PM bug: LSB and MSB are swapped
                 projectedWorkTime : utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_TIME_LO)*1000, //ms
                 projectedWorkDistance : utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_DIST_LO), //meter
                 workPerStroke : null //filled when multiplexed is true
             };
             if (data.byteLength==ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.BLE_PAYLOAD_SIZE)
-                parsed.workPerStroke =  data.getUint16(ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO);
+                parsed.workPerStroke =  data.getUint16(ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO,true);
             if (JSON.stringify(this.rowingAdditionalStrokeData) !== JSON.stringify(parsed)) {
                 this.rowingAdditionalStrokeDataEvent.pub(parsed);
                 this._rowingAdditionalStrokeData = parsed;
@@ -1252,8 +1253,8 @@
                 distance :  utils.getUint24(data, ble.PM_Split_Interval_Data_BLE_Payload.DISTANCE_LO)/10, //meters
                 intervalTime : utils.getUint24(data, ble.PM_Split_Interval_Data_BLE_Payload.SPLIT_TIME_LO)*100,
                 intervalDistance : utils.getUint24(data, ble.PM_Split_Interval_Data_BLE_Payload.SPLIT_DISTANCE_LO),
-                intervalRestTime : data.getUint16(ble.PM_Split_Interval_Data_BLE_Payload.REST_TIME_LO)*1000,
-                intervalRestDistance : data.getUint16(ble.PM_Split_Interval_Data_BLE_Payload.REST_DISTANCE_LO),//meter
+                intervalRestTime : data.getUint16(ble.PM_Split_Interval_Data_BLE_Payload.REST_TIME_LO,true)*1000,
+                intervalRestDistance : data.getUint16(ble.PM_Split_Interval_Data_BLE_Payload.REST_DISTANCE_LO,true),//meter
                 intervalType : data.getUint8(ble.PM_Split_Interval_Data_BLE_Payload.TYPE),
                 intervalNumber : data.getUint8(ble.PM_Split_Interval_Data_BLE_Payload.INT_NUMBER),
             };
@@ -1275,11 +1276,11 @@
                 intervalAverageStrokeRate :  data.getUint8(ble.PM_Extra_Split_Interval_Data_BLE_Payload.STROKE_RATE),
                 intervalWorkHeartrate :  data.getUint8(ble.PM_Extra_Split_Interval_Data_BLE_Payload.WORK_HR),
                 intervalRestHeartrate :   data.getUint8(ble.PM_Extra_Split_Interval_Data_BLE_Payload.REST_HR),
-                intervalAveragePace :  data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_PACE_LO)*10, //ms lbs
-                intervalTotalCalories : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.CALORIES_LO),
-                intervalAverageCalories : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_CALORIES_LO),
-                intervalSpeed : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.SPEED_LO)/1000, //m/s
-                intervalPower : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.POWER_LO),
+                intervalAveragePace :  data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_PACE_LO,true)*10, //ms lbs
+                intervalTotalCalories : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.CALORIES_LO,true),
+                intervalAverageCalories : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_CALORIES_LO,true),
+                intervalSpeed : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.SPEED_LO,true)/1000, //m/s
+                intervalPower : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.POWER_LO,true),
                 splitAverageDragFactor :  data.getUint8(ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_DRAG_FACTOR),
                 intervalNumber :  data.getUint8(ble.PM_Extra_Split_Interval_Data_BLE_Payload.INT_NUMBER)
             };
@@ -1297,8 +1298,8 @@
         protected handleWorkoutSummaryData(data:DataView)  {
 
             var parsed:WorkoutSummaryData = {
-                logEntryDate : data.getUint16(ble.PM_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO),
-                logEntryTime : data.getUint16(ble.PM_Workout_Summary_Data_BLE_Payload.LOG_TIME_LO),
+                logEntryDate : data.getUint16(ble.PM_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO,true),
+                logEntryTime : data.getUint16(ble.PM_Workout_Summary_Data_BLE_Payload.LOG_TIME_LO,true),
                 elapsedTime : utils.getUint24(data, ble.PM_Workout_Summary_Data_BLE_Payload.ELAPSED_TIME_LO) * 10,
                 distance :  utils.getUint24(data, ble.PM_Workout_Summary_Data_BLE_Payload.DISTANCE_LO)/10,
                 averageStrokeRate : data.getUint8(ble.PM_Workout_Summary_Data_BLE_Payload.AVG_SPM),
@@ -1313,7 +1314,7 @@
             };
 
             if (data.byteLength==ble.PM_Workout_Summary_Data_BLE_Payload.BLE_PAYLOAD_SIZE) {
-                parsed.averagePace = data.getUint16(ble.PM_Workout_Summary_Data_BLE_Payload.AVG_PACE_LO);
+                parsed.averagePace = data.getUint16(ble.PM_Workout_Summary_Data_BLE_Payload.AVG_PACE_LO,true);
             }
             if (JSON.stringify(this.workoutSummaryData) !== JSON.stringify(parsed)) {
                 this.workoutSummaryDataEvent.pub(parsed);
@@ -1330,31 +1331,31 @@
             var parsed:AdditionalWorkoutSummaryData;
             if (data.byteLength==ble.PM_Extra_Workout_Summary_Data_BLE_Payload.DATA_BLE_PAYLOAD_SIZE) {
                 parsed = {
-                    logEntryDate : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO),
-                    logEntryTime : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_HI),
+                    logEntryDate : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO,true),
+                    logEntryTime : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_HI,true),
                     intervalType : data.getUint8(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_TYPE),
-                    intervalSize: data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_SIZE_LO),//meters or seconds
+                    intervalSize: data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_SIZE_LO,true),//meters or seconds
                     intervalCount:   data.getUint8(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_COUNT),
-                    totalCalories: data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.WORK_CALORIES_LO),
-                    watts: data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.WATTS_LO),
+                    totalCalories: data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.WORK_CALORIES_LO,true),
+                    watts: data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.WATTS_LO,true),
                     totalRestDistance :  utils.getUint24(data, ble.PM_Extra_Workout_Summary_Data_BLE_Payload.TOTAL_REST_DISTANCE_LO) ,
-                    intervalRestTime : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.INTERVAL_REST_TIME_LO),
-                    averageCalories : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.AVG_CALORIES_LO)
+                    intervalRestTime : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.INTERVAL_REST_TIME_LO,true),
+                    averageCalories : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.AVG_CALORIES_LO,true)
                 }
 
             }
             else {
                 parsed = {
-                    logEntryDate : data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO),
-                    logEntryTime : data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.LOG_TIME_LO),
+                    logEntryDate : data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO,true),
+                    logEntryTime : data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.LOG_TIME_LO,true),
                     intervalType : null,
-                    intervalSize: data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_SIZE_LO),//meters or seconds
+                    intervalSize: data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_SIZE_LO,true),//meters or seconds
                     intervalCount:   data.getUint8(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_COUNT),
-                    totalCalories: data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.WORK_CALORIES_LO),
-                    watts: data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.WATTS_LO),
+                    totalCalories: data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.WORK_CALORIES_LO,true),
+                    watts: data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.WATTS_LO,true),
                     totalRestDistance :  utils.getUint24(data, ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.TOTAL_REST_DISTANCE_LO) ,
-                    intervalRestTime : data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.INTERVAL_REST_TIME_LO),
-                    averageCalories : data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.AVG_CALORIES_LO)
+                    intervalRestTime : data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.INTERVAL_REST_TIME_LO,true),
+                    averageCalories : data.getUint16(ble.PM_Mux_Extra_Workout_Summary_Data_BLE_Payload.AVG_CALORIES_LO,true)
                 }
 
             }
@@ -1372,11 +1373,11 @@
         protected handleAdditionalWorkoutSummaryData2(data:DataView)  {
 
             var parsed:AdditionalWorkoutSummaryData2 = {
-                    logEntryDate : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_LO),
-                    logEntryTime : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_HI),
-                    averagePace : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.AVG_PACE_LO),
+                    logEntryDate : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_LO,true),
+                    logEntryTime : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_HI,true),
+                    averagePace : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.AVG_PACE_LO,true),
                     gameIdentifier : data.getUint8(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_ID),
-                    gameScore :  data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_SCORE_LO),
+                    gameScore :  data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_SCORE_LO,true),
                     ergMachineType : data.getUint8(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.MACHINE_TYPE),
                 };
 
@@ -1396,7 +1397,7 @@
             var parsed:HeartRateBeltInformation = {
                 manufacturerId : data.getUint8(ble.PM_Heart_Rate_Belt_Info_BLE_Payload.MANUFACTURER_ID),
                 deviceType: data.getUint8(ble.PM_Heart_Rate_Belt_Info_BLE_Payload.DEVICE_TYPE),
-                beltId : data.getUint32(ble.PM_Heart_Rate_Belt_Info_BLE_Payload.BELT_ID_LO),
+                beltId : data.getUint32(ble.PM_Heart_Rate_Belt_Info_BLE_Payload.BELT_ID_LO,true),
             };
 
             if (JSON.stringify(this.heartRateBeltInformation) !== JSON.stringify(parsed)) {

@@ -78,7 +78,10 @@ namespace ergometer {
         public _responseState: number;
         private _timeOutHandle: number;
         stuffByteActive: boolean = false;
+        /** @deprecated only valid within one packet, use remainingCommandBytes */
         endCommand: number;
+        /** bytes of the current wrapper command which are not yet parsed, also valid over multiple packets */
+        remainingCommandBytes: number = 0;
 
         public get commands() : csafe.IRawCommand[]   {
             return this._commands
@@ -482,6 +485,14 @@ namespace ergometer {
                 
                 while (i<dataView.byteLength && !moveToNextBuffer) {
                     var currentByte= dataView.getUint8(i);
+                    //an unstuffed end byte can only be the end of the frame. This keeps the parser in sync
+                    //when the content is not as expected. The checksum check is done in parseCommandLength
+                    if (currentByte==csafe.defs.FRAME_END_BYTE && waitBuffer.frameState!=FrameState.initial
+                        && waitBuffer.frameState!=FrameState.parseCommandLength) {
+                        waitBuffer.stuffByteActive=false;
+                        moveToNextBuffer=true;
+                        break;
+                    }
                     
                     if (waitBuffer.stuffByteActive && currentByte<=3) {
                         currentByte=0xF0+currentByte;//unstuff
@@ -560,6 +571,7 @@ namespace ergometer {
                                 }
                                 else if (i<dataView.byteLength) {
                                     waitBuffer.endCommand=i+currentByte;
+                                    waitBuffer.remainingCommandBytes=currentByte;
                                     waitBuffer.nextDataLength= currentByte;
                                     if (waitBuffer.command>= csafe.defs.CTRL_CMD_SHORT_MIN) {
                                         waitBuffer.frameState= FrameState.parseCommandData;
@@ -570,12 +582,20 @@ namespace ergometer {
                                 break;
                             }
                             case FrameState.parseDetailCommand : {
+                                waitBuffer.remainingCommandBytes--;
                                 waitBuffer.detailCommand=  currentByte;
+                                //the reply on a set command is only the command id, it has no length and no data (spec page 69-71)
+                                if (this.isDetailSetCommand(currentByte)) {
+                                    waitBuffer.detailCommand=0;
+                                    waitBuffer.frameState= waitBuffer.remainingCommandBytes>0?FrameState.parseDetailCommand:FrameState.parseCommand;
+                                    break;
+                                }
                                 waitBuffer.frameState= FrameState.parseDetailCommandLength;
     
                                 break;
                             }
                             case FrameState.parseDetailCommandLength : {
+                                waitBuffer.remainingCommandBytes--;
                                 waitBuffer.nextDataLength=currentByte;
                                 waitBuffer.frameState= FrameState.parseCommandData;
                                 break;
@@ -585,12 +605,13 @@ namespace ergometer {
                                     waitBuffer.commandDataIndex=0;
                                     waitBuffer.commandData = new Uint8Array(waitBuffer.nextDataLength);
                                 }
+                                waitBuffer.remainingCommandBytes--;
                                 waitBuffer.commandData[waitBuffer.commandDataIndex]=currentByte;
                                 waitBuffer.nextDataLength--;
                                 waitBuffer.commandDataIndex++;
                                 if (waitBuffer.nextDataLength==0) {
                                     if (waitBuffer.command< csafe.defs.CTRL_CMD_SHORT_MIN 
-                                        && i<waitBuffer.endCommand)
+                                        && waitBuffer.remainingCommandBytes>0)
                                         waitBuffer.frameState= FrameState.parseDetailCommand;
                                     else waitBuffer.frameState= FrameState.parseCommand;
                                     try {
@@ -635,6 +656,10 @@ namespace ergometer {
                 }
 
             }
+        }
+        /** detail commands which only set a value: long push 0x00-0x4F and short push 0xD0-0xEF */
+        protected isDetailSetCommand(detailCommand : number) : boolean {
+            return detailCommand<0x50 || (detailCommand>=0xD0 && detailCommand<=0xEF);
         }
         protected getPacketSize() : number {
             throw "getPacketSize not implemented"

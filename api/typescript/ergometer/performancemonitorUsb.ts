@@ -301,7 +301,7 @@ namespace ergometer {
                         var doPowerCurveUpdate=this.strokeState == StrokeState.recoveryState;
                         if (  doPowerCurveUpdate||
                             this._lastLowResUpdate==null ||
-                            (!this.isWaiting && (now-this._lastLowResUpdate)>WAIT_TIME_LOW_RES ))
+                            (!this.isWaiting() && (now-this._lastLowResUpdate)>WAIT_TIME_LOW_RES ))
                         {   
                             this._lastLowResUpdate=now;
                             this.traceInfo("Start low res update");
@@ -370,7 +370,7 @@ namespace ergometer {
             //do not start the auto updating llop
             if (first && (this.strokeStateEvent.count==0 && 
                 this.trainingDataEvent.count==0 &&
-                this.strokeStateEvent.count==0))  return;
+                this.strokeDataEvent.count==0))  return;
             
                 //preventing starting update twice 
             //and stop when not connected any more
