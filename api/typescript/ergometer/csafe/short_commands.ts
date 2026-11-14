@@ -263,7 +263,7 @@ registerStandardShortGet<ICommandHeartRate,number>("getHeartRate",
 
     registerStandardShortGet<ICommandGetErrorCode,number>("getErrorCode",
         csafe.defs.SHORT_STATUS_CMDS.GETERRORCODE_CMD,
-        (data : DataView)=>{return data.getUint8(0) + (data.getUint8(1)<<8) + (data.getUint8(2)<<16)});
+        (data : DataView)=>{return utils.getUint24(data,0)});
 
     //----------------------------- get program ------------------------------------
 

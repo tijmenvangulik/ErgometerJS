@@ -12,6 +12,21 @@
   * New `ScreenValueCsafe` enum with the CSAFE screen values (custom screen, main screen, redraw ...) for `setScreenState` with screen type `Csave`.
   * `setDisplayString` only sends the given characters (no padding to 32), so up to 13 characters fit in one Bluetooth packet. `setGameParams` (29 bytes) does not fit in a Bluetooth packet and only works over USB.
   * The proprietary distance values are in whole meters, times in 0.01 seconds (checked on a PM5).
+  * Code review fixes (checked against the Concept2 spec rev 0.25):
+    * CSAFE parser: replies of public set commands (`setWork`, `setPower`, `setProgram`, `setDistance` ...) are only the command id. They were read as having a length byte, so a get in the same frame was lost.
+    * CSAFE parser: a wrapper with byte count 0 (like `1A 00`) and a reply with data length 0 no longer break the rest of the frame.
+    * CSAFE encoding: a public long command without data now gets the byte count 0.
+    * `getWork` is now sent as public command 0xA0 (hours, minutes, seconds). It was sent in the SETUSERCFG1 wrapper, where 0xA0 means work time, so the value was wrong.
+    * An exception in a callback or log subscriber no longer stalls the CSAFE send queue, and a command whose `onDataReceived` throws no longer also gets an error.
+    * On (re)connect the waiting and queued CSAFE buffers are rejected ("connection reset") instead of leaving their promises open. Bluetooth now also clears these buffers on reconnect.
+    * Bluetooth multiplexed notifications are enabled again after a reconnect.
+    * Bluetooth: `RowingAdditionalStatus2.lastSplitTime` is read as 24 bit (was 16 bit, wrong after 1:49:13).
+    * Bluetooth: `RowingSplitIntervalData` `intervalAveragePace` was 10 times too small, now in ms.
+    * Bluetooth: `WorkoutSummaryData.averagePace` and `AdditionalWorkoutSummaryData2.averagePace` are now in ms like the other paces (were in 0.1 s). Breaking if you converted these yourself.
+    * Bluetooth: `logEntryTime` of `AdditionalWorkoutSummaryData` and `AdditionalWorkoutSummaryData2` was read from the wrong bytes.
+    * Bluetooth multiplexed: `RowingAdditionalStatus1.averagePower` is now filled, `RowingAdditionalStrokeData.workPerStroke` is now in Joules (was 0.1 J).
+    * USB: a command which is not answered in time no longer disconnects the monitor; only a write error is treated as a disconnect. On a disconnect the device is now closed so it can be opened again.
+    * Subscribing the same handler and object twice to an event no longer adds it twice, and a failing subscriber no longer stops the other subscribers.
   * Demos: shared CSAFE command tests (`demos/shared/csafeTests.ts`) in the web usb debug and web bluetooth demo, with a trace log option.
 - 1.6.0
   * USB authentication: you can now unlock the full proprietary CSAFE command set over USB (and RS485) so setting workouts, intervals and targets works over USB, not only Bluetooth.

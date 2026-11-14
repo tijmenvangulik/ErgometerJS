@@ -209,7 +209,11 @@ namespace ergometer {
                         resolve();
                         
                     }).catch( (e)=>{
-                        this.disconnected();//the usb has not an disconnect event, assume an error is an disconnect
+                        //the usb has not an disconnect event, assume a write error is a disconnect.
+                        //A command which is not answered in time (for example a proprietary command
+                        //without authentication) is not a disconnect, keep the connection.
+                        if (e!=CSAFE_TIME_OUT_ERROR)
+                            this.disconnected();
                         this.handleError(e);
                         this.traceInfo("end buzy");
                         reject(e);
@@ -257,6 +261,14 @@ namespace ergometer {
         private disconnected() {
             
             if (this._device) {
+                try {
+                    //release the device so it can be opened again, it can already be gone
+                    var closing=this._device.close();
+                    if (closing && closing.catch) closing.catch(()=>{});
+                }
+                catch (e) {
+                    //the device can already be gone
+                }
                 this.changeConnectionState(MonitorConnectionState.deviceReady )        
                 this._device=null;
             }
@@ -268,7 +280,7 @@ namespace ergometer {
             if (!device) return Promise.reject("device is null");
             this._device=device._internalDevice;
             this.changeConnectionState(MonitorConnectionState.connecting);
-            var result=this._device.open(this.disconnected,
+            var result=this._device.open(this.disconnected.bind(this),
                 this.handleError.bind(this),
                 this.receiveData.bind(this));
             result.then(()=>{

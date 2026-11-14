@@ -249,7 +249,7 @@ Byte 13: Avg Drive Force (LSB)
 Byte 14: Work Per Stroke (MSB)
 Byte 15: Work Per Stroke (LSB)
                     */
-                    if (params.onDataReceived && data.byteLength>=3) {
+                    if (params.onDataReceived && data.byteLength>=8) { //bytes 0-7 are read
                         var strokeDistance= (data.getUint8(0)+data.getUint8(1)*256)/100;
                         var driveTime=data.getUint8(2);
                         var strokeRecoveryTime= data.getUint8(3)+data.getUint8(4)*256;
@@ -336,7 +336,8 @@ export interface IBuffer {
     getWork(params: ICommandParamsBase): IBuffer;
 }
 
-registerStandardGetConfig<ICommandGetWork, number>("getWork",
+//public short command (hours, minutes, seconds). Not in the SETUSERCFG1 wrapper: there 0xA0 is PM_GET_WORKTIME
+registerStandardShortGet<ICommandGetWork, number>("getWork",
     csafe.defs.SHORT_DATA_CMDS.GETTWORK_CMD,
     data=>{
         var result=data.getUint8(0)*60*60+

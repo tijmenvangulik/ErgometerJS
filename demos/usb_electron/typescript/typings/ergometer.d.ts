@@ -123,7 +123,7 @@ declare namespace ergometer.pubSub {
         protected _subscribed: ISubscriptionItem[];
         protected _subScriptionChangedEvent: ISubscriptionChanged;
         protected doChangedEvent(): void;
-        protected findSubscription(event: T): ISubscriptionItem;
+        protected findSubscription(applyObject: any, event: T): ISubscriptionItem;
         sub(applyObject: any, event: T): void;
         unsub(event: T): void;
         protected doPub(args: any[]): void;
@@ -1932,7 +1932,7 @@ declare namespace ergometer.csafe {
     }
     interface ICommandSetLedBacklightParams extends ICommandParamsBase {
         enabled: boolean;
-        intensity: number;
+        intensity?: number;
     }
     interface IBuffer {
         setLedBacklight(params: ICommandSetLedBacklightParams): IBuffer;
@@ -2340,6 +2340,8 @@ declare namespace ergometer {
         nextDataLength: number;
         detailCommand: number;
         statusByte: number;
+        /** true when the status byte of a response frame is received */
+        statusByteReceived: boolean;
         monitorStatus: ergometer.csafe.SlaveState;
         prevFrameState: ergometer.csafe.PrevFrameState;
         calcCheck: number;
@@ -2362,6 +2364,8 @@ declare namespace ergometer {
         removedWithError(e: any): void;
         receivedCSaveCommand(parsed: ParsedCSafeCommand): void;
     }
+    /** the error of a csafe buffer when the monitor does not answer in time */
+    const CSAFE_TIME_OUT_ERROR = "Time out buffer";
     /**
      *
      * Usage:
@@ -2434,6 +2438,9 @@ declare namespace ergometer {
          * 0xE8-0xEF range (workout duration, extended hrm, erg machine type ...).
          * A few set commands do return data (spec: authentication result, bytes written).
          */
+        protected isWrapperCommand(command: number): boolean;
+        /** pass the received data (can be empty) to the waiting command and go to the next command in the frame */
+        protected deliverCommandData(waitBuffer: WaitResponseBuffer): void;
         protected isDetailSetCommand(command: number, detailCommand: number): boolean;
         protected getPacketSize(): number;
         newCsafeBuffer(): ergometer.csafe.IBuffer;
@@ -2708,7 +2715,6 @@ declare namespace ergometer {
         private _heartRateBeltInformation;
         private _devices;
         private _multiplex;
-        private _multiplexSubscribeCount;
         private _sampleRate;
         private _autoReConnect;
         private _generalStatusEventAttachedByPowerCurve;

@@ -1044,7 +1044,10 @@ export interface IBuffer {
 
 registerStandardProprietarySetData<ICommandSetDisplayStringParams>("setDisplayString",
     csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_DISPLAYSTRING,
-    (params) => { var text = (params.value || "").substr(0, 32); return asciiToBytes(text, text.length); });
+    (params) => {
+        //a set command always needs data, an empty text would give a frame without a length byte
+        var text = (params.value || " ").substr(0, 32);
+        return asciiToBytes(text, text.length); });
 
 //----------------------------- setGameParams ------------------------------------
 export interface ICommandSetGameParams extends ICommandParamsBase {
@@ -1091,7 +1094,7 @@ registerStandardProprietarySetData<ICommandSetExtendedHeartRateMonitorParams>("s
 //----------------------------- setLedBacklight ------------------------------------
 export interface ICommandSetLedBacklightParams extends ICommandParamsBase {
     enabled: boolean;
-    intensity: number;  //0 - 100 %
+    intensity?: number;  //0 - 100 %, default 100 when enabled
 }
 export interface IBuffer {
     setLedBacklight(params: ICommandSetLedBacklightParams): IBuffer;
@@ -1099,6 +1102,9 @@ export interface IBuffer {
 
 registerStandardProprietarySetData<ICommandSetLedBacklightParams>("setLedBacklight",
     csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_LEDBACKLIGHT,
-    (params) => { return [params.enabled ? 1 : 0, Math.max(0, Math.min(100, Math.round(params.intensity)))]; });
+    (params) => {
+        var intensity = Number(params.intensity);
+        if (!isFinite(intensity)) intensity = params.enabled ? 100 : 0;
+        return [params.enabled ? 1 : 0, Math.max(0, Math.min(100, Math.round(intensity)))]; });
 
 }

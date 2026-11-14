@@ -144,7 +144,6 @@
         
         private _devices : DeviceInfo[] =[];
         private _multiplex : boolean = false;
-        private _multiplexSubscribeCount: number =0;
         private _sampleRate : SampleRate = SampleRate.rate500ms;
         //disabled the auto reconnect, because it reconnects while the connection on the device is switched off
         //this causes some strange state on the device which breaks communcation after reconnecting
@@ -491,7 +490,7 @@
         }
 
         protected clearAllBuffers() {
-           
+            super.clearAllBuffers(); //also clear the waiting csafe buffers and send queue
             this.clearRegisterdGuids();
        
         }
@@ -500,27 +499,19 @@
          *
          */
         protected enableMultiplexNotification() :Promise<void> {
-            var result : Promise<void>;
-            if (this._multiplexSubscribeCount==0)
-                result=this.enableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC,
+            //enableNotification only enables once, the registration is cleared on (re)connect
+            return this.enableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC,
                     (data:ArrayBuffer) => { this.handleDataCallbackMulti(data);})
                     .catch( this.getErrorHandlerFunc("Can not enable multiplex"));
-            else result= Promise.resolve();
-            this._multiplexSubscribeCount++;
-            return result;
         }
 
         /**
          *
          */
         protected disableMultiPlexNotification() :Promise<void> {
-            var result : Promise<void>;
-            this._multiplexSubscribeCount--;
-            if (this._multiplexSubscribeCount==0)
-              result=this.disableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC)
-                  .catch( this.getErrorHandlerFunc("can not disable multiplex"));
-            else result= Promise.resolve();
-            return result;      
+            //disableNotification only disables when it is enabled
+            return this.disableNotification(ble.PMROWING_SERVICE,ble.MULTIPLEXED_INFO_CHARACTERISIC)
+                  .catch( this.getErrorHandlerFunc("can not disable multiplex"));      
         }
         private _registeredGuids  = {};
 
@@ -1126,7 +1117,7 @@
                 restTime : utils.getUint24(data,ble.PM_Extra_Status1_BLE_Payload.REST_TIME_LO)*10, //mili seconds
                 averagePower : null
             };
-            if (data.byteLength==ble.PM_Mux_Extra_Status1_BLE_Payload.BLE_PAYLOAD_SIZE)
+            if (data.byteLength>ble.PM_Mux_Extra_Status1_BLE_Payload.AVG_POWER_HI) //multiplexed only (19 bytes incl. erg machine type)
                 parsed.averagePower=data.getUint16(ble.PM_Mux_Extra_Status1_BLE_Payload.AVG_POWER_LO,true);
 
             if ( JSON.stringify(this.rowingAdditionalStatus1) !== JSON.stringify(parsed)) {
@@ -1150,7 +1141,7 @@
                     splitAveragePace: this.calcPace(data.getUint8(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO),data.getUint8(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_HI)),// ms,
                     splitAveragePower: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO,true),//watt
                     splitAverageCalories: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO,true), // cal/hour
-                    lastSplitTime: data.getUint16(ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO,true) *100, //the doc 0.1 factor is this right?
+                    lastSplitTime: utils.getUint24(data, ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO) *100, //24 bit, 0.1 sec lsb -> ms
                     lastSplitDistance: utils.getUint24(data, ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_DISTANCE_LO)
                 };
             }
@@ -1163,7 +1154,7 @@
                     splitAveragePace: this.calcPace(data.getUint8(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO),data.getUint8(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_HI)), //ms,
                     splitAveragePower: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO,true),//watt
                     splitAverageCalories: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO,true), // cal/hour
-                    lastSplitTime: data.getUint16(ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO,true) *100, //the doc 0.1 factor is this right?
+                    lastSplitTime: utils.getUint24(data, ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO) *100, //24 bit, 0.1 sec lsb -> ms
                     lastSplitDistance: utils.getUint24(data, ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_DISTANCE_LO)
 
                 }
@@ -1234,8 +1225,8 @@
                 projectedWorkDistance : utils.getUint24(data, ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_DIST_LO), //meter
                 workPerStroke : null //filled when multiplexed is true
             };
-            if (data.byteLength==ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.BLE_PAYLOAD_SIZE)
-                parsed.workPerStroke =  data.getUint16(ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO,true);
+            if (data.byteLength>ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_HI)
+                parsed.workPerStroke =  data.getUint16(ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO,true)/10; //0.1 Joules -> Joules
             if (JSON.stringify(this.rowingAdditionalStrokeData) !== JSON.stringify(parsed)) {
                 this.rowingAdditionalStrokeDataEvent.pub(parsed);
                 this._rowingAdditionalStrokeData = parsed;
@@ -1276,7 +1267,7 @@
                 intervalAverageStrokeRate :  data.getUint8(ble.PM_Extra_Split_Interval_Data_BLE_Payload.STROKE_RATE),
                 intervalWorkHeartrate :  data.getUint8(ble.PM_Extra_Split_Interval_Data_BLE_Payload.WORK_HR),
                 intervalRestHeartrate :   data.getUint8(ble.PM_Extra_Split_Interval_Data_BLE_Payload.REST_HR),
-                intervalAveragePace :  data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_PACE_LO,true)*10, //ms lbs
+                intervalAveragePace :  data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_PACE_LO,true)*100, //0.1 sec lsb -> ms
                 intervalTotalCalories : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.CALORIES_LO,true),
                 intervalAverageCalories : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_CALORIES_LO,true),
                 intervalSpeed : data.getUint16(ble.PM_Extra_Split_Interval_Data_BLE_Payload.SPEED_LO,true)/1000, //m/s
@@ -1314,7 +1305,7 @@
             };
 
             if (data.byteLength==ble.PM_Workout_Summary_Data_BLE_Payload.BLE_PAYLOAD_SIZE) {
-                parsed.averagePace = data.getUint16(ble.PM_Workout_Summary_Data_BLE_Payload.AVG_PACE_LO,true);
+                parsed.averagePace = data.getUint16(ble.PM_Workout_Summary_Data_BLE_Payload.AVG_PACE_LO,true)*100; //0.1 sec lsb -> ms
             }
             if (JSON.stringify(this.workoutSummaryData) !== JSON.stringify(parsed)) {
                 this.workoutSummaryDataEvent.pub(parsed);
@@ -1332,7 +1323,7 @@
             if (data.byteLength==ble.PM_Extra_Workout_Summary_Data_BLE_Payload.DATA_BLE_PAYLOAD_SIZE) {
                 parsed = {
                     logEntryDate : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO,true),
-                    logEntryTime : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_HI,true),
+                    logEntryTime : data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_TIME_LO,true),
                     intervalType : data.getUint8(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_TYPE),
                     intervalSize: data.getUint16(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_SIZE_LO,true),//meters or seconds
                     intervalCount:   data.getUint8(ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_COUNT),
@@ -1374,8 +1365,8 @@
 
             var parsed:AdditionalWorkoutSummaryData2 = {
                     logEntryDate : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_LO,true),
-                    logEntryTime : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_HI,true),
-                    averagePace : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.AVG_PACE_LO,true),
+                    logEntryTime : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_TIME_LO,true),
+                    averagePace : data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.AVG_PACE_LO,true)*100, //0.1 sec lsb -> ms
                     gameIdentifier : data.getUint8(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_ID),
                     gameScore :  data.getUint16(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_SCORE_LO,true),
                     ergMachineType : data.getUint8(ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.MACHINE_TYPE),

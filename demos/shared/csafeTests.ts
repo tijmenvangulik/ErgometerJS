@@ -23,6 +23,8 @@ class CsafeTests {
             return;
         }
         this.log(`===== ${title} =====`);
+        if (!this.isBluetooth && (<any>this.monitor).authenticated===false)
+            this.log("not authenticated: over usb most proprietary commands (0x7E/0x7F) are answered without data");
         for (const [name,build] of tests) {
             let received=false;
             const show=(value : any)=>{

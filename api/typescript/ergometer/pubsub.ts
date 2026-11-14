@@ -111,16 +111,16 @@ namespace ergometer.pubSub {
                 this._subScriptionChangedEvent(this,this.count); }
         }
 
-        protected findSubscription(event : T) : ISubscriptionItem {
-            this._subscribed.forEach( (item : ISubscriptionItem) =>{
-                if (item.func==event)
+        protected findSubscription(applyObject : any, event : T) : ISubscriptionItem {
+            for (let item of this._subscribed) {
+                if (item.func==event && item.object==applyObject)
                     return item;
-            } );
+            }
             return null;
         }
 
         public sub(applyObject : any,event : T) {
-            var newItem = this.findSubscription(event);
+            var newItem = this.findSubscription(applyObject,event);
             if (!newItem) {
                 newItem = {object : applyObject, func : event };
                 this._subscribed.push(newItem);
@@ -136,7 +136,12 @@ namespace ergometer.pubSub {
         }
         protected doPub(args: any[]) {
             this._subscribed.forEach((item : ISubscriptionItem)=> {
-                item.func.apply(item.object, args);
+                try {
+                    item.func.apply(item.object, args);
+                }
+                catch (e) {
+                    console.error(e); //one failing subscriber should not stop the others or the caller
+                }
             })
         }
 

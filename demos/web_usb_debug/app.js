@@ -378,15 +378,15 @@ var ergometer;
                     this._subScriptionChangedEvent(this, this.count);
                 }
             }
-            findSubscription(event) {
-                this._subscribed.forEach((item) => {
-                    if (item.func == event)
+            findSubscription(applyObject, event) {
+                for (let item of this._subscribed) {
+                    if (item.func == event && item.object == applyObject)
                         return item;
-                });
+                }
                 return null;
             }
             sub(applyObject, event) {
-                var newItem = this.findSubscription(event);
+                var newItem = this.findSubscription(applyObject, event);
                 if (!newItem) {
                     newItem = { object: applyObject, func: event };
                     this._subscribed.push(newItem);
@@ -402,7 +402,12 @@ var ergometer;
             }
             doPub(args) {
                 this._subscribed.forEach((item) => {
-                    item.func.apply(item.object, args);
+                    try {
+                        item.func.apply(item.object, args);
+                    }
+                    catch (e) {
+                        console.error(e); //one failing subscriber should not stop the others or the caller
+                    }
                 });
             }
             get pub() {
@@ -2565,7 +2570,7 @@ var ergometer;
     Byte 14: Work Per Stroke (MSB)
     Byte 15: Work Per Stroke (LSB)
                         */
-                        if (params.onDataReceived && data.byteLength >= 3) {
+                        if (params.onDataReceived && data.byteLength >= 8) { //bytes 0-7 are read
                             var strokeDistance = (data.getUint8(0) + data.getUint8(1) * 256) / 100;
                             var driveTime = data.getUint8(2);
                             var strokeRecoveryTime = data.getUint8(3) + data.getUint8(4) * 256;
@@ -2582,7 +2587,8 @@ var ergometer;
         csafe.registerStandardGetConfig("getWorkoutIntervalCount", 159 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_WORKOUTINTERVALCOUNT */, data => data.getUint8(0));
         csafe.registerStandardGetConfig("getWorkoutIntervalType", 142 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_INTERVALTYPE */, data => data.getUint8(0));
         csafe.registerStandardGetConfig("getWorkoutIntervalRestTime", 207 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_RESTTIME */, data => data.getUint16(0, true));
-        csafe.registerStandardGetConfig("getWork", 160 /* csafe.defs.SHORT_DATA_CMDS.GETTWORK_CMD */, data => {
+        //public short command (hours, minutes, seconds). Not in the SETUSERCFG1 wrapper: there 0xA0 is PM_GET_WORKTIME
+        csafe.registerStandardShortGet("getWork", 160 /* csafe.defs.SHORT_DATA_CMDS.GETTWORK_CMD */, data => {
             var result = data.getUint8(0) * 60 * 60 +
                 data.getUint8(1) * 60 +
                 data.getUint8(2);
@@ -2681,7 +2687,7 @@ var ergometer;
         csafe.registerStandardShortGet("getUnits", 147 /* csafe.defs.SHORT_STATUS_CMDS.GETUNITS_CMD */, (data) => { return data.getUint8(0); });
         csafe.registerStandardShortGet("getSerialNumber", 148 /* csafe.defs.SHORT_STATUS_CMDS.GETSERIAL_CMD */, (data) => { return csafe.readAscii(data, 0, 9); });
         csafe.registerStandardShortGet("getOdometer", 155 /* csafe.defs.SHORT_STATUS_CMDS.GETODOMETER_CMD */, (data) => { return { value: data.getUint32(0, true), unit: data.getUint8(4) }; });
-        csafe.registerStandardShortGet("getErrorCode", 156 /* csafe.defs.SHORT_STATUS_CMDS.GETERRORCODE_CMD */, (data) => { return data.getUint8(0) + (data.getUint8(1) << 8) + (data.getUint8(2) << 16); });
+        csafe.registerStandardShortGet("getErrorCode", 156 /* csafe.defs.SHORT_STATUS_CMDS.GETERRORCODE_CMD */, (data) => { return ergometer.utils.getUint24(data, 0); });
         csafe.registerStandardShortGet("getProgram", 164 /* csafe.defs.SHORT_DATA_CMDS.GETPROGRAM_CMD */, (data) => { return data.getUint8(0); });
         csafe.registerStandardShortGet("getUserInfo", 171 /* csafe.defs.SHORT_DATA_CMDS.GETUSERINFO_CMD */, (data) => {
             return {
@@ -2801,7 +2807,11 @@ var ergometer;
                 .concat(csafe.uint16ToBytesMSB(params.dobYear))
                 .concat([params.gender]);
         });
-        csafe.registerStandardProprietarySetData("setDisplayString", 53 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_DISPLAYSTRING */, (params) => { var text = (params.value || "").substr(0, 32); return csafe.asciiToBytes(text, text.length); });
+        csafe.registerStandardProprietarySetData("setDisplayString", 53 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_DISPLAYSTRING */, (params) => {
+            //a set command always needs data, an empty text would give a frame without a length byte
+            var text = (params.value || " ").substr(0, 32);
+            return csafe.asciiToBytes(text, text.length);
+        });
         csafe.registerStandardProprietarySetData("setGameParams", 56 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_GAMEPARAMS */, (params) => {
             return [params.gameType]
                 .concat(csafe.uint32ToBytesMSB(params.workoutDuration))
@@ -2812,7 +2822,12 @@ var ergometer;
                 .concat([params.targetStrokeRate]);
         });
         csafe.registerStandardProprietarySetData("setExtendedHeartRateMonitor", 58 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_EXTENDED_HRM */, (params) => { return [params.manufacturerId, params.deviceType].concat(csafe.uint32ToBytesMSB(params.deviceNumber)); });
-        csafe.registerStandardProprietarySetData("setLedBacklight", 59 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_LEDBACKLIGHT */, (params) => { return [params.enabled ? 1 : 0, Math.max(0, Math.min(100, Math.round(params.intensity)))]; });
+        csafe.registerStandardProprietarySetData("setLedBacklight", 59 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_LEDBACKLIGHT */, (params) => {
+            var intensity = Number(params.intensity);
+            if (!isFinite(intensity))
+                intensity = params.enabled ? 100 : 0;
+            return [params.enabled ? 1 : 0, Math.max(0, Math.min(100, Math.round(intensity)))];
+        });
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -2872,19 +2887,25 @@ var ergometer;
             return this._commands;
         }
         removeRemainingCommands() {
-            this._commands.forEach(command => {
-                if (this._monitor.logLevel >= ergometer.LogLevel.error)
-                    this._monitor.handleError(`command removed without result command=${command.command} detail= ${command.detailCommand}`);
-                if (command.onError)
-                    command.onError("command removed without result");
-            });
+            var commands = this._commands;
             this._commands = [];
+            commands.forEach(command => {
+                try {
+                    if (this._monitor.logLevel >= ergometer.LogLevel.error)
+                        this._monitor.handleError(`command removed without result command=${command.command} detail= ${command.detailCommand}`);
+                    if (command.onError)
+                        command.onError("command removed without result");
+                }
+                catch (e) {
+                    console.error(e); //never let a callback stall the send queue
+                }
+            });
         }
         timeOut() {
             this.removeRemainingCommands();
             this.remove();
             if (this._reject)
-                this._reject("Time out buffer");
+                this._reject(ergometer.CSAFE_TIME_OUT_ERROR);
             if (this._monitor.logLevel >= ergometer.LogLevel.error)
                 this._monitor.handleError("buffer time out");
         }
@@ -2898,6 +2919,8 @@ var ergometer;
             this.nextDataLength = 0;
             this.detailCommand = 0;
             this.statusByte = 0;
+            /** true when the status byte of a response frame is received */
+            this.statusByteReceived = false;
             this.monitorStatus = 0;
             this.prevFrameState = 0;
             this.calcCheck = 0;
@@ -2924,21 +2947,35 @@ var ergometer;
         }
         processedBuffer() {
             //commands answered by the status byte of the frame only (get status)
-            this._commands = this._commands.filter(command => {
-                if (!command.onFrameStatus)
-                    return true;
-                command.onFrameStatus(this.statusByte);
-                return false;
-            });
+            //only when a status byte was received, otherwise the commands get an error below
+            if (this.statusByteReceived)
+                this._commands = this._commands.filter(command => {
+                    if (!command.onFrameStatus)
+                        return true;
+                    try {
+                        command.onFrameStatus(this.statusByte);
+                    }
+                    catch (e) {
+                        this._monitor.handleError(e); //never let a callback stall the send queue
+                    }
+                    return false;
+                });
             this.removeRemainingCommands();
             this.remove();
             if (this._resolve)
                 this._resolve();
         }
         removedWithError(e) {
-            this._commands.forEach((command) => {
-                if (command.onError)
-                    command.onError(e);
+            var commands = this._commands;
+            this._commands = [];
+            commands.forEach((command) => {
+                try {
+                    if (command.onError)
+                        command.onError(e);
+                }
+                catch (err) {
+                    console.error(err); //never let a callback stall the send queue
+                }
             });
             if (this._reject)
                 this._reject(e);
@@ -2953,21 +2990,25 @@ var ergometer;
             //PM5 quirk: a public command sent after a proprietary wrapper in the same frame is
             //answered inside that wrapper, for example request 7f 02 b0 b3 94 gives
             //7f 18 b0 04 .. b3 01 .. 94 09 <serial>. Match it with the waiting public command.
-            if (index < 0 && parsed.detailCommand >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN)
+            if (index < 0 && parsed.detailCommand >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN &&
+                (parsed.command == 126 /* csafe.defs.PROPRIETARY_GET_CMDS.GETPMCFG_CMD */ ||
+                    parsed.command == 127 /* csafe.defs.PROPRIETARY_GET_CMDS.GETPMDATA_CMD */))
                 index = this._commands.findIndex(command => command.command == parsed.detailCommand && !command.detailCommand);
             if (index >= 0) {
                 let command = this._commands[index];
+                this._commands.splice(index, 1); //remove the item from the send list, also when the callback throws
                 if (command.onDataReceived) {
                     var dataView = new DataView(parsed.data.buffer);
                     this._monitor.traceInfo("call received");
                     command.responseBuffer = this;
                     command.onDataReceived(dataView);
                 }
-                this._commands.splice(index, 1); //remove the item from the send list
             }
         }
     }
     ergometer.WaitResponseBuffer = WaitResponseBuffer;
+    /** the error of a csafe buffer when the monitor does not answer in time */
+    ergometer.CSAFE_TIME_OUT_ERROR = "Time out buffer";
     /**
      *
      * Usage:
@@ -3031,7 +3072,12 @@ var ergometer;
         }
         clearAllBuffers() {
             this.clearWaitResponseBuffers();
+            var queue = this._sendBufferQueue;
             this._sendBufferQueue = [];
+            queue.forEach(item => {
+                if (item.reject)
+                    item.reject("connection reset");
+            });
         }
         beforeConnected() {
             this.clearAllBuffers();
@@ -3040,9 +3086,12 @@ var ergometer;
          *                               csafe
          *****************************************************************************************  */
         clearWaitResponseBuffers() {
-            var list = this._waitResonseBuffers;
-            list.forEach(b => b.remove());
+            var list = this._waitResonseBuffers.slice(); //remove() changes the list
             this._waitResonseBuffers = [];
+            list.forEach(b => {
+                b.remove();
+                b.removedWithError("connection reset");
+            });
         }
         driver_write(data) {
             return Promise.reject("not implemented");
@@ -3102,6 +3151,9 @@ var ergometer;
                             commandArray.push(command.data.length);
                             commandArray = commandArray.concat(command.data);
                         }
+                        //a long command without detail command always has a byte count, also when there is no data
+                        else if (!command.detailCommand)
+                            commandArray.push(0);
                     }
                     if (!commandMerged) {
                         prevCommand = command.command;
@@ -3288,6 +3340,7 @@ var ergometer;
                                 {
                                     waitBuffer.frameState = 2 /* FrameState.parseCommand */;
                                     waitBuffer.statusByte = currentByte;
+                                    waitBuffer.statusByteReceived = true;
                                     waitBuffer.monitorStatus = currentByte & ergometer.csafe.defs.SLAVESTATE_MSK;
                                     waitBuffer.prevFrameState = ((currentByte & ergometer.csafe.defs.PREVFRAMESTATUS_MSK) >> 4);
                                     if (this.logLevel == ergometer.LogLevel.trace)
@@ -3296,9 +3349,18 @@ var ergometer;
                                     break;
                                 }
                             case 2 /* FrameState.parseCommand */: {
+                                if (currentByte == ergometer.csafe.defs.FRAME_END_BYTE) {
+                                    //the frame ended after an id only reply (the checksum was read as a command id)
+                                    waitBuffer.command = 0;
+                                    moveToNextBuffer = true;
+                                    break;
+                                }
                                 waitBuffer.command = currentByte;
+                                //public long set commands (0x01-0x7F, no wrapper) are answered with only the
+                                //command id, no length and no data (spec sample: F1 01 20 1A 01 05 34 24 2E F2)
+                                if (currentByte < ergometer.csafe.defs.CTRL_CMD_SHORT_MIN && !this.isWrapperCommand(currentByte))
+                                    break;
                                 waitBuffer.frameState = 3 /* FrameState.parseCommandLength */;
-                                //the real command follows so skip this 
                                 break;
                             }
                             case 3 /* FrameState.parseCommandLength */: {
@@ -3325,8 +3387,14 @@ var ergometer;
                                     waitBuffer.remainingCommandBytes = currentByte;
                                     waitBuffer.nextDataLength = currentByte;
                                     if (waitBuffer.command >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN) {
-                                        waitBuffer.frameState = 6 /* FrameState.parseCommandData */;
+                                        if (currentByte == 0)
+                                            this.deliverCommandData(waitBuffer);
+                                        else
+                                            waitBuffer.frameState = 6 /* FrameState.parseCommandData */;
                                     }
+                                    //a wrapper with byte count 0 (spec sample: 1A 00)
+                                    else if (currentByte == 0)
+                                        waitBuffer.frameState = 2 /* FrameState.parseCommand */;
                                     else
                                         waitBuffer.frameState = 4 /* FrameState.parseDetailCommand */;
                                 }
@@ -3347,7 +3415,10 @@ var ergometer;
                             case 5 /* FrameState.parseDetailCommandLength */: {
                                 waitBuffer.remainingCommandBytes--;
                                 waitBuffer.nextDataLength = currentByte;
-                                waitBuffer.frameState = 6 /* FrameState.parseCommandData */;
+                                if (currentByte == 0)
+                                    this.deliverCommandData(waitBuffer);
+                                else
+                                    waitBuffer.frameState = 6 /* FrameState.parseCommandData */;
                                 break;
                             }
                             case 6 /* FrameState.parseCommandData */: {
@@ -3359,25 +3430,8 @@ var ergometer;
                                 waitBuffer.commandData[waitBuffer.commandDataIndex] = currentByte;
                                 waitBuffer.nextDataLength--;
                                 waitBuffer.commandDataIndex++;
-                                if (waitBuffer.nextDataLength == 0) {
-                                    if (waitBuffer.command < ergometer.csafe.defs.CTRL_CMD_SHORT_MIN
-                                        && waitBuffer.remainingCommandBytes > 0)
-                                        waitBuffer.frameState = 4 /* FrameState.parseDetailCommand */;
-                                    else
-                                        waitBuffer.frameState = 2 /* FrameState.parseCommand */;
-                                    try {
-                                        waitBuffer.receivedCSaveCommand({
-                                            command: waitBuffer.command,
-                                            detailCommand: waitBuffer.detailCommand,
-                                            data: waitBuffer.commandData
-                                        });
-                                    }
-                                    catch (e) {
-                                        this.handleError(e); //never let the receive crash the main loop
-                                    }
-                                    waitBuffer.commandData = null;
-                                    waitBuffer.detailCommand = 0;
-                                }
+                                if (waitBuffer.nextDataLength == 0)
+                                    this.deliverCommandData(waitBuffer);
                                 break;
                             }
                         }
@@ -3408,6 +3462,33 @@ var ergometer;
          * 0xE8-0xEF range (workout duration, extended hrm, erg machine type ...).
          * A few set commands do return data (spec: authentication result, bytes written).
          */
+        isWrapperCommand(command) {
+            return command == 26 /* csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD */ ||
+                command == 118 /* csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMCFG_CMD */ ||
+                command == 119 /* csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMDATA_CMD */ ||
+                command == 126 /* csafe.defs.PROPRIETARY_GET_CMDS.GETPMCFG_CMD */ ||
+                command == 127 /* csafe.defs.PROPRIETARY_GET_CMDS.GETPMDATA_CMD */;
+        }
+        /** pass the received data (can be empty) to the waiting command and go to the next command in the frame */
+        deliverCommandData(waitBuffer) {
+            if (waitBuffer.command < ergometer.csafe.defs.CTRL_CMD_SHORT_MIN
+                && waitBuffer.remainingCommandBytes > 0)
+                waitBuffer.frameState = 4 /* FrameState.parseDetailCommand */;
+            else
+                waitBuffer.frameState = 2 /* FrameState.parseCommand */;
+            try {
+                waitBuffer.receivedCSaveCommand({
+                    command: waitBuffer.command,
+                    detailCommand: waitBuffer.detailCommand,
+                    data: waitBuffer.commandData || new Uint8Array(0)
+                });
+            }
+            catch (e) {
+                this.handleError(e); //never let the receive crash the main loop
+            }
+            waitBuffer.commandData = null;
+            waitBuffer.detailCommand = 0;
+        }
         isDetailSetCommand(command, detailCommand) {
             if (command == 126 /* csafe.defs.PROPRIETARY_GET_CMDS.GETPMCFG_CMD */ ||
                 command == 127 /* csafe.defs.PROPRIETARY_GET_CMDS.GETPMDATA_CMD */)
@@ -3649,7 +3730,11 @@ var ergometer;
                     super.sendCSafeBuffer(csafeBuffer).then(() => {
                         resolve();
                     }).catch((e) => {
-                        this.disconnected(); //the usb has not an disconnect event, assume an error is an disconnect
+                        //the usb has not an disconnect event, assume a write error is a disconnect.
+                        //A command which is not answered in time (for example a proprietary command
+                        //without authentication) is not a disconnect, keep the connection.
+                        if (e != ergometer.CSAFE_TIME_OUT_ERROR)
+                            this.disconnected();
                         this.handleError(e);
                         this.traceInfo("end buzy");
                         reject(e);
@@ -3689,6 +3774,15 @@ var ergometer;
         }
         disconnected() {
             if (this._device) {
+                try {
+                    //release the device so it can be opened again, it can already be gone
+                    var closing = this._device.close();
+                    if (closing && closing.catch)
+                        closing.catch(() => { });
+                }
+                catch (e) {
+                    //the device can already be gone
+                }
                 this.changeConnectionState(ergometer.MonitorConnectionState.deviceReady);
                 this._device = null;
             }
@@ -3700,7 +3794,7 @@ var ergometer;
                 return Promise.reject("device is null");
             this._device = device._internalDevice;
             this.changeConnectionState(ergometer.MonitorConnectionState.connecting);
-            var result = this._device.open(this.disconnected, this.handleError.bind(this), this.receiveData.bind(this));
+            var result = this._device.open(this.disconnected.bind(this), this.handleError.bind(this), this.receiveData.bind(this));
             result.then(() => {
                 this.changeConnectionState(ergometer.MonitorConnectionState.connected);
                 this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
@@ -4275,7 +4369,6 @@ var ergometer;
             super(...arguments);
             this._devices = [];
             this._multiplex = false;
-            this._multiplexSubscribeCount = 0;
             this._sampleRate = 1 /* SampleRate.rate500ms */;
             //disabled the auto reconnect, because it reconnects while the connection on the device is switched off
             //this causes some strange state on the device which breaks communcation after reconnecting
@@ -4581,33 +4674,24 @@ var ergometer;
             }
         }
         clearAllBuffers() {
+            super.clearAllBuffers(); //also clear the waiting csafe buffers and send queue
             this.clearRegisterdGuids();
         }
         /**
          *
          */
         enableMultiplexNotification() {
-            var result;
-            if (this._multiplexSubscribeCount == 0)
-                result = this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC, (data) => { this.handleDataCallbackMulti(data); })
-                    .catch(this.getErrorHandlerFunc("Can not enable multiplex"));
-            else
-                result = Promise.resolve();
-            this._multiplexSubscribeCount++;
-            return result;
+            //enableNotification only enables once, the registration is cleared on (re)connect
+            return this.enableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC, (data) => { this.handleDataCallbackMulti(data); })
+                .catch(this.getErrorHandlerFunc("Can not enable multiplex"));
         }
         /**
          *
          */
         disableMultiPlexNotification() {
-            var result;
-            this._multiplexSubscribeCount--;
-            if (this._multiplexSubscribeCount == 0)
-                result = this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC)
-                    .catch(this.getErrorHandlerFunc("can not disable multiplex"));
-            else
-                result = Promise.resolve();
-            return result;
+            //disableNotification only disables when it is enabled
+            return this.disableNotification(ergometer.ble.PMROWING_SERVICE, ergometer.ble.MULTIPLEXED_INFO_CHARACTERISIC)
+                .catch(this.getErrorHandlerFunc("can not disable multiplex"));
         }
         clearRegisterdGuids() {
             this._registeredGuids = {};
@@ -5136,7 +5220,7 @@ var ergometer;
                 restTime: ergometer.utils.getUint24(data, 13 /* ble.PM_Extra_Status1_BLE_Payload.REST_TIME_LO */) * 10, //mili seconds
                 averagePower: null
             };
-            if (data.byteLength == 18 /* ble.PM_Mux_Extra_Status1_BLE_Payload.BLE_PAYLOAD_SIZE */)
+            if (data.byteLength > 17 /* ble.PM_Mux_Extra_Status1_BLE_Payload.AVG_POWER_HI */) //multiplexed only (19 bytes incl. erg machine type)
                 parsed.averagePower = data.getUint16(16 /* ble.PM_Mux_Extra_Status1_BLE_Payload.AVG_POWER_LO */, true);
             if (JSON.stringify(this.rowingAdditionalStatus1) !== JSON.stringify(parsed)) {
                 this.rowingAdditionalStatus1Event.pub(parsed);
@@ -5158,7 +5242,7 @@ var ergometer;
                     splitAveragePace: this.calcPace(data.getUint8(8 /* ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO */), data.getUint8(9 /* ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_HI */)), // ms,
                     splitAveragePower: data.getUint16(10 /* ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO */, true), //watt
                     splitAverageCalories: data.getUint16(12 /* ble.PM_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO */, true), // cal/hour
-                    lastSplitTime: data.getUint16(14 /* ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO */, true) * 100, //the doc 0.1 factor is this right?
+                    lastSplitTime: ergometer.utils.getUint24(data, 14 /* ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO */) * 100, //24 bit, 0.1 sec lsb -> ms
                     lastSplitDistance: ergometer.utils.getUint24(data, 17 /* ble.PM_Extra_Status2_BLE_Payload.LAST_SPLIT_DISTANCE_LO */)
                 };
             }
@@ -5171,7 +5255,7 @@ var ergometer;
                     splitAveragePace: this.calcPace(data.getUint8(6 /* ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_LO */), data.getUint8(7 /* ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_PACE_HI */)), //ms,
                     splitAveragePower: data.getUint16(8 /* ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_POWER_LO */, true), //watt
                     splitAverageCalories: data.getUint16(10 /* ble.PM_Mux_Extra_Status2_BLE_Payload.SPLIT_INTERVAL_AVG_CALORIES_LO */, true), // cal/hour
-                    lastSplitTime: data.getUint16(12 /* ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO */, true) * 100, //the doc 0.1 factor is this right?
+                    lastSplitTime: ergometer.utils.getUint24(data, 12 /* ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_TIME_LO */) * 100, //24 bit, 0.1 sec lsb -> ms
                     lastSplitDistance: ergometer.utils.getUint24(data, 15 /* ble.PM_Mux_Extra_Status2_BLE_Payload.LAST_SPLIT_DISTANCE_LO */)
                 };
             }
@@ -5233,8 +5317,8 @@ var ergometer;
                 projectedWorkDistance: ergometer.utils.getUint24(data, 12 /* ble.PM_Extra_Stroke_Data_BLE_Payload.PROJ_WORK_DIST_LO */), //meter
                 workPerStroke: null //filled when multiplexed is true
             };
-            if (data.byteLength == 17 /* ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.BLE_PAYLOAD_SIZE */)
-                parsed.workPerStroke = data.getUint16(15 /* ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO */, true);
+            if (data.byteLength > 16 /* ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_HI */)
+                parsed.workPerStroke = data.getUint16(15 /* ble.PM_Mux_Extra_Stroke_Data_BLE_Payload.WORK_PER_STROKE_LO */, true) / 10; //0.1 Joules -> Joules
             if (JSON.stringify(this.rowingAdditionalStrokeData) !== JSON.stringify(parsed)) {
                 this.rowingAdditionalStrokeDataEvent.pub(parsed);
                 this._rowingAdditionalStrokeData = parsed;
@@ -5270,7 +5354,7 @@ var ergometer;
                 intervalAverageStrokeRate: data.getUint8(3 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.STROKE_RATE */),
                 intervalWorkHeartrate: data.getUint8(4 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.WORK_HR */),
                 intervalRestHeartrate: data.getUint8(5 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.REST_HR */),
-                intervalAveragePace: data.getUint16(6 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_PACE_LO */, true) * 10, //ms lbs
+                intervalAveragePace: data.getUint16(6 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_PACE_LO */, true) * 100, //0.1 sec lsb -> ms
                 intervalTotalCalories: data.getUint16(8 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.CALORIES_LO */, true),
                 intervalAverageCalories: data.getUint16(10 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.AVG_CALORIES_LO */, true),
                 intervalSpeed: data.getUint16(12 /* ble.PM_Extra_Split_Interval_Data_BLE_Payload.SPEED_LO */, true) / 1000, //m/s
@@ -5304,7 +5388,7 @@ var ergometer;
                 averagePace: null
             };
             if (data.byteLength == 20 /* ble.PM_Workout_Summary_Data_BLE_Payload.BLE_PAYLOAD_SIZE */) {
-                parsed.averagePace = data.getUint16(18 /* ble.PM_Workout_Summary_Data_BLE_Payload.AVG_PACE_LO */, true);
+                parsed.averagePace = data.getUint16(18 /* ble.PM_Workout_Summary_Data_BLE_Payload.AVG_PACE_LO */, true) * 100; //0.1 sec lsb -> ms
             }
             if (JSON.stringify(this.workoutSummaryData) !== JSON.stringify(parsed)) {
                 this.workoutSummaryDataEvent.pub(parsed);
@@ -5320,7 +5404,7 @@ var ergometer;
             if (data.byteLength == 19 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.DATA_BLE_PAYLOAD_SIZE */) {
                 parsed = {
                     logEntryDate: data.getUint16(0 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_LO */, true),
-                    logEntryTime: data.getUint16(1 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_DATE_HI */, true),
+                    logEntryTime: data.getUint16(2 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.LOG_TIME_LO */, true),
                     intervalType: data.getUint8(4 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_TYPE */),
                     intervalSize: data.getUint16(5 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_SIZE_LO */, true), //meters or seconds
                     intervalCount: data.getUint8(7 /* ble.PM_Extra_Workout_Summary_Data_BLE_Payload.SPLIT_INT_COUNT */),
@@ -5357,8 +5441,8 @@ var ergometer;
         handleAdditionalWorkoutSummaryData2(data) {
             var parsed = {
                 logEntryDate: data.getUint16(0 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_LO */, true),
-                logEntryTime: data.getUint16(1 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_DATE_HI */, true),
-                averagePace: data.getUint16(4 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.AVG_PACE_LO */, true),
+                logEntryTime: data.getUint16(2 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.LOG_TIME_LO */, true),
+                averagePace: data.getUint16(4 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.AVG_PACE_LO */, true) * 100, //0.1 sec lsb -> ms
                 gameIdentifier: data.getUint8(6 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_ID */),
                 gameScore: data.getUint16(7 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.GAME_SCORE_LO */, true),
                 ergMachineType: data.getUint8(9 /* ble.PM_Mux_Extra_Workout_Summary2_Data_BLE_Payload.MACHINE_TYPE */),
@@ -5725,6 +5809,8 @@ class CsafeTests {
                 return;
             }
             this.log(`===== ${title} =====`);
+            if (!this.isBluetooth && this.monitor.authenticated === false)
+                this.log("not authenticated: over usb most proprietary commands (0x7E/0x7F) are answered without data");
             for (const [name, build] of tests) {
                 let received = false;
                 const show = (value) => {

@@ -62,6 +62,8 @@ namespace ergometer {
         public nextDataLength = 0;
         public detailCommand =0;
         public statusByte = 0;
+        /** true when the status byte of a response frame is received */
+        public statusByteReceived = false;
         public monitorStatus : ergometer.csafe.SlaveState = 0;
         public prevFrameState : ergometer.csafe.PrevFrameState =0;
         public calcCheck=0;
@@ -87,19 +89,24 @@ namespace ergometer {
             return this._commands
         }
         removeRemainingCommands() {
-            this._commands.forEach(command=>{
-                if (this._monitor.logLevel>=LogLevel.error)
-                   this._monitor.handleError(`command removed without result command=${command.command} detail= ${command.detailCommand}`);
-                if (command.onError) command.onError("command removed without result");
-
-            });
+            var commands=this._commands;
             this._commands=[];
+            commands.forEach(command=>{
+                try {
+                    if (this._monitor.logLevel>=LogLevel.error)
+                       this._monitor.handleError(`command removed without result command=${command.command} detail= ${command.detailCommand}`);
+                    if (command.onError) command.onError("command removed without result");
+                }
+                catch (e) {
+                    console.error(e); //never let a callback stall the send queue
+                }
+            });
         }
         private timeOut() {
             this.removeRemainingCommands();
             this.remove();
             if (this._reject)
-               this._reject("Time out buffer");
+               this._reject(CSAFE_TIME_OUT_ERROR);
             if (this._monitor.logLevel>=LogLevel.error)
                   this._monitor.handleError("buffer time out");
         }
@@ -127,11 +134,18 @@ namespace ergometer {
         }
         public processedBuffer() {
             //commands answered by the status byte of the frame only (get status)
-            this._commands=this._commands.filter(command=>{
-                if (!command.onFrameStatus) return true;
-                command.onFrameStatus(this.statusByte);
-                return false;
-            });
+            //only when a status byte was received, otherwise the commands get an error below
+            if (this.statusByteReceived)
+                this._commands=this._commands.filter(command=>{
+                    if (!command.onFrameStatus) return true;
+                    try {
+                        command.onFrameStatus(this.statusByte);
+                    }
+                    catch (e) {
+                        this._monitor.handleError(e); //never let a callback stall the send queue
+                    }
+                    return false;
+                });
             this.removeRemainingCommands();
             this.remove();
             if (this._resolve)
@@ -139,8 +153,15 @@ namespace ergometer {
             
         }
         public removedWithError(e : any) {
-            this._commands.forEach((command : IRawCommand)=>{
-                if (command.onError) command.onError(e);
+            var commands=this._commands;
+            this._commands=[];
+            commands.forEach((command : IRawCommand)=>{
+                try {
+                    if (command.onError) command.onError(e);
+                }
+                catch (err) {
+                    console.error(err); //never let a callback stall the send queue
+                }
             });
             if (this._reject)
                this._reject(e);
@@ -156,21 +177,26 @@ namespace ergometer {
             //PM5 quirk: a public command sent after a proprietary wrapper in the same frame is
             //answered inside that wrapper, for example request 7f 02 b0 b3 94 gives
             //7f 18 b0 04 .. b3 01 .. 94 09 <serial>. Match it with the waiting public command.
-            if (index<0 && parsed.detailCommand>=csafe.defs.CTRL_CMD_SHORT_MIN)
+            if (index<0 && parsed.detailCommand>=csafe.defs.CTRL_CMD_SHORT_MIN &&
+                (parsed.command==csafe.defs.PROPRIETARY_GET_CMDS.GETPMCFG_CMD ||
+                 parsed.command==csafe.defs.PROPRIETARY_GET_CMDS.GETPMDATA_CMD))
                 index=this._commands.findIndex(command=>
                     command.command==parsed.detailCommand && !command.detailCommand);
             if (index>=0) {
                 let command=this._commands[index];
+                this._commands.splice(index,1);//remove the item from the send list, also when the callback throws
                 if (command.onDataReceived) {
                     var dataView= new DataView(parsed.data.buffer);
                     this._monitor.traceInfo("call received");
                     command.responseBuffer=this;
                     command.onDataReceived(dataView);
                 }
-                this._commands.splice(index,1);//remove the item from the send list
             }
         }
     }
+
+    /** the error of a csafe buffer when the monitor does not answer in time */
+    export const CSAFE_TIME_OUT_ERROR="Time out buffer";
 
     type EmptyResolveFunc = ()=>void;
     /**
@@ -253,7 +279,11 @@ namespace ergometer {
 
         protected clearAllBuffers() {
             this.clearWaitResponseBuffers();
+            var queue=this._sendBufferQueue;
             this._sendBufferQueue=[];
+            queue.forEach(item=>{
+                if (item.reject) item.reject("connection reset");
+            });
         }
         protected beforeConnected() {
             this.clearAllBuffers();
@@ -265,9 +295,12 @@ namespace ergometer {
          *****************************************************************************************  */
         
          protected clearWaitResponseBuffers() {
-            var list=this._waitResonseBuffers;
-            list.forEach(b=>b.remove());
+            var list=this._waitResonseBuffers.slice(); //remove() changes the list
             this._waitResonseBuffers=[];
+            list.forEach(b=>{
+                b.remove();
+                b.removedWithError("connection reset");
+            });
          }
 
         protected driver_write( data:ArrayBufferView) :Promise<void> {
@@ -331,6 +364,8 @@ namespace ergometer {
                             commandArray.push(command.data.length);
                             commandArray=commandArray.concat(command.data);
                         }
+                        //a long command without detail command always has a byte count, also when there is no data
+                        else if (!command.detailCommand) commandArray.push(0);
                     }
                     if (!commandMerged) {
                         prevCommand=command.command;
@@ -540,7 +575,8 @@ namespace ergometer {
                             case FrameState.statusByte :
                             {   
                                 waitBuffer.frameState= FrameState.parseCommand;
-                                waitBuffer.statusByte=currentByte
+                                waitBuffer.statusByte=currentByte;
+                                waitBuffer.statusByteReceived=true;
                                 waitBuffer.monitorStatus=currentByte & csafe.defs.SLAVESTATE_MSK;
                                 waitBuffer.prevFrameState= ((currentByte & csafe.defs.PREVFRAMESTATUS_MSK) >>4);  
                                 if (this.logLevel==LogLevel.trace)
@@ -550,9 +586,18 @@ namespace ergometer {
                             }
     
                             case FrameState.parseCommand : {
+                                if (currentByte==csafe.defs.FRAME_END_BYTE) {
+                                    //the frame ended after an id only reply (the checksum was read as a command id)
+                                    waitBuffer.command=0;
+                                    moveToNextBuffer=true;
+                                    break;
+                                }
                                 waitBuffer.command=currentByte;
-                                waitBuffer.frameState= FrameState.parseCommandLength;    
-                                //the real command follows so skip this 
+                                //public long set commands (0x01-0x7F, no wrapper) are answered with only the
+                                //command id, no length and no data (spec sample: F1 01 20 1A 01 05 34 24 2E F2)
+                                if (currentByte<csafe.defs.CTRL_CMD_SHORT_MIN && !this.isWrapperCommand(currentByte))
+                                    break;
+                                waitBuffer.frameState= FrameState.parseCommandLength;
                                 break;
                             }
                             case FrameState.parseCommandLength : {
@@ -582,8 +627,11 @@ namespace ergometer {
                                     waitBuffer.remainingCommandBytes=currentByte;
                                     waitBuffer.nextDataLength= currentByte;
                                     if (waitBuffer.command>= csafe.defs.CTRL_CMD_SHORT_MIN) {
-                                        waitBuffer.frameState= FrameState.parseCommandData;
+                                        if (currentByte==0) this.deliverCommandData(waitBuffer);
+                                        else waitBuffer.frameState= FrameState.parseCommandData;
                                     }
+                                    //a wrapper with byte count 0 (spec sample: 1A 00)
+                                    else if (currentByte==0) waitBuffer.frameState= FrameState.parseCommand;
                                     else waitBuffer.frameState= FrameState.parseDetailCommand;
     
                                 }
@@ -605,7 +653,8 @@ namespace ergometer {
                             case FrameState.parseDetailCommandLength : {
                                 waitBuffer.remainingCommandBytes--;
                                 waitBuffer.nextDataLength=currentByte;
-                                waitBuffer.frameState= FrameState.parseCommandData;
+                                if (currentByte==0) this.deliverCommandData(waitBuffer);
+                                else waitBuffer.frameState= FrameState.parseCommandData;
                                 break;
                             }
                             case FrameState.parseCommandData : {
@@ -617,25 +666,8 @@ namespace ergometer {
                                 waitBuffer.commandData[waitBuffer.commandDataIndex]=currentByte;
                                 waitBuffer.nextDataLength--;
                                 waitBuffer.commandDataIndex++;
-                                if (waitBuffer.nextDataLength==0) {
-                                    if (waitBuffer.command< csafe.defs.CTRL_CMD_SHORT_MIN 
-                                        && waitBuffer.remainingCommandBytes>0)
-                                        waitBuffer.frameState= FrameState.parseDetailCommand;
-                                    else waitBuffer.frameState= FrameState.parseCommand;
-                                    try {
-                                        waitBuffer.receivedCSaveCommand({
-                                            command:waitBuffer.command,
-                                            detailCommand:waitBuffer.detailCommand,
-                                            data:waitBuffer.commandData});
-                                    }
-                                    catch (e) {
-                                        this.handleError(e); //never let the receive crash the main loop
-                                    }
-    
-                                    waitBuffer.commandData=null;
-                                    waitBuffer.detailCommand=0;
-                                   
-                                }
+                                if (waitBuffer.nextDataLength==0)
+                                    this.deliverCommandData(waitBuffer);
                                 break;
                             }
     
@@ -672,6 +704,31 @@ namespace ergometer {
          * 0xE8-0xEF range (workout duration, extended hrm, erg machine type ...).
          * A few set commands do return data (spec: authentication result, bytes written).
          */
+        protected isWrapperCommand(command : number) : boolean {
+            return command==csafe.defs.LONG_CFG_CMDS.SETUSERCFG1_CMD ||
+                command==csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMCFG_CMD ||
+                command==csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMDATA_CMD ||
+                command==csafe.defs.PROPRIETARY_GET_CMDS.GETPMCFG_CMD ||
+                command==csafe.defs.PROPRIETARY_GET_CMDS.GETPMDATA_CMD;
+        }
+        /** pass the received data (can be empty) to the waiting command and go to the next command in the frame */
+        protected deliverCommandData(waitBuffer : WaitResponseBuffer) {
+            if (waitBuffer.command< csafe.defs.CTRL_CMD_SHORT_MIN
+                && waitBuffer.remainingCommandBytes>0)
+                waitBuffer.frameState= FrameState.parseDetailCommand;
+            else waitBuffer.frameState= FrameState.parseCommand;
+            try {
+                waitBuffer.receivedCSaveCommand({
+                    command:waitBuffer.command,
+                    detailCommand:waitBuffer.detailCommand,
+                    data:waitBuffer.commandData || new Uint8Array(0)});
+            }
+            catch (e) {
+                this.handleError(e); //never let the receive crash the main loop
+            }
+            waitBuffer.commandData=null;
+            waitBuffer.detailCommand=0;
+        }
         protected isDetailSetCommand(command : number, detailCommand : number) : boolean {
             if (command==csafe.defs.PROPRIETARY_GET_CMDS.GETPMCFG_CMD ||
                 command==csafe.defs.PROPRIETARY_GET_CMDS.GETPMDATA_CMD)
