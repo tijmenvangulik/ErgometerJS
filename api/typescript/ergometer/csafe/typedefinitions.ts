@@ -280,7 +280,7 @@ namespace ergometer.csafe.defs {
         PM_GET_HW_ADDRESS,                                        // 0x82
         PM_GET_TICK_TIMEBASE,                                     // 0x83
         PM_GET_HRM,                                               // 0x84
-        // Unused,                                                      // 0x85
+        PM_GET_DATETIME = 0x85,                                   // 0x85
         PM_GET_SCREENSTATESTATUS = 0x86,                          // 0x86
         PM_GET_RACE_LANE_REQUEST,                                 // 0x87
         PM_GET_ERG_LOGICALADDR_REQUEST,                           // 0x88
@@ -307,6 +307,12 @@ namespace ergometer.csafe.defs {
         PM_GET_CPUTICKRATE,                                       // 0x9D
         PM_GET_LOGCARDCENSUS,										// 0x9E
         PM_GET_WORKOUTINTERVALCOUNT,                              // 0x9F
+        PM_GET_WORKOUTDURATION = 0xE8,                            // 0xE8
+        PM_GET_WORKOTHER,                                         // 0xE9
+        PM_GET_EXTENDED_HRM,                                      // 0xEA
+        PM_GET_DEFCALIBRATIONVERIFIED,                            // 0xEB
+        PM_GET_FLYWHEELSPEED,                                     // 0xEC
+        PM_GET_ERGMACHINETYPE,                                    // 0xED
         GETPMCFG_CMD_SHORT_MAX
 
     }
@@ -485,10 +491,10 @@ namespace ergometer.csafe.defs {
         PM_SET_DISPLAYSTRING,                                     // 0x35
         PM_SET_DISPLAYBITMAP,                                     // 0x36
         PM_SET_LOCALRACEPARTICIPANT,                              // 0x37
-        // Unused,                                                      // 0x38
-        // Unused,                                                      // 0x39
-        // Unused,                                                      // 0x3A
-        // Unused,                                                      // 0x3B
+        PM_SET_GAMEPARAMS,                                        // 0x38
+        PM_SET_EXTENDED_HRBELT_INFO,                              // 0x39
+        PM_SET_EXTENDED_HRM,                                      // 0x3A
+        PM_SET_LEDBACKLIGHT,                                      // 0x3B
         // Unused,                                                      // 0x3C
         // Unused,                                                      // 0x3D
         // Unused,                                                      // 0x3E
@@ -524,8 +530,8 @@ namespace ergometer.csafe.defs {
         PM_GET_LOCALRACEPARTICIPANT,                              // 0x53
         PM_GET_USER_ID = 0x54,                                    // 0x54
         PM_GET_USER_PROFILE,                                      // 0x55
-    //    PM_GET_WORKOUTPARAMETERS,                               // 0x56
-        // Unused,                                                      // 0x57
+        PM_GET_HRBELT_INFO,                                       // 0x56
+        PM_GET_EXTENDED_HRBELT_INFO,                              // 0x57
         // Unused,                                                      // 0x58
         // Unused,                                                      // 0x59
         // Unused,                                                      // 0x5A
@@ -567,7 +573,7 @@ namespace ergometer.csafe.defs {
         // Unused,                                                      // 0x75
         // Command Wrapper,                                             // 0x76
         // Command Wrapper,                                             // 0x77
-        // Unused,                                                      // 0x78
+        PM_GET_GAME_SCORE = 0x78,                                 // 0x78
         // Unused,                                                      // 0x79
         // Unused,                                                      // 0x7A
         // Unused,                                                      // 0x7B

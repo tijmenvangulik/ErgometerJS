@@ -51,6 +51,7 @@
     "../../api/typescript/ergometer/performancemonitorBle.ts",
     "../../api/typescript/ergometer/heartratemonitorBle.ts",
     "typescript/typings/jquery.d.ts",
+    "../shared/csafeTests.ts",
     "typescript/app.ts",
     "typescript/demo.ts"
   ]

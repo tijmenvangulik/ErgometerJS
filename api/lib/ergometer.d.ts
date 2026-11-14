@@ -746,6 +746,7 @@ declare namespace ergometer.csafe.defs {
         PM_GET_HW_ADDRESS = 130,// 0x82
         PM_GET_TICK_TIMEBASE = 131,// 0x83
         PM_GET_HRM = 132,// 0x84
+        PM_GET_DATETIME = 133,// 0x85
         PM_GET_SCREENSTATESTATUS = 134,// 0x86
         PM_GET_RACE_LANE_REQUEST = 135,// 0x87
         PM_GET_ERG_LOGICALADDR_REQUEST = 136,// 0x88
@@ -772,7 +773,13 @@ declare namespace ergometer.csafe.defs {
         PM_GET_CPUTICKRATE = 157,// 0x9D
         PM_GET_LOGCARDCENSUS = 158,// 0x9E
         PM_GET_WORKOUTINTERVALCOUNT = 159,// 0x9F
-        GETPMCFG_CMD_SHORT_MAX = 160
+        PM_GET_WORKOUTDURATION = 232,// 0xE8
+        PM_GET_WORKOTHER = 233,// 0xE9
+        PM_GET_EXTENDED_HRM = 234,// 0xEA
+        PM_GET_DEFCALIBRATIONVERIFIED = 235,// 0xEB
+        PM_GET_FLYWHEELSPEED = 236,// 0xEC
+        PM_GET_ERGMACHINETYPE = 237,// 0xED
+        GETPMCFG_CMD_SHORT_MAX = 238
     }
     const enum PM_SHORT_PULL_DATA_CMDS {
         PM_GET_WORKTIME = 160,// GETPMDATA_CMD_SHORT_MIN
@@ -899,6 +906,10 @@ declare namespace ergometer.csafe.defs {
         PM_SET_DISPLAYSTRING = 53,// 0x35
         PM_SET_DISPLAYBITMAP = 54,// 0x36
         PM_SET_LOCALRACEPARTICIPANT = 55,// 0x37
+        PM_SET_GAMEPARAMS = 56,// 0x38
+        PM_SET_EXTENDED_HRBELT_INFO = 57,// 0x39
+        PM_SET_EXTENDED_HRM = 58,// 0x3A
+        PM_SET_LEDBACKLIGHT = 59,// 0x3B
         PM_SET_ANTRFMODE = 78,// 0x4E mfg support only
         PM_SET_MEMORY = 79,// 0x4F debug only
         SETPMDATA_CMD_LONG_MAX = 80
@@ -910,7 +921,9 @@ declare namespace ergometer.csafe.defs {
         PM_GET_LOCALRACEPARTICIPANT = 83,// 0x53
         PM_GET_USER_ID = 84,// 0x54
         PM_GET_USER_PROFILE = 85,// 0x55
-        GETPMCFG_CMD_LONG_MAX = 86
+        PM_GET_HRBELT_INFO = 86,// 0x56
+        PM_GET_EXTENDED_HRBELT_INFO = 87,// 0x57
+        GETPMCFG_CMD_LONG_MAX = 88
     }
     const enum PM_LONG_PULL_DATA_CMDS {
         PM_GET_MEMORY = 104,// GETPMDATA_CMD_LONG_MIN
@@ -922,7 +935,8 @@ declare namespace ergometer.csafe.defs {
         CSAFE_PM_GET_STROKESTATS = 110,// 0x6E
         CSAFE_PM_GET_DIAGLOG_RECORD_NUM = 112,// 0x70
         CSAFE_PM_GET_DIAGLOG_RECORD = 113,// 0x71
-        GETPMDATA_CMD_LONG_MAX = 114
+        PM_GET_GAME_SCORE = 120,// 0x78
+        GETPMDATA_CMD_LONG_MAX = 121
     }
     const PREVOK_FLG = 0;
     const PREVREJECT_FLG = 16;
@@ -1053,6 +1067,9 @@ declare namespace ergometer.csafe {
         data?: number[];
         onDataReceived?: (data: DataView) => void;
         onError?: ErrorHandler;
+        /** called with the status byte of the response frame when the frame ended without a reply for this command.
+         * The PM answers some commands (like get status) with only the status byte of the frame. */
+        onFrameStatus?: (statusByte: number) => void;
         responseBuffer?: IResponseBuffer;
     }
     interface IBuffer {
@@ -1084,8 +1101,17 @@ declare namespace ergometer.csafe {
     function registerStandardProprietarySetConfig<T extends ICommandParamsBase>(functionName: string, command: number, setParams: (params: T) => number[]): void;
     function registerStandardProprietarySetData<T extends ICommandParamsBase>(functionName: string, command: number, setParams: (params: T) => number[]): void;
     function registerStandardProprietarySetConfigResponse<T extends ICommandParamsBase, U>(functionName: string, command: number, setParams: (params: T) => number[], converter: (data: DataView) => U): void;
-    function registerStandardProprietaryGetConfig<T extends ICommandParamsBase, U>(functionName: string, detailCommand: number, converter: (data: DataView) => U): void;
-    function registerStandardProprietaryGetData<T extends ICommandParamsBase, U>(functionName: string, detailCommand: number, converter: (data: DataView) => U): void;
+    function registerStandardProprietaryGetConfig<T extends ICommandParamsBase, U>(functionName: string, detailCommand: number, converter: (data: DataView) => U, getParams?: (params: T) => number[]): void;
+    function registerStandardProprietaryGetData<T extends ICommandParamsBase, U>(functionName: string, detailCommand: number, converter: (data: DataView) => U, getParams?: (params: T) => number[]): void;
+    function registerStandardShortCommand<T extends ICommandParamsBase>(functionName: string, command: number): void;
+    /** read a fixed length ascii string, trailing zero bytes and spaces are removed */
+    function readAscii(data: DataView, offset: number, length: number): string;
+    /** convert a string to a fixed length ascii byte array, padded with zeros */
+    function asciiToBytes(value: string, length: number): number[];
+    /** a 4 byte value as an array of bytes, most significant byte first */
+    function uint32ToBytesMSB(value: number): number[];
+    /** a 2 byte value as an array of bytes, most significant byte first */
+    function uint16ToBytesMSB(value: number): number[];
 }
 /**
  * Created by tijmen on 19-01-16.
@@ -1278,6 +1304,75 @@ declare namespace ergometer.csafe {
     interface IBuffer {
         getHeartRate(params: ICommandParamsBase): IBuffer;
     }
+    interface ICommandGetStatus extends ICommandParamsBase {
+        onDataReceived: (state: SlaveState) => void;
+    }
+    interface IBuffer {
+        /** the public csafe state of the monitor (ready, idle, in use, finished ...) */
+        getStatus(params: ICommandGetStatus): IBuffer;
+    }
+    interface IBuffer {
+        /** reset the public csafe state machine */
+        reset(params?: ICommandParamsBase): IBuffer;
+        goIdle(params?: ICommandParamsBase): IBuffer;
+        goHaveId(params?: ICommandParamsBase): IBuffer;
+        goInUse(params?: ICommandParamsBase): IBuffer;
+        goFinished(params?: ICommandParamsBase): IBuffer;
+        goReady(params?: ICommandParamsBase): IBuffer;
+        badId(params?: ICommandParamsBase): IBuffer;
+    }
+    interface ICommandGetUserId extends ICommandParamsBase {
+        onDataReceived: (value: string) => void;
+    }
+    interface IBuffer {
+        /** the user id as ascii digits (number of digits depends on the id digits configuration) */
+        getUserId(params: ICommandGetUserId): IBuffer;
+    }
+    interface ICommandGetUnits extends ICommandParamsBase {
+        onDataReceived: (value: Unit) => void;
+    }
+    interface IBuffer {
+        getUnits(params: ICommandGetUnits): IBuffer;
+    }
+    interface ICommandGetSerialNumber extends ICommandParamsBase {
+        onDataReceived: (value: string) => void;
+    }
+    interface IBuffer {
+        /** the 9 digit serial number of the monitor */
+        getSerialNumber(params: ICommandGetSerialNumber): IBuffer;
+    }
+    interface ICommandGetOdometer extends ICommandParamsBase {
+        onDataReceived: (value: IDistance) => void;
+    }
+    interface IBuffer {
+        /** the total distance the machine has done during its life time */
+        getOdometer(params: ICommandGetOdometer): IBuffer;
+    }
+    interface ICommandGetErrorCode extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        getErrorCode(params: ICommandGetErrorCode): IBuffer;
+    }
+    interface ICommandGetProgram extends ICommandParamsBase {
+        onDataReceived: (value: Program) => void;
+    }
+    interface IBuffer {
+        /** the programmed or pre-stored workout number */
+        getProgram(params: ICommandGetProgram): IBuffer;
+    }
+    interface IUserInfo {
+        weight: number;
+        weightUnit: Unit;
+        age: number;
+        gender: number;
+    }
+    interface ICommandGetUserInfo extends ICommandParamsBase {
+        onDataReceived: (value: IUserInfo) => void;
+    }
+    interface IBuffer {
+        getUserInfo(params: ICommandGetUserInfo): IBuffer;
+    }
 }
 declare namespace ergometer.csafe {
     interface ICommandSetWorkoutTypeParams extends ICommandParamsBase {
@@ -1314,7 +1409,8 @@ declare namespace ergometer.csafe {
     }
     interface ICommandSetScreenStateParams extends ICommandParamsBase {
         screenType: ScreenType;
-        value: ScreenValue;
+        /** ScreenValue for screen type Workout, ScreenValueCsafe for screen type Csave */
+        value: ScreenValue | ScreenValueCsafe;
     }
     interface IBuffer {
         setScreenState(params: ICommandSetScreenStateParams): IBuffer;
@@ -1362,6 +1458,484 @@ declare namespace ergometer.csafe {
     }
     interface IBuffer {
         setAuthenticationPassword(params: ICommandSetAuthenticationPasswordParams): IBuffer;
+    }
+    interface ICommandGetFirmwareVersion extends ICommandParamsBase {
+        onDataReceived: (value: string) => void;
+    }
+    interface IBuffer {
+        /** the firmware version of the monitor as text */
+        getFirmwareVersion(params: ICommandGetFirmwareVersion): IBuffer;
+    }
+    interface ICommandGetHardwareVersion extends ICommandParamsBase {
+        onDataReceived: (value: string) => void;
+    }
+    interface IBuffer {
+        /** the hardware version of the monitor as text */
+        getHardwareVersion(params: ICommandGetHardwareVersion): IBuffer;
+    }
+    interface ICommandGetDateTime extends ICommandParamsBase {
+        onDataReceived: (value: Date) => void;
+    }
+    interface IBuffer {
+        /** the date and time of the clock of the monitor (local time) */
+        getDateTime(params: ICommandGetDateTime): IBuffer;
+    }
+    interface IScreenStateStatus {
+        screenType: ScreenType;
+        screenValue: ScreenValue;
+        status: number;
+    }
+    interface ICommandGetScreenStateStatus extends ICommandParamsBase {
+        onDataReceived: (value: IScreenStateStatus) => void;
+    }
+    interface IBuffer {
+        /** the state of the last screen state command (setScreenState) */
+        getScreenStateStatus(params: ICommandGetScreenStateStatus): IBuffer;
+    }
+    interface IHeartRateMonitorInfo {
+        status: number;
+        manufacturerId: number;
+        deviceType: number;
+        deviceNumber: number;
+    }
+    interface ICommandGetHeartRateMonitor extends ICommandParamsBase {
+        onDataReceived: (value: IHeartRateMonitorInfo) => void;
+    }
+    interface IBuffer {
+        /** the ant heart rate monitor which is paired with the monitor (2 byte device number) */
+        getHeartRateMonitor(params: ICommandGetHeartRateMonitor): IBuffer;
+    }
+    interface ICommandGetDisplayType extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** the display type (standard, force velocity, pace boat, per stroke, simple, target) */
+        getDisplayType(params: ICommandGetDisplayType): IBuffer;
+    }
+    interface ICommandGetDisplayUnits extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** the display units (time/meters, pace, watts, caloric burn rate, calories) */
+        getDisplayUnits(params: ICommandGetDisplayUnits): IBuffer;
+    }
+    interface ICommandGetLanguageType extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** the language of the monitor */
+        getLanguageType(params: ICommandGetLanguageType): IBuffer;
+    }
+    interface ICommandGetOperationalState extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** the operational state of the monitor (reset, ready, workout, warmup, race, power off ...) */
+        getOperationalState(params: ICommandGetOperationalState): IBuffer;
+    }
+    interface ICommandGetRowingState extends ICommandParamsBase {
+        onDataReceived: (value: RowingState) => void;
+    }
+    interface IBuffer {
+        /** is the user rowing (active) or not (inactive) */
+        getRowingState(params: ICommandGetRowingState): IBuffer;
+    }
+    interface ICommandGetBatteryLevelPercent extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** the battery level in percent */
+        getBatteryLevelPercent(params: ICommandGetBatteryLevelPercent): IBuffer;
+    }
+    interface IWorkoutDuration {
+        durationType: WorkoutDurationType;
+        value: number;
+    }
+    interface ICommandGetWorkoutDuration extends ICommandParamsBase {
+        onDataReceived: (value: IWorkoutDuration) => void;
+    }
+    interface IBuffer {
+        /** the programmed workout duration, the counterpart of setWorkoutDuration */
+        getWorkoutDuration(params: ICommandGetWorkoutDuration): IBuffer;
+    }
+    interface ICommandGetWorkOther extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** the work other value (calories or watt minutes for those workout types) */
+        getWorkOther(params: ICommandGetWorkOther): IBuffer;
+    }
+    interface ICommandGetExtendedHeartRateMonitor extends ICommandParamsBase {
+        onDataReceived: (value: IHeartRateMonitorInfo) => void;
+    }
+    interface IBuffer {
+        /** the heart rate monitor which is paired with the monitor (4 byte device number, ant and bluetooth) */
+        getExtendedHeartRateMonitor(params: ICommandGetExtendedHeartRateMonitor): IBuffer;
+    }
+    interface ICommandGetFlywheelSpeed extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** the flywheel speed in rpm */
+        getFlywheelSpeed(params: ICommandGetFlywheelSpeed): IBuffer;
+    }
+    interface ICommandGetErgMachineType extends ICommandParamsBase {
+        onDataReceived: (value: ErgmachineType) => void;
+    }
+    interface IBuffer {
+        /** the type of the machine (rower model, ski erg, bike erg ...) */
+        getErgMachineType(params: ICommandGetErgMachineType): IBuffer;
+    }
+    interface ICommandGetProjectedWorkTime extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** projected work time in 0.01 seconds */
+        getProjectedWorkTime(params: ICommandGetProjectedWorkTime): IBuffer;
+    }
+    interface ICommandGetTotalRestTime extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** total rest time in 0.01 seconds */
+        getTotalRestTime(params: ICommandGetTotalRestTime): IBuffer;
+    }
+    interface ICommandGetTotalWorkDistance extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** total work distance in meters */
+        getTotalWorkDistance(params: ICommandGetTotalWorkDistance): IBuffer;
+    }
+    interface ICommandGetProjectedWorkDistance extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** projected work distance in meters */
+        getProjectedWorkDistance(params: ICommandGetProjectedWorkDistance): IBuffer;
+    }
+    interface ICommandGetTotalRestDistance extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** total rest distance in meters */
+        getTotalRestDistance(params: ICommandGetTotalRestDistance): IBuffer;
+    }
+    interface ICommandGetStroke500mPace extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** pace per 500m of the last stroke in 0.01 seconds */
+        getStroke500mPace(params: ICommandGetStroke500mPace): IBuffer;
+    }
+    interface ICommandGetStrokePower extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** power of the last stroke in watts */
+        getStrokePower(params: ICommandGetStrokePower): IBuffer;
+    }
+    interface ICommandGetStrokeCaloricBurnRate extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** caloric burn rate of the last stroke in calories per hour */
+        getStrokeCaloricBurnRate(params: ICommandGetStrokeCaloricBurnRate): IBuffer;
+    }
+    interface ICommandGetSplitAvg500mPace extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average pace per 500m of the current split in 0.01 seconds */
+        getSplitAvg500mPace(params: ICommandGetSplitAvg500mPace): IBuffer;
+    }
+    interface ICommandGetSplitAvgPower extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average power of the current split in watts */
+        getSplitAvgPower(params: ICommandGetSplitAvgPower): IBuffer;
+    }
+    interface ICommandGetSplitAvgCaloricBurnRate extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average caloric burn rate of the current split in calories per hour */
+        getSplitAvgCaloricBurnRate(params: ICommandGetSplitAvgCaloricBurnRate): IBuffer;
+    }
+    interface ICommandGetSplitAvgCalories extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average calories of the current split */
+        getSplitAvgCalories(params: ICommandGetSplitAvgCalories): IBuffer;
+    }
+    interface ICommandGetTotalAvg500mPace extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average pace per 500m of the workout in 0.01 seconds */
+        getTotalAvg500mPace(params: ICommandGetTotalAvg500mPace): IBuffer;
+    }
+    interface ICommandGetTotalAvgPower extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average power of the workout in watts */
+        getTotalAvgPower(params: ICommandGetTotalAvgPower): IBuffer;
+    }
+    interface ICommandGetTotalAvgCaloricBurnRate extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average caloric burn rate of the workout in calories per hour */
+        getTotalAvgCaloricBurnRate(params: ICommandGetTotalAvgCaloricBurnRate): IBuffer;
+    }
+    interface ICommandGetTotalAvgCalories extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average calories of the workout */
+        getTotalAvgCalories(params: ICommandGetTotalAvgCalories): IBuffer;
+    }
+    interface ICommandGetSplitTime extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** elapsed time of the current split in 0.01 seconds */
+        getSplitTime(params: ICommandGetSplitTime): IBuffer;
+    }
+    interface ICommandGetLastSplitTime extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** elapsed time of the last split in 0.01 seconds */
+        getLastSplitTime(params: ICommandGetLastSplitTime): IBuffer;
+    }
+    interface ICommandGetSplitDistance extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** work distance of the current split in meters */
+        getSplitDistance(params: ICommandGetSplitDistance): IBuffer;
+    }
+    interface ICommandGetLastSplitDistance extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** work distance of the last split in meters */
+        getLastSplitDistance(params: ICommandGetLastSplitDistance): IBuffer;
+    }
+    interface ICommandGetLastRestDistance extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** distance of the last rest interval in meters */
+        getLastRestDistance(params: ICommandGetLastRestDistance): IBuffer;
+    }
+    interface ICommandGetTargetPaceTime extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** target pace time in 0.01 seconds, the counterpart of setTargetPaceTime */
+        getTargetPaceTime(params: ICommandGetTargetPaceTime): IBuffer;
+    }
+    interface ICommandGetRestDistance extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** rest distance in meters */
+        getRestDistance(params: ICommandGetRestDistance): IBuffer;
+    }
+    interface ICommandGetStrokeRate extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** stroke rate in strokes per minute */
+        getStrokeRate(params: ICommandGetStrokeRate): IBuffer;
+    }
+    interface ICommandGetSplitAvgStrokeRate extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average stroke rate of the current split/interval */
+        getSplitAvgStrokeRate(params: ICommandGetSplitAvgStrokeRate): IBuffer;
+    }
+    interface ICommandGetTotalAvgStrokeRate extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average stroke rate of the workout */
+        getTotalAvgStrokeRate(params: ICommandGetTotalAvgStrokeRate): IBuffer;
+    }
+    interface ICommandGetAvgHeartRate extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average heart rate in beats per minute */
+        getAvgHeartRate(params: ICommandGetAvgHeartRate): IBuffer;
+    }
+    interface ICommandGetEndingAvgHeartRate extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average heart rate of the current split/interval */
+        getEndingAvgHeartRate(params: ICommandGetEndingAvgHeartRate): IBuffer;
+    }
+    interface ICommandGetRestAvgHeartRate extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** average heart rate of the rest interval */
+        getRestAvgHeartRate(params: ICommandGetRestAvgHeartRate): IBuffer;
+    }
+    interface ICommandGetStrokeRateState extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** the stroke rate state */
+        getStrokeRateState(params: ICommandGetStrokeRateState): IBuffer;
+    }
+    interface ICommandGetHeartRateState extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** the heart rate state */
+        getHeartRateState(params: ICommandGetHeartRateState): IBuffer;
+    }
+    interface ICommandGetUserIdString extends ICommandParamsBase {
+        userNumber: number;
+        onDataReceived: (value: string) => void;
+    }
+    interface IBuffer {
+        /** the user id string of a log card / internal user */
+        getUserIdString(params: ICommandGetUserIdString): IBuffer;
+    }
+    interface IUserIdNumber {
+        userNumber: number;
+        userId: number;
+    }
+    interface ICommandGetUserIdNumber extends ICommandParamsBase {
+        userNumber: number;
+        onDataReceived: (value: IUserIdNumber) => void;
+    }
+    interface IBuffer {
+        /** the numeric user id of a user, the counterpart of setUserIdNumber */
+        getUserIdNumber(params: ICommandGetUserIdNumber): IBuffer;
+    }
+    interface IUserProfile {
+        userNumber: number;
+        weight: number;
+        dobDay: number;
+        dobMonth: number;
+        dobYear: number;
+        gender: number;
+    }
+    interface ICommandGetUserProfile extends ICommandParamsBase {
+        userNumber: number;
+        onDataReceived: (value: IUserProfile) => void;
+    }
+    interface IBuffer {
+        /** the profile (weight, date of birth, gender) of a user */
+        getUserProfile(params: ICommandGetUserProfile): IBuffer;
+    }
+    interface ICommandGetHeartbeatData extends ICommandParamsBase {
+        blockLength?: number;
+        onDataReceived: (value: number[]) => void;
+    }
+    interface IBuffer {
+        /** the heart beat samples recorded since the last read (16 bit values) */
+        getHeartbeatData(params: ICommandGetHeartbeatData): IBuffer;
+    }
+    interface ICommandGetUIEvents extends ICommandParamsBase {
+        onDataReceived: (value: number) => void;
+    }
+    interface IBuffer {
+        /** the user interface events (button presses) of the monitor as a 16 bit value */
+        getUIEvents(params: ICommandGetUIEvents): IBuffer;
+    }
+    interface IGameScore {
+        gameId: number;
+        score: number;
+    }
+    interface ICommandGetGameScore extends ICommandParamsBase {
+        onDataReceived: (value: IGameScore) => void;
+    }
+    interface IBuffer {
+        getGameScore(params: ICommandGetGameScore): IBuffer;
+    }
+    interface ICommandSetDateTimeParams extends ICommandParamsBase {
+        value: Date;
+    }
+    interface IBuffer {
+        /** set the clock of the monitor */
+        setDateTime(params: ICommandSetDateTimeParams): IBuffer;
+    }
+    interface IBuffer {
+        setLanguageType(params: ICommandSetStandardValue): IBuffer;
+    }
+    interface ICommandSetScreenErrorModeParams extends ICommandParamsBase {
+        enabled: boolean;
+    }
+    interface IBuffer {
+        /** enable or disable the display of error screens on the monitor */
+        setScreenErrorMode(params: ICommandSetScreenErrorModeParams): IBuffer;
+    }
+    interface ICommandSetUserIdNumberParams extends ICommandParamsBase {
+        userNumber: number;
+        userId: number;
+    }
+    interface IBuffer {
+        setUserIdNumber(params: ICommandSetUserIdNumberParams): IBuffer;
+    }
+    interface ICommandSetUserProfileParams extends ICommandParamsBase {
+        userNumber: number;
+        weight: number;
+        dobDay: number;
+        dobMonth: number;
+        dobYear: number;
+        gender: number;
+    }
+    interface IBuffer {
+        setUserProfile(params: ICommandSetUserProfileParams): IBuffer;
+    }
+    interface ICommandSetDisplayStringParams extends ICommandParamsBase {
+        value: string;
+    }
+    interface IBuffer {
+        /** show a text on the display of the monitor (max 32 characters, bluetooth max 13)
+         * experimental: the PM5 accepts the command but does not show the text yet, also not after
+         * setScreenState({screenType:ScreenType.Csave, value:ScreenValueCsafe.Custom}) */
+        setDisplayString(params: ICommandSetDisplayStringParams): IBuffer;
+    }
+    interface ICommandSetGameParams extends ICommandParamsBase {
+        gameType: number;
+        workoutDuration: number;
+        splitDuration: number;
+        targetPaceTime: number;
+        targetAvgWatts: number;
+        targetCaloriesPerHour: number;
+        targetStrokeRate: number;
+    }
+    interface IBuffer {
+        /** usb only: the request is 29 bytes, too big for one 20 byte bluetooth packet */
+        setGameParams(params: ICommandSetGameParams): IBuffer;
+    }
+    interface ICommandSetExtendedHeartRateMonitorParams extends ICommandParamsBase {
+        manufacturerId: number;
+        deviceType: number;
+        deviceNumber: number;
+    }
+    interface IBuffer {
+        /** pair a heart rate belt with the monitor */
+        setExtendedHeartRateMonitor(params: ICommandSetExtendedHeartRateMonitorParams): IBuffer;
+    }
+    interface ICommandSetLedBacklightParams extends ICommandParamsBase {
+        enabled: boolean;
+        intensity: number;
+    }
+    interface IBuffer {
+        setLedBacklight(params: ICommandSetLedBacklightParams): IBuffer;
     }
 }
 /**
@@ -1452,6 +2026,17 @@ declare namespace ergometer {
         TachCableTestEnable = /**< Tach cable test enable (45). */ 45,/**< Tach cable test enable (45). */
         ChangeUnitsTypeCalories = /**< Units type set to calories(46). */ 46,/**< Units type set to calories(46). */
         ScreenRedraw = 255 /**< Screen redraw (255). */
+    }
+    /** screen values for screen type Csave (the CSAFE screen type), spec OBJ_SCREENVALUECSAFE_T */
+    const enum ScreenValueCsafe {
+        None = 0,
+        UserId = 1,/**< Enter user ID (1). */
+        PrepareToRowWorkout = 2,/**< Prepare to workout (2). */
+        GoToMainScreen = 3,/**< Goto to main screen (3). */
+        Custom = 4,/**< Goto custom screen (4), shows the text of setDisplayString. */
+        RaceChannelOpen = 250,
+        RaceChannelClose = 251,
+        ScreenRedraw = 255
     }
     const enum IntervalType {
         time = 0,
@@ -1842,8 +2427,14 @@ declare namespace ergometer {
         protected sendCsafeCommands(byteArray: number[]): Promise<void>;
         protected moveToNextBuffer(): WaitResponseBuffer;
         handeReceivedDriverData(dataView: DataView): void;
-        /** detail commands which only set a value: long push 0x00-0x4F and short push 0xD0-0xEF */
-        protected isDetailSetCommand(detailCommand: number): boolean;
+        /**
+         * detail commands which only set a value: long push 0x00-0x4F and short push 0xD0-0xEF.
+         * The reply on these is only the command id without length and data.
+         * Within the proprietary get wrappers (GETPMCFG/GETPMDATA) everything is a get, also the
+         * 0xE8-0xEF range (workout duration, extended hrm, erg machine type ...).
+         * A few set commands do return data (spec: authentication result, bytes written).
+         */
+        protected isDetailSetCommand(command: number, detailCommand: number): boolean;
         protected getPacketSize(): number;
         newCsafeBuffer(): ergometer.csafe.IBuffer;
     }

@@ -71,10 +71,39 @@ class Demo {
             $("#StartScan").hide();
         }
 
+        //csafe command tests, shared with the web usb debug demo (see demos/shared/csafeTests.ts)
+        this._tests=new CsafeTests(this.performanceMonitor,(text)=>this.showCsafe(text),true);
+        $("#testPublic").click(()=>this._tests.publicCommands());
+        $("#testMonitorInfo").click(()=>this._tests.monitorInfo());
+        $("#testWorkoutData").click(()=>this._tests.workoutData());
+        $("#testUsersHeartRate").click(()=>this._tests.usersHeartRate());
+        $("#testMerged").click(()=>this._tests.merged());
+        $("#testProprietaryWorkout").click(()=>this._tests.proprietaryWorkout());
+        $("#testSetDateTime").click(()=>this._tests.setDateTime());
+        $("#testDisplayString").click(()=>this._tests.displayString(String($("#displayText").val())));
+        $("#testMainScreen").click(()=>this._tests.mainScreen());
+        $("#testLedOn").click(()=>this._tests.ledBacklight(true));
+        $("#testLedOff").click(()=>this._tests.ledBacklight(false));
+        $("#testTooBig").click(()=>this._tests.tooBigForBluetooth());
+        $("#clearCsafe").click(()=>$("#csafe").empty());
+        $("#trace").change(()=>{
+            this.performanceMonitor.logLevel=$("#trace").is(":checked")?ergometer.LogLevel.trace:ergometer.LogLevel.error;
+        });
+    }
+
+    private _tests : CsafeTests;
+
+    /** csafe test results, newest on top */
+    public showCsafe(text : string) {
+        $("#csafe").prepend($("<div/>").text(text));
+        console.debug(text);
     }
 
     public onLog(info : string,logLevel : ergometer.LogLevel)
-    {   this.showData(info);
+    {   //while tracing show the log next to the csafe test results
+        if (this.performanceMonitor.logLevel==ergometer.LogLevel.trace)
+            this.showCsafe(info);
+        else this.showData(info);
     }
 
     protected onRowingGeneralStatus(data : ergometer.RowingGeneralStatus) {

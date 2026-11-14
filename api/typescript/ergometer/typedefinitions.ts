@@ -93,6 +93,18 @@ namespace ergometer {
         ChangeUnitsTypeCalories, /**< Units type set to calories(46). */
         ScreenRedraw = 255 /**< Screen redraw (255). */
     }
+
+    /** screen values for screen type Csave (the CSAFE screen type), spec OBJ_SCREENVALUECSAFE_T */
+    export const enum ScreenValueCsafe {
+        None = 0,
+        UserId = 1,               /**< Enter user ID (1). */
+        PrepareToRowWorkout = 2,  /**< Prepare to workout (2). */
+        GoToMainScreen = 3,       /**< Goto to main screen (3). */
+        Custom = 4,               /**< Goto custom screen (4), shows the text of setDisplayString. */
+        RaceChannelOpen = 250,
+        RaceChannelClose = 251,
+        ScreenRedraw = 255
+    }
     //Interval Type
     export const enum IntervalType {
         time,

@@ -275,6 +275,35 @@ this.performanceMonitor.newCsafeBuffer()
      }); 
 ```
 
+### Available commands
+
+Public CSAFE commands (work over USB and Bluetooth):
+- status and state machine: `getStatus`, `reset`, `goIdle`, `goHaveId`, `goInUse`, `goFinished`, `goReady`, `badId`
+- info: `getVersion`, `getSerialNumber`, `getUserId`, `getUnits`, `getOdometer`, `getErrorCode`, `getProgram`, `getUserInfo`
+- workout data: `getWork`, `getDistance`, `getHorizontal`, `getCalories`, `getPace`, `getCadence`, `getPower`, `getHeartRate`
+- set: `setProgram`, `setTime`, `setDate`, `setTimeout`, `setWork`, `setDistance`, `setTotalCalories`, `setPower`
+
+Concept2 proprietary commands (Bluetooth, or USB after `authenticate()`):
+- monitor: `getFirmwareVersion`, `getHardwareVersion`, `getHardwareAddress`, `getDateTime`, `setDateTime`, `getBatteryLevelPercent`, `getErgMachineType`, `getOperationalState`, `getRowingState`, `getFlywheelSpeed`, `getLanguageType`, `setLanguageType`
+- display: `getScreenStateStatus`, `setScreenState`, `getDisplayType`, `getDisplayUnits`, `setDisplayString` (experimental: accepted by the PM5 but no text is shown yet), `setScreenErrorMode`, `setLedBacklight`, `getUIEvents`
+- workout configuration: `setWorkoutType`, `getWorkoutType`, `setWorkoutDuration`, `getWorkoutDuration`, `setRestDuration`, `setSplitDuration`, `setTargetPaceTime`, `getTargetPaceTime`, `setTargetAverageWatt`, `setTargetCaloriesPerHour`, `setIntervalType`, `setWorkoutIntervalCount`, `setConfigureWorkout`, `getWorkoutState`, `getWorkoutIntervalCount`, `getWorkoutIntervalType`, `getWorkOther`
+- workout data: `getWorkTime`, `getWorkDistance`, `getProjectedWorkTime`, `getProjectedWorkDistance`, `getTotalRestTime`, `getTotalWorkDistance`, `getRestDistance`, `getTotalRestDistance`, `getLastRestDistance`, `getWorkoutIntervalRestTime`
+- stroke: `getStrokeState`, `getStrokeStats`, `getPowerCurve`, `getDragFactor`, `getStroke500mPace`, `getStrokePower`, `getStrokeCaloricBurnRate`, `getStrokeRate`, `getStrokeRateState`
+- split and total averages: `getSplitTime`, `getLastSplitTime`, `getSplitDistance`, `getLastSplitDistance`, `getSplitAvg500mPace`, `getSplitAvgPower`, `getSplitAvgCaloricBurnRate`, `getSplitAvgCalories`, `getSplitAvgStrokeRate`, `getTotalAvg500mPace`, `getTotalAvgPower`, `getTotalAvgCaloricBurnRate`, `getTotalAvgCalories`, `getTotalAvgStrokeRate`
+- heart rate: `getAvgHeartRate`, `getEndingAvgHeartRate`, `getRestAvgHeartRate`, `getHeartRateState`, `getHeartbeatData`, `getHeartRateMonitor`, `getExtendedHeartRateMonitor`, `setExtendedHeartRateMonitor`
+- users and games: `getUserIdString`, `getUserIdNumber`, `setUserIdNumber`, `getUserProfile`, `setUserProfile`, `setGameParams`, `getGameScore`
+- usb authentication: `setAuthenticationPassword`
+
+The proprietary get commands return the raw monitor values, in the same units as the set commands: times in 0.01 seconds and distances in whole meters (see the comments in the type definitions).
+
+```ts
+this.performanceMonitor.newCsafeBuffer()
+    .getBatteryLevelPercent({onDataReceived: (percent)=> console.log(`battery ${percent}%`)})
+    .getSerialNumber({onDataReceived: (serial)=> console.log(`serial ${serial}`)})
+    .getTotalAvgPower({onDataReceived: (watts)=> console.log(`avg ${watts} watt`)})
+    .send();
+```
+
 Command merging
 Long config commands can be merged into one command for efficency when they are directly after each other in the buffer.
 

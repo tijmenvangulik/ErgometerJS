@@ -2288,14 +2288,17 @@ var ergometer;
         }
         csafe.registerStandardProprietarySetConfigResponse = registerStandardProprietarySetConfigResponse;
         //hoofdstuk C2 Proprietary Short Get Configuration
-        function registerStandardProprietaryGetConfig(functionName, detailCommand, converter) {
+        //getParams is optional, only needed for the long get commands which send data (like the user number)
+        function registerStandardProprietaryGetConfig(functionName, detailCommand, converter, getParams) {
             csafe.commandManager.register((buffer, monitor) => {
                 buffer[functionName] = function (params) {
                     buffer.addRawCommand({
                         waitForResponse: true,
                         command: 126 /* csafe.defs.PROPRIETARY_GET_CMDS.GETPMCFG_CMD */,
                         detailCommand: detailCommand,
-                        onDataReceived: (data) => { params.onDataReceived(converter(data)); },
+                        data: getParams ? getParams(params) : undefined,
+                        onDataReceived: (data) => { if (params.onDataReceived)
+                            params.onDataReceived(converter(data)); },
                         onError: params.onError
                     });
                     return buffer;
@@ -2304,14 +2307,17 @@ var ergometer;
         }
         csafe.registerStandardProprietaryGetConfig = registerStandardProprietaryGetConfig;
         //C2 Proprietary Short Get Data Commands
-        function registerStandardProprietaryGetData(functionName, detailCommand, converter) {
+        //getParams is optional, only needed for the long get commands which send data (like the block length)
+        function registerStandardProprietaryGetData(functionName, detailCommand, converter, getParams) {
             csafe.commandManager.register((buffer, monitor) => {
                 buffer[functionName] = function (params) {
                     buffer.addRawCommand({
                         waitForResponse: true,
                         command: 127 /* csafe.defs.PROPRIETARY_GET_CMDS.GETPMDATA_CMD */,
                         detailCommand: detailCommand,
-                        onDataReceived: (data) => { params.onDataReceived(converter(data)); },
+                        data: getParams ? getParams(params) : undefined,
+                        onDataReceived: (data) => { if (params.onDataReceived)
+                            params.onDataReceived(converter(data)); },
                         onError: params.onError
                     });
                     return buffer;
@@ -2319,6 +2325,52 @@ var ergometer;
             });
         }
         csafe.registerStandardProprietaryGetData = registerStandardProprietaryGetData;
+        //Short command without response data, only the status byte is returned (like goReady, goIdle)
+        function registerStandardShortCommand(functionName, command) {
+            csafe.commandManager.register((buffer, monitor) => {
+                buffer[functionName] = function (params) {
+                    buffer.addRawCommand({
+                        waitForResponse: false,
+                        command: command,
+                        onError: params ? params.onError : undefined
+                    });
+                    return buffer;
+                };
+            });
+        }
+        csafe.registerStandardShortCommand = registerStandardShortCommand;
+        //----------------  conversion helpers for the response data ----------
+        /** read a fixed length ascii string, trailing zero bytes and spaces are removed */
+        function readAscii(data, offset, length) {
+            var result = "";
+            var end = Math.min(offset + length, data.byteLength);
+            for (var i = offset; i < end; i++) {
+                var c = data.getUint8(i);
+                if (c === 0)
+                    break;
+                result += String.fromCharCode(c);
+            }
+            return result.trim();
+        }
+        csafe.readAscii = readAscii;
+        /** convert a string to a fixed length ascii byte array, padded with zeros */
+        function asciiToBytes(value, length) {
+            var result = [];
+            for (var i = 0; i < length; i++)
+                result.push(value && i < value.length ? (value.charCodeAt(i) & 0xFF) : 0);
+            return result;
+        }
+        csafe.asciiToBytes = asciiToBytes;
+        /** a 4 byte value as an array of bytes, most significant byte first */
+        function uint32ToBytesMSB(value) {
+            return [ergometer.utils.getByte(value, 3), ergometer.utils.getByte(value, 2), ergometer.utils.getByte(value, 1), ergometer.utils.getByte(value, 0)];
+        }
+        csafe.uint32ToBytesMSB = uint32ToBytesMSB;
+        /** a 2 byte value as an array of bytes, most significant byte first */
+        function uint16ToBytesMSB(value) {
+            return [ergometer.utils.getByte(value, 1), ergometer.utils.getByte(value, 0)];
+        }
+        csafe.uint16ToBytesMSB = uint16ToBytesMSB;
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -2599,6 +2651,46 @@ var ergometer;
             var value = data.getUint8(0);
             return value;
         });
+        //the PM does not echo the get status command, it only returns the status byte of the frame
+        csafe.commandManager.register((buffer, monitor) => {
+            buffer.getStatus = function (params) {
+                buffer.addRawCommand({
+                    waitForResponse: true,
+                    command: 128 /* csafe.defs.SHORT_CTRL_CMDS.GETSTATUS_CMD */,
+                    onDataReceived: (data) => {
+                        if (params.onDataReceived)
+                            params.onDataReceived(data.byteLength > 0 ? data.getUint8(0) & csafe.defs.SLAVESTATE_MSK : 0);
+                    },
+                    onFrameStatus: (statusByte) => {
+                        if (params.onDataReceived)
+                            params.onDataReceived(statusByte & csafe.defs.SLAVESTATE_MSK);
+                    },
+                    onError: params.onError
+                });
+                return buffer;
+            };
+        });
+        csafe.registerStandardShortCommand("reset", 129 /* csafe.defs.SHORT_CTRL_CMDS.RESET_CMD */);
+        csafe.registerStandardShortCommand("goIdle", 130 /* csafe.defs.SHORT_CTRL_CMDS.GOIDLE_CMD */);
+        csafe.registerStandardShortCommand("goHaveId", 131 /* csafe.defs.SHORT_CTRL_CMDS.GOHAVEID_CMD */);
+        csafe.registerStandardShortCommand("goInUse", 133 /* csafe.defs.SHORT_CTRL_CMDS.GOINUSE_CMD */);
+        csafe.registerStandardShortCommand("goFinished", 134 /* csafe.defs.SHORT_CTRL_CMDS.GOFINISHED_CMD */);
+        csafe.registerStandardShortCommand("goReady", 135 /* csafe.defs.SHORT_CTRL_CMDS.GOREADY_CMD */);
+        csafe.registerStandardShortCommand("badId", 136 /* csafe.defs.SHORT_CTRL_CMDS.BADID_CMD */);
+        csafe.registerStandardShortGet("getUserId", 146 /* csafe.defs.SHORT_STATUS_CMDS.GETID_CMD */, (data) => { return csafe.readAscii(data, 0, data.byteLength); });
+        csafe.registerStandardShortGet("getUnits", 147 /* csafe.defs.SHORT_STATUS_CMDS.GETUNITS_CMD */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardShortGet("getSerialNumber", 148 /* csafe.defs.SHORT_STATUS_CMDS.GETSERIAL_CMD */, (data) => { return csafe.readAscii(data, 0, 9); });
+        csafe.registerStandardShortGet("getOdometer", 155 /* csafe.defs.SHORT_STATUS_CMDS.GETODOMETER_CMD */, (data) => { return { value: data.getUint32(0, true), unit: data.getUint8(4) }; });
+        csafe.registerStandardShortGet("getErrorCode", 156 /* csafe.defs.SHORT_STATUS_CMDS.GETERRORCODE_CMD */, (data) => { return data.getUint8(0) + (data.getUint8(1) << 8) + (data.getUint8(2) << 16); });
+        csafe.registerStandardShortGet("getProgram", 164 /* csafe.defs.SHORT_DATA_CMDS.GETPROGRAM_CMD */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardShortGet("getUserInfo", 171 /* csafe.defs.SHORT_DATA_CMDS.GETUSERINFO_CMD */, (data) => {
+            return {
+                weight: data.getUint16(0, true),
+                weightUnit: data.getUint8(2),
+                age: data.getUint8(3),
+                gender: data.getUint8(4)
+            };
+        });
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
 var ergometer;
@@ -2618,6 +2710,109 @@ var ergometer;
         csafe.registerStandardProprietarySetConfig("setWorkoutIntervalCount", 24 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_WORKOUTINTERVALCOUNT */, (params) => { return [params.value]; });
         csafe.registerStandardProprietaryGetConfig("getHardwareAddress", 130 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_HW_ADDRESS */, (data) => { return [data.getUint8(0), data.getUint8(1), data.getUint8(2), data.getUint8(3)]; });
         csafe.registerStandardProprietarySetConfigResponse("setAuthenticationPassword", 26 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_AUTHENPASSWORD */, (params) => { return params.hwAddress.slice(0, 4).concat(params.password.slice(0, 8)); }, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetConfig("getFirmwareVersion", 128 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_FW_VERSION */, (data) => { return csafe.readAscii(data, 0, 16); });
+        csafe.registerStandardProprietaryGetConfig("getHardwareVersion", 129 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_HW_VERSION */, (data) => { return csafe.readAscii(data, 0, 16); });
+        csafe.registerStandardProprietaryGetConfig("getDateTime", 133 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_DATETIME */, (data) => {
+            //the pm uses a 12 hour clock: hours 1-12 and a meridiem byte (0 AM, 1 PM)
+            var hours = data.getUint8(0) % 12 + (data.getUint8(2) ? 12 : 0);
+            return new Date(data.getUint16(5, false), data.getUint8(3) - 1, data.getUint8(4), hours, data.getUint8(1));
+        });
+        csafe.registerStandardProprietaryGetConfig("getScreenStateStatus", 134 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_SCREENSTATESTATUS */, (data) => { return { screenType: data.getUint8(0), screenValue: data.getUint8(1), status: data.getUint8(2) }; });
+        csafe.registerStandardProprietaryGetConfig("getHeartRateMonitor", 132 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_HRM */, (data) => { return { status: data.getUint8(0), manufacturerId: data.getUint8(1), deviceType: data.getUint8(2), deviceNumber: data.getUint16(3, false) }; });
+        csafe.registerStandardProprietaryGetConfig("getDisplayType", 138 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_DISPLAYTYPE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetConfig("getDisplayUnits", 139 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_DISPLAYUNITS */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetConfig("getLanguageType", 140 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_LANGUAGETYPE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetConfig("getOperationalState", 143 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_OPERATIONALSTATE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetConfig("getRowingState", 147 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_ROWINGSTATE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetConfig("getBatteryLevelPercent", 151 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_BATTERYLEVELPERCENT */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetConfig("getWorkoutDuration", 232 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_WORKOUTDURATION */, (data) => { return { durationType: data.getUint8(0), value: data.getUint32(1, false) }; });
+        csafe.registerStandardProprietaryGetConfig("getWorkOther", 233 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_WORKOTHER */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetConfig("getExtendedHeartRateMonitor", 234 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_EXTENDED_HRM */, (data) => { return { status: data.getUint8(0), manufacturerId: data.getUint8(1), deviceType: data.getUint8(2), deviceNumber: data.getUint32(3, false) }; });
+        csafe.registerStandardProprietaryGetConfig("getFlywheelSpeed", 236 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_FLYWHEELSPEED */, (data) => { return data.getUint16(0, false); });
+        csafe.registerStandardProprietaryGetConfig("getErgMachineType", 237 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_ERGMACHINETYPE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetData("getProjectedWorkTime", 161 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_PROJECTED_WORKTIME */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getTotalRestTime", 162 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_TOTAL_RESTTIME */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getTotalWorkDistance", 164 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_TOTAL_WORKDISTANCE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getProjectedWorkDistance", 165 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_PROJECTED_WORKDISTANCE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getTotalRestDistance", 167 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_TOTAL_RESTDISTANCE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getStroke500mPace", 168 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_STROKE_500MPACE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getStrokePower", 169 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_STROKE_POWER */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getStrokeCaloricBurnRate", 170 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_STROKE_CALORICBURNRATE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getSplitAvg500mPace", 171 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_SPLIT_AVG_500MPACE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getSplitAvgPower", 172 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_SPLIT_AVG_POWER */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getSplitAvgCaloricBurnRate", 173 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_SPLIT_AVG_CALORICBURNRATE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getSplitAvgCalories", 174 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_SPLIT_AVG_CALORIES */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getTotalAvg500mPace", 175 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_TOTAL_AVG_500MPACE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getTotalAvgPower", 176 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_TOTAL_AVG_POWER */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getTotalAvgCaloricBurnRate", 177 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_TOTAL_AVG_CALORICBURNRATE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getTotalAvgCalories", 178 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_TOTAL_AVG_CALORIES */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getSplitTime", 185 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_SPLITTIME */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getLastSplitTime", 186 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_LASTSPLITTIME */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getSplitDistance", 187 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_SPLITDISTANCE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getLastSplitDistance", 188 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_LASTSPLITDISTANCE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getLastRestDistance", 189 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_LASTRESTDISTANCE */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getTargetPaceTime", 190 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_TARGETPACETIME */, (data) => { return data.getUint32(0, false); });
+        csafe.registerStandardProprietaryGetData("getRestDistance", 166 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_RESTDISTANCE */, (data) => { return data.getUint16(0, false); });
+        csafe.registerStandardProprietaryGetData("getStrokeRate", 179 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_STROKERATE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetData("getSplitAvgStrokeRate", 180 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_SPLIT_AVG_STROKERATE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetData("getTotalAvgStrokeRate", 181 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_TOTAL_AVG_STROKERATE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetData("getAvgHeartRate", 182 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_AVG_HEARTRATE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetData("getEndingAvgHeartRate", 183 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_ENDING_AVG_HEARTRATE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetData("getRestAvgHeartRate", 184 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_REST_AVG_HEARTRATE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetData("getStrokeRateState", 192 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_STROKERATESTATE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetData("getHeartRateState", 195 /* csafe.defs.PM_SHORT_PULL_DATA_CMDS.PM_GET_HEARTRATESTATE */, (data) => { return data.getUint8(0); });
+        csafe.registerStandardProprietaryGetConfig("getUserIdString", 82 /* csafe.defs.PM_LONG_PULL_CFG_CMDS.PM_GET_USERIDSTRING */, (data) => { return csafe.readAscii(data, 0, 10); }, (params) => { return [params.userNumber]; });
+        csafe.registerStandardProprietaryGetConfig("getUserIdNumber", 84 /* csafe.defs.PM_LONG_PULL_CFG_CMDS.PM_GET_USER_ID */, (data) => { return { userNumber: data.getUint8(0), userId: data.getUint32(1, false) }; }, (params) => { return [params.userNumber]; });
+        csafe.registerStandardProprietaryGetConfig("getUserProfile", 85 /* csafe.defs.PM_LONG_PULL_CFG_CMDS.PM_GET_USER_PROFILE */, (data) => {
+            return {
+                userNumber: data.getUint8(0),
+                weight: data.getUint16(1, false),
+                dobDay: data.getUint8(3),
+                dobMonth: data.getUint8(4),
+                dobYear: data.getUint16(5, false),
+                gender: data.getUint8(7)
+            };
+        }, (params) => { return [params.userNumber]; });
+        csafe.registerStandardProprietaryGetData("getHeartbeatData", 108 /* csafe.defs.PM_LONG_PULL_DATA_CMDS.PM_GET_HEARTBEATDATA */, (data) => {
+            //byte 0 is the number of valid bytes, followed by the samples, least significant byte first
+            var bytesRead = Math.min(data.getUint8(0), data.byteLength - 1);
+            var result = [];
+            for (var i = 1; i + 1 <= bytesRead; i += 2)
+                result.push(data.getUint16(i, true));
+            return result;
+        }, (params) => { return [Math.min(params.blockLength || 32, 32)]; });
+        csafe.registerStandardProprietaryGetData("getUIEvents", 109 /* csafe.defs.PM_LONG_PULL_DATA_CMDS.PM_GET_UI_EVENTS */, (data) => { return data.getUint16(0, false); }, (params) => { return [0]; });
+        csafe.registerStandardProprietaryGetData("getGameScore", 120 /* csafe.defs.PM_LONG_PULL_DATA_CMDS.PM_GET_GAME_SCORE */, (data) => { return { gameId: data.getUint8(0), score: data.getUint16(1, false) }; }, (params) => { return [0]; });
+        csafe.registerStandardProprietarySetConfig("setDateTime", 34 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_DATETIME */, (params) => {
+            var d = params.value;
+            var hours = d.getHours() % 12;
+            if (hours === 0)
+                hours = 12; //the pm uses a 12 hour clock 1-12
+            return [hours, d.getMinutes(), d.getHours() >= 12 ? 1 : 0, d.getMonth() + 1, d.getDate()]
+                .concat(csafe.uint16ToBytesMSB(d.getFullYear()));
+        });
+        csafe.registerStandardProprietarySetConfig("setLanguageType", 35 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_LANGUAGETYPE */, (params) => { return [params.value]; });
+        csafe.registerStandardProprietarySetConfig("setScreenErrorMode", 39 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_SCREENERRORMODE */, (params) => { return [params.enabled ? 1 : 0]; });
+        csafe.registerStandardProprietarySetConfig("setUserIdNumber", 41 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_USER_ID */, (params) => { return [params.userNumber].concat(csafe.uint32ToBytesMSB(params.userId)); });
+        csafe.registerStandardProprietarySetConfig("setUserProfile", 42 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_USER_PROFILE */, (params) => {
+            return [params.userNumber]
+                .concat(csafe.uint16ToBytesMSB(params.weight))
+                .concat([params.dobDay, params.dobMonth])
+                .concat(csafe.uint16ToBytesMSB(params.dobYear))
+                .concat([params.gender]);
+        });
+        csafe.registerStandardProprietarySetData("setDisplayString", 53 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_DISPLAYSTRING */, (params) => { var text = (params.value || "").substr(0, 32); return csafe.asciiToBytes(text, text.length); });
+        csafe.registerStandardProprietarySetData("setGameParams", 56 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_GAMEPARAMS */, (params) => {
+            return [params.gameType]
+                .concat(csafe.uint32ToBytesMSB(params.workoutDuration))
+                .concat(csafe.uint32ToBytesMSB(params.splitDuration))
+                .concat(csafe.uint32ToBytesMSB(params.targetPaceTime))
+                .concat(csafe.uint32ToBytesMSB(params.targetAvgWatts))
+                .concat(csafe.uint32ToBytesMSB(params.targetCaloriesPerHour))
+                .concat([params.targetStrokeRate]);
+        });
+        csafe.registerStandardProprietarySetData("setExtendedHeartRateMonitor", 58 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_EXTENDED_HRM */, (params) => { return [params.manufacturerId, params.deviceType].concat(csafe.uint32ToBytesMSB(params.deviceNumber)); });
+        csafe.registerStandardProprietarySetData("setLedBacklight", 59 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_LEDBACKLIGHT */, (params) => { return [params.enabled ? 1 : 0, Math.max(0, Math.min(100, Math.round(params.intensity)))]; });
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -2728,6 +2923,13 @@ var ergometer;
             this._monitor.removeResponseBuffer(this);
         }
         processedBuffer() {
+            //commands answered by the status byte of the frame only (get status)
+            this._commands = this._commands.filter(command => {
+                if (!command.onFrameStatus)
+                    return true;
+                command.onFrameStatus(this.statusByte);
+                return false;
+            });
             this.removeRemainingCommands();
             this.remove();
             if (this._resolve)
@@ -2745,20 +2947,23 @@ var ergometer;
             if (this._monitor.logLevel == ergometer.LogLevel.trace)
                 this._monitor.traceInfo("received command:" + JSON.stringify(parsed));
             //check on all the commands which where send and
-            for (let i = 0; i < this._commands.length; i++) {
-                let command = this._commands[i];
-                if (command.command == parsed.command &&
-                    (command.detailCommand == parsed.detailCommand ||
-                        (!command.detailCommand && !parsed.detailCommand))) {
-                    if (command.onDataReceived) {
-                        var dataView = new DataView(parsed.data.buffer);
-                        this._monitor.traceInfo("call received");
-                        command.responseBuffer = this;
-                        command.onDataReceived(dataView);
-                    }
-                    this._commands.splice(i, 1); //remove the item from the send list
-                    break;
+            var index = this._commands.findIndex(command => command.command == parsed.command &&
+                (command.detailCommand == parsed.detailCommand ||
+                    (!command.detailCommand && !parsed.detailCommand)));
+            //PM5 quirk: a public command sent after a proprietary wrapper in the same frame is
+            //answered inside that wrapper, for example request 7f 02 b0 b3 94 gives
+            //7f 18 b0 04 .. b3 01 .. 94 09 <serial>. Match it with the waiting public command.
+            if (index < 0 && parsed.detailCommand >= ergometer.csafe.defs.CTRL_CMD_SHORT_MIN)
+                index = this._commands.findIndex(command => command.command == parsed.detailCommand && !command.detailCommand);
+            if (index >= 0) {
+                let command = this._commands[index];
+                if (command.onDataReceived) {
+                    var dataView = new DataView(parsed.data.buffer);
+                    this._monitor.traceInfo("call received");
+                    command.responseBuffer = this;
+                    command.onDataReceived(dataView);
                 }
+                this._commands.splice(index, 1); //remove the item from the send list
             }
         }
     }
@@ -2944,7 +3149,7 @@ var ergometer;
             this.sendCsafeCommands(sendData.commandArray)
                 .catch((e) => {
                 //When it could not be send remove it
-                this.removeResponseBuffer(waitBuffer);
+                waitBuffer.remove(); //also stops the time out timer
                 //send the error to all items
                 waitBuffer.removedWithError(e);
                 this.checkSendBufferAtEnd();
@@ -3131,7 +3336,7 @@ var ergometer;
                                 waitBuffer.remainingCommandBytes--;
                                 waitBuffer.detailCommand = currentByte;
                                 //the reply on a set command is only the command id, it has no length and no data (spec page 69-71)
-                                if (this.isDetailSetCommand(currentByte)) {
+                                if (this.isDetailSetCommand(waitBuffer.command, currentByte)) {
                                     waitBuffer.detailCommand = 0;
                                     waitBuffer.frameState = waitBuffer.remainingCommandBytes > 0 ? 4 /* FrameState.parseDetailCommand */ : 2 /* FrameState.parseCommand */;
                                     break;
@@ -3196,8 +3401,24 @@ var ergometer;
                 }
             }
         }
-        /** detail commands which only set a value: long push 0x00-0x4F and short push 0xD0-0xEF */
-        isDetailSetCommand(detailCommand) {
+        /**
+         * detail commands which only set a value: long push 0x00-0x4F and short push 0xD0-0xEF.
+         * The reply on these is only the command id without length and data.
+         * Within the proprietary get wrappers (GETPMCFG/GETPMDATA) everything is a get, also the
+         * 0xE8-0xEF range (workout duration, extended hrm, erg machine type ...).
+         * A few set commands do return data (spec: authentication result, bytes written).
+         */
+        isDetailSetCommand(command, detailCommand) {
+            if (command == 126 /* csafe.defs.PROPRIETARY_GET_CMDS.GETPMCFG_CMD */ ||
+                command == 127 /* csafe.defs.PROPRIETARY_GET_CMDS.GETPMDATA_CMD */)
+                return false;
+            if (detailCommand == 26 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_AUTHENPASSWORD */ &&
+                command == 118 /* csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMCFG_CMD */)
+                return false;
+            if ((detailCommand == 52 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_LOGCARDMEMORY */ ||
+                detailCommand == 54 /* csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_DISPLAYBITMAP */) &&
+                command == 119 /* csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMDATA_CMD */)
+                return false;
             return detailCommand < 0x50 || (detailCommand >= 0xD0 && detailCommand <= 0xEF);
         }
         getPacketSize() {

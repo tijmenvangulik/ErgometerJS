@@ -1,3 +1,18 @@
+- 1.7.0
+  * Many new csafe buffer commands, based on the Concept2 CSAFE specification (rev 0.25):
+    * Public: `getStatus`, `reset`, `goIdle`, `goHaveId`, `goInUse`, `goFinished`, `goReady`, `badId`, `getSerialNumber`, `getUserId`, `getUnits`, `getOdometer`, `getErrorCode`, `getProgram`, `getUserInfo`.
+    * Proprietary configuration: `getFirmwareVersion`, `getHardwareVersion`, `getDateTime`, `setDateTime`, `getScreenStateStatus`, `getDisplayType`, `getDisplayUnits`, `getLanguageType`, `setLanguageType`, `getOperationalState`, `getRowingState`, `getBatteryLevelPercent`, `getWorkoutDuration`, `getWorkOther`, `getFlywheelSpeed`, `getErgMachineType`, `setScreenErrorMode`.
+    * Proprietary workout data: projected/total/split/last-split times and distances, stroke/split/total average pace, power, calories and stroke rate, average heart rates, `getTargetPaceTime`, `getStrokeRateState`, `getHeartRateState`.
+    * Users, heart rate and games: `getUserIdString`, `getUserIdNumber`, `setUserIdNumber`, `getUserProfile`, `setUserProfile`, `getHeartRateMonitor`, `getExtendedHeartRateMonitor`, `setExtendedHeartRateMonitor`, `getHeartbeatData`, `getUIEvents`, `setGameParams`, `getGameScore`.
+    * Display: `setDisplayString` (experimental, the PM5 accepts it but no text is shown yet), `setLedBacklight`.
+  * Fix response parsing: proprietary get commands 0xE8-0xEF (like workout duration and erg machine type) were read as set commands without data, and the authentication result of `setAuthenticationPassword` was not read.
+  * Fix `getStatus`: the PM does not echo this command, the value is now read from the status byte of the response frame (new `onFrameStatus` option on raw commands).
+  * Fix merged frames: the PM5 answers a public command that follows a proprietary wrapper inside that wrapper (for example `getSerialNumber` after `getTotalAvgPower`). The response is now matched to the waiting public command.
+  * Fix: a buffer that could not be sent (for example too big for one Bluetooth packet) no longer logs a "buffer time out" error later.
+  * New `ScreenValueCsafe` enum with the CSAFE screen values (custom screen, main screen, redraw ...) for `setScreenState` with screen type `Csave`.
+  * `setDisplayString` only sends the given characters (no padding to 32), so up to 13 characters fit in one Bluetooth packet. `setGameParams` (29 bytes) does not fit in a Bluetooth packet and only works over USB.
+  * The proprietary distance values are in whole meters, times in 0.01 seconds (checked on a PM5).
+  * Demos: shared CSAFE command tests (`demos/shared/csafeTests.ts`) in the web usb debug and web bluetooth demo, with a trace log option.
 - 1.6.0
   * USB authentication: you can now unlock the full proprietary CSAFE command set over USB (and RS485) so setting workouts, intervals and targets works over USB, not only Bluetooth.
     * New `performanceMonitor.authenticate(password?)` on the USB monitor, which reads the hardware address and sends `CSAFE_PM_SET_AUTHENPASSWORD`.

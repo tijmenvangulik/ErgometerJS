@@ -20,6 +20,25 @@ on: <br>
 <br>
 <button id="StartScan">Start scan</button><br>
 <br>
+<h2>CSAFE command tests</h2>
+Over bluetooth the full proprietary command set is available without authentication.<br>
+Each command is sent in its own buffer. A request must fit in one 20 byte bluetooth packet.<br>
+<button id="testPublic">Public commands</button>
+<button id="testMonitorInfo">Monitor info</button>
+<button id="testWorkoutData">Workout data</button>
+<button id="testUsersHeartRate">Users / heart rate / games</button>
+<button id="testMerged">Merged frame (several gets in one buffer)</button><br>
+<button id="testProprietaryWorkout">Proprietary workout 2000m/500m</button>
+<button id="testSetDateTime">Set date/time to now</button>
+<input id="displayText" type="text" size="13" maxlength="13" value="Hello BLE">
+<button id="testDisplayString">Show text (max 13)</button>
+<button id="testMainScreen">Main screen</button>
+<button id="testLedOn">LED backlight 100%</button>
+<button id="testLedOff">LED backlight off</button>
+<button id="testTooBig">Request too big (expect error)</button>
+<button id="clearCsafe">Clear</button>
+<label><input id="trace" type="checkbox"> Trace log (raw bytes, shown below)</label>
+<div id="csafe" style="max-height:400px;overflow:auto;border:1px solid #ccc;padding:4px;font-family:monospace;font-size:12px"></div>
 <h2>Info</h2>
 
 

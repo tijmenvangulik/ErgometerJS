@@ -126,6 +126,12 @@ namespace ergometer {
             this._monitor.removeResponseBuffer(this);  
         }
         public processedBuffer() {
+            //commands answered by the status byte of the frame only (get status)
+            this._commands=this._commands.filter(command=>{
+                if (!command.onFrameStatus) return true;
+                command.onFrameStatus(this.statusByte);
+                return false;
+            });
             this.removeRemainingCommands();
             this.remove();
             if (this._resolve)
@@ -143,23 +149,25 @@ namespace ergometer {
             if (this._monitor.logLevel==LogLevel.trace)
               this._monitor.traceInfo("received command:"+JSON.stringify(parsed));
             //check on all the commands which where send and
-            for(let i=0;i<this._commands.length;i++){
-                let command=this._commands[i];
-                if (command.command==parsed.command &&
+            var index=this._commands.findIndex(command=>
+                command.command==parsed.command &&
                     ( command.detailCommand==parsed.detailCommand ||
-                      (!command.detailCommand && !parsed.detailCommand) )
-                    )  {
-                    if (command.onDataReceived) {
-                        var dataView= new DataView(parsed.data.buffer);
-                        this._monitor.traceInfo("call received");
-                        command.responseBuffer=this;
-                        command.onDataReceived(dataView);
-                    }
-                    
-                    this._commands.splice(i,1);//remove the item from the send list
-                    break;
+                      (!command.detailCommand && !parsed.detailCommand) ));
+            //PM5 quirk: a public command sent after a proprietary wrapper in the same frame is
+            //answered inside that wrapper, for example request 7f 02 b0 b3 94 gives
+            //7f 18 b0 04 .. b3 01 .. 94 09 <serial>. Match it with the waiting public command.
+            if (index<0 && parsed.detailCommand>=csafe.defs.CTRL_CMD_SHORT_MIN)
+                index=this._commands.findIndex(command=>
+                    command.command==parsed.detailCommand && !command.detailCommand);
+            if (index>=0) {
+                let command=this._commands[index];
+                if (command.onDataReceived) {
+                    var dataView= new DataView(parsed.data.buffer);
+                    this._monitor.traceInfo("call received");
+                    command.responseBuffer=this;
+                    command.onDataReceived(dataView);
                 }
-
+                this._commands.splice(index,1);//remove the item from the send list
             }
         }
     }
@@ -377,7 +385,7 @@ namespace ergometer {
             this.sendCsafeCommands(sendData.commandArray)
             .catch((e)=>{ 
                 //When it could not be send remove it
-                this.removeResponseBuffer(waitBuffer); 
+                waitBuffer.remove(); //also stops the time out timer
                 //send the error to all items
                 waitBuffer.removedWithError(e);
                 this.checkSendBufferAtEnd();
@@ -585,7 +593,7 @@ namespace ergometer {
                                 waitBuffer.remainingCommandBytes--;
                                 waitBuffer.detailCommand=  currentByte;
                                 //the reply on a set command is only the command id, it has no length and no data (spec page 69-71)
-                                if (this.isDetailSetCommand(currentByte)) {
+                                if (this.isDetailSetCommand(waitBuffer.command,currentByte)) {
                                     waitBuffer.detailCommand=0;
                                     waitBuffer.frameState= waitBuffer.remainingCommandBytes>0?FrameState.parseDetailCommand:FrameState.parseCommand;
                                     break;
@@ -657,8 +665,24 @@ namespace ergometer {
 
             }
         }
-        /** detail commands which only set a value: long push 0x00-0x4F and short push 0xD0-0xEF */
-        protected isDetailSetCommand(detailCommand : number) : boolean {
+        /**
+         * detail commands which only set a value: long push 0x00-0x4F and short push 0xD0-0xEF.
+         * The reply on these is only the command id without length and data.
+         * Within the proprietary get wrappers (GETPMCFG/GETPMDATA) everything is a get, also the
+         * 0xE8-0xEF range (workout duration, extended hrm, erg machine type ...).
+         * A few set commands do return data (spec: authentication result, bytes written).
+         */
+        protected isDetailSetCommand(command : number, detailCommand : number) : boolean {
+            if (command==csafe.defs.PROPRIETARY_GET_CMDS.GETPMCFG_CMD ||
+                command==csafe.defs.PROPRIETARY_GET_CMDS.GETPMDATA_CMD)
+                return false;
+            if (detailCommand==csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_AUTHENPASSWORD &&
+                command==csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMCFG_CMD)
+                return false;
+            if ((detailCommand==csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_LOGCARDMEMORY ||
+                 detailCommand==csafe.defs.PM_LONG_PUSH_DATA_CMDS.PM_SET_DISPLAYBITMAP) &&
+                command==csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMDATA_CMD)
+                return false;
             return detailCommand<0x50 || (detailCommand>=0xD0 && detailCommand<=0xEF);
         }
         protected getPacketSize() : number {

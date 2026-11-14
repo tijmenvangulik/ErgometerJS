@@ -23,6 +23,26 @@ on: <br>
 </button> 
 <br>
 <button id="testWorkout">Set a workout</button><br>
+
+<h2>CSAFE command tests</h2>
+Each command is sent in its own buffer, the result or error is shown below.<br>
+Proprietary commands over USB need authentication first.<br>
+<input id="authPassword" type="password" size="20" placeholder="16 hex chars password">
+<button id="authenticate">Authenticate</button><br>
+<button id="testPublic">Public commands</button>
+<button id="testMonitorInfo">Monitor info</button>
+<button id="testWorkoutData">Workout data</button>
+<button id="testUsersHeartRate">Users / heart rate / games</button>
+<button id="testMerged">Merged frame (several gets in one buffer)</button>
+<button id="testProprietaryWorkout">Proprietary workout 2000m/500m</button><br>
+<button id="testSetDateTime">Set date/time to now</button>
+<input id="displayText" type="text" size="32" maxlength="32" value="Hello from web usb">
+<button id="testDisplayString">Show text</button>
+<button id="testMainScreen">Main screen</button>
+<button id="testLedOn">LED backlight 100%</button>
+<button id="testLedOff">LED backlight off</button>
+<button id="clearLog">Clear log</button>
+<label><input id="trace" type="checkbox"> Trace log (raw bytes)</label>
 <h2>Info</h2>
 
 
