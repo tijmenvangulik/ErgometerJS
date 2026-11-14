@@ -1,3 +1,11 @@
+- 1.6.0
+  * USB authentication: you can now unlock the full proprietary CSAFE command set over USB (and RS485) so setting workouts, intervals and targets works over USB, not only Bluetooth.
+    * New `performanceMonitor.authenticate(password?)` on the USB monitor, which reads the hardware address and sends `CSAFE_PM_SET_AUTHENPASSWORD`.
+    * New `authenticationPassword` property (8 byte array or 16 character hex string); when set it authenticates automatically on connect.
+    * New `authenticated` property.
+    * New csafe buffer commands `getHardwareAddress` and `setAuthenticationPassword`.
+  * The 8 byte password itself must be obtained from Concept2 (available to qualified developers). Bluetooth does not require authentication.
+  * Backwards compatible: without a password, USB behaves exactly as before.
 - 1.5.5
   * Fix outgoing frames: the checksum is now byte-stuffed when it has the value of a frame flag (0xF0-0xF3).
   * Fix Bluetooth data: 16-bit and 32-bit fields are now read in the correct byte order, so values like speed, rest distance, drive force and calories change to the correct numbers.

@@ -146,4 +146,38 @@ registerStandardProprietarySetConfig<ICommandsWorkoutIntervalCountParams>("setWo
     csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_WORKOUTINTERVALCOUNT,
     (params) => { return [params.value]; });
 
+
+//----------------------------- get hardware address ------------------------------------
+export interface ICommandGetHardwareAddressParams extends ICommandParamsBase {
+    onDataReceived: (hwAddress: number[]) => void;
+}
+export interface IBuffer {
+    //read the 4 byte hardware address of the PM (most significant byte first).
+    //this is needed as input for the usb authentication (setAuthenticationPassword)
+    getHardwareAddress(params: ICommandGetHardwareAddressParams): IBuffer;
+}
+
+registerStandardProprietaryGetConfig<ICommandGetHardwareAddressParams, number[]>("getHardwareAddress",
+    csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_HW_ADDRESS,
+    (data) => { return [data.getUint8(0), data.getUint8(1), data.getUint8(2), data.getUint8(3)]; });
+
+
+//----------------------------- set authentication password ------------------------------------
+export interface ICommandSetAuthenticationPasswordParams extends ICommandParamsBase {
+    hwAddress: number[];   //4 bytes, most significant byte first, as returned by getHardwareAddress
+    password: number[];    //8 bytes, most significant byte first, provided by Concept2 to qualified developers
+    onDataReceived?: (result: number) => void;  //the result byte, 0 means Ok
+}
+export interface IBuffer {
+    //Authenticate the host to the PM so the full proprietary CSAFE command set becomes
+    //available over usb (and rs485). Bluetooth does not require this.
+    //The 8 byte password is the authenticating information that must be obtained from Concept2.
+    setAuthenticationPassword(params: ICommandSetAuthenticationPasswordParams): IBuffer;
+}
+
+registerStandardProprietarySetConfigResponse<ICommandSetAuthenticationPasswordParams, number>("setAuthenticationPassword",
+    csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_AUTHENPASSWORD,
+    (params) => { return params.hwAddress.slice(0, 4).concat(params.password.slice(0, 8)); },
+    (data) => { return data.getUint8(0); });
+
 }

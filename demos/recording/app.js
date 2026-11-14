@@ -2268,6 +2268,25 @@ var ergometer;
             });
         }
         csafe.registerStandardProprietarySetData = registerStandardProprietarySetData;
+        //Proprietary Long Set Configuration Command which also reads the response (result) byte
+        //needed for commands like the usb authentication which return a result
+        function registerStandardProprietarySetConfigResponse(functionName, command, setParams, converter) {
+            csafe.commandManager.register((buffer, monitor) => {
+                buffer[functionName] = function (params) {
+                    buffer.addRawCommand({
+                        waitForResponse: true,
+                        command: 118 /* csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMCFG_CMD */,
+                        detailCommand: command,
+                        data: setParams(params),
+                        onDataReceived: (data) => { if (params.onDataReceived)
+                            params.onDataReceived(converter(data)); },
+                        onError: params.onError
+                    });
+                    return buffer;
+                };
+            });
+        }
+        csafe.registerStandardProprietarySetConfigResponse = registerStandardProprietarySetConfigResponse;
         //hoofdstuk C2 Proprietary Short Get Configuration
         function registerStandardProprietaryGetConfig(functionName, detailCommand, converter) {
             csafe.commandManager.register((buffer, monitor) => {
@@ -2597,6 +2616,8 @@ var ergometer;
         csafe.registerStandardProprietarySetConfig("setTargetCaloriesPerHour", 22 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_TARGETCALSPERHR */, (params) => { return [ergometer.utils.getByte(params.value, 1), ergometer.utils.getByte(params.value, 0)]; });
         csafe.registerStandardProprietarySetConfig("setIntervalType", 23 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_INTERVALTYPE */, (params) => { return [params.value]; });
         csafe.registerStandardProprietarySetConfig("setWorkoutIntervalCount", 24 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_WORKOUTINTERVALCOUNT */, (params) => { return [params.value]; });
+        csafe.registerStandardProprietaryGetConfig("getHardwareAddress", 130 /* csafe.defs.PM_SHORT_PULL_CFG_CMDS.PM_GET_HW_ADDRESS */, (data) => { return [data.getUint8(0), data.getUint8(1), data.getUint8(2), data.getUint8(3)]; });
+        csafe.registerStandardProprietarySetConfigResponse("setAuthenticationPassword", 26 /* csafe.defs.PM_LONG_PUSH_CFG_CMDS.PM_SET_AUTHENPASSWORD */, (params) => { return params.hwAddress.slice(0, 4).concat(params.password.slice(0, 8)); }, (data) => { return data.getUint8(0); });
     })(csafe = ergometer.csafe || (ergometer.csafe = {}));
 })(ergometer || (ergometer = {}));
 /**
@@ -3303,6 +3324,9 @@ var ergometer;
             this._trainingData = new TrainingData();
             this._lastTrainingTime = new Date().getTime();
             this._lastLowResUpdate = null;
+            //usb authentication (needed to unlock the full proprietary command set over usb)
+            this._authenticationPassword = null;
+            this._authenticated = false;
             this._autoUpdating = false;
             this._startPhaseTime = 0;
         }
@@ -3459,8 +3483,94 @@ var ergometer;
             result.then(() => {
                 this.changeConnectionState(ergometer.MonitorConnectionState.connected);
                 this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
+                //when a password was set, authenticate automatically so the proprietary
+                //commands become available. Errors are reported but do not break the
+                //connection, the public commands keep working.
+                if (this._authenticationPassword)
+                    this.authenticate().catch((e) => this.handleError("usb authentication failed: " + e));
             });
             return result;
+        }
+        /**
+         * The 8 byte authentication password provided by Concept2 to qualified developers.
+         * You can pass it as a byte array (8 numbers) or as a 16 character hex string.
+         * When set before connecting, authentication runs automatically on connect.
+         */
+        get authenticationPassword() {
+            return this._authenticationPassword;
+        }
+        set authenticationPassword(value) {
+            this._authenticationPassword = this.normalizeAuthenticationPassword(value);
+        }
+        /** true when the host has successfully authenticated to the PM over usb */
+        get authenticated() {
+            return this._authenticated;
+        }
+        normalizeAuthenticationPassword(password) {
+            if (!password)
+                return null;
+            var bytes;
+            if (typeof password === "string") {
+                var arr = ergometer.utils.hexStringToTypedArray(password);
+                bytes = [];
+                for (let i = 0; i < arr.length; i++)
+                    bytes.push(arr[i]);
+            }
+            else
+                bytes = password.slice(0);
+            if (bytes.length !== 8)
+                throw "authentication password must be 8 bytes (16 hex characters)";
+            return bytes;
+        }
+        /**
+         * Authenticate the host to the PM so the full proprietary CSAFE command set
+         * (setting workouts, intervals, targets, ...) becomes available over usb.
+         * Reads the hardware address from the PM and sends it together with the password.
+         * Bluetooth does not need this.
+         *
+         * @param password optional 8 byte password or 16 character hex string. When omitted the
+         *                 password set through the authenticationPassword property is used.
+         * @returns a promise that resolves to true when authentication succeeded.
+         */
+        authenticate(password) {
+            var pw = (password != null) ? this.normalizeAuthenticationPassword(password) : this._authenticationPassword;
+            if (!pw)
+                return Promise.reject("no authentication password set");
+            if (this.connectionState != ergometer.MonitorConnectionState.readyForCommunication)
+                return Promise.reject("can not authenticate, not connected");
+            this._authenticationPassword = pw;
+            this._authenticated = false;
+            return new Promise((resolve, reject) => {
+                var hwAddress = null;
+                this.newCsafeBuffer()
+                    .getHardwareAddress({
+                    onDataReceived: (addr) => { hwAddress = addr; }
+                })
+                    .send()
+                    .then(() => {
+                    if (!hwAddress || hwAddress.length < 4) {
+                        reject("could not read the hardware address from the monitor");
+                        return null;
+                    }
+                    var result = -1;
+                    return this.newCsafeBuffer()
+                        .setAuthenticationPassword({
+                        hwAddress: hwAddress,
+                        password: pw,
+                        onDataReceived: (r) => { result = r; }
+                    })
+                        .send()
+                        .then(() => {
+                        //0 means Ok, see the previous frame status codes in the csafe spec
+                        this._authenticated = (result === 0);
+                        if (this._authenticated)
+                            resolve(true);
+                        else
+                            reject("authentication rejected by the monitor, result=" + result);
+                    });
+                })
+                    .catch(reject);
+            });
         }
         getPacketSize() {
             return ergometer.usb.USB_CSAVE_SIZE - 1;

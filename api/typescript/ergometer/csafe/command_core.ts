@@ -166,7 +166,23 @@ namespace ergometer.csafe {
         })
     }
 
-    
+    //Proprietary Long Set Configuration Command which also reads the response (result) byte
+    //needed for commands like the usb authentication which return a result
+    export function registerStandardProprietarySetConfigResponse<T extends ICommandParamsBase,U>(functionName :string , command : number, setParams : (params : T)=> number[], converter : (data : DataView)=> U) {
+        commandManager.register( (buffer : IBuffer,monitor : PerformanceMonitorBase) =>{
+            buffer[functionName]= function (params : T) : IBuffer {
+                buffer.addRawCommand({
+                    waitForResponse:true,
+                    command : csafe.defs.LONG_PMPROPRIETARY_CMDS.SETPMCFG_CMD ,
+                    detailCommand: command,
+                    data: setParams(params),
+                    onDataReceived : (data : DataView)=>{ if (params.onDataReceived) params.onDataReceived(<U>converter(data)) }  ,
+                    onError:params.onError
+                });
+                return buffer;
+            }
+        })
+    }
 
     //hoofdstuk C2 Proprietary Short Get Configuration
 
