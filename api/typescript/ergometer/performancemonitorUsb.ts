@@ -365,8 +365,8 @@ namespace ergometer {
                             })
                             .send()
                             .then(()=>{
-                                //0 means Ok, see the previous frame status codes in the csafe spec
-                                this._authenticated = (result===0);
+                                //1 means success and 0 failure (C2 Host Authentication Definition)
+                                this._authenticated = (result===1);
                                 if (this._authenticated) resolve(true);
                                 else reject("authentication rejected by the monitor, result="+result);
                             });

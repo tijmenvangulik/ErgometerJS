@@ -1,3 +1,5 @@
+- 1.7.1
+  * Fix usb authentication: the monitor answers 1 for success and 0 for failure (C2 Host Authentication Definition). `authenticate()` treated 0 as success, so an accepted password was reported as rejected.
 - 1.7.0
   * Many new csafe buffer commands, based on the Concept2 CSAFE specification (rev 0.25):
     * Public: `getStatus`, `reset`, `goIdle`, `goHaveId`, `goInUse`, `goFinished`, `goReady`, `badId`, `getSerialNumber`, `getUserId`, `getUnits`, `getOdometer`, `getErrorCode`, `getProgram`, `getUserInfo`.

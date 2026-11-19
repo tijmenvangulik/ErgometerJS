@@ -355,7 +355,7 @@ await this.performanceMonitor.newCsafeBuffer()
 
 The following examples work over Bluetooth without any extra steps. Bluetooth always has access to the full proprietary command set.
 
-Over USB (and RS485) the full proprietary command set is locked until the host authenticates. You need an 8 byte authentication password, which Concept2 makes available to qualified developers (contact Concept2 to request it). Once you have the password, authenticate like this:
+Over USB (and RS485) the full proprietary command set is locked until the host authenticates. You need the 8 byte authentication password of the monitor. Each monitor has its own password, calculated from its hardware address (`getHardwareAddress`); Concept2 makes the way to calculate it available to qualified developers (contact Concept2 to request it). Keep that calculation confidential, for example on a server. Once you have the password, authenticate like this:
 
 ```ts
 // as a 16 character hex string, or as an array of 8 bytes
@@ -367,7 +367,7 @@ const ok = await performanceMonitor.authenticate("0011223344556677");
 console.log("authenticated:", ok, performanceMonitor.authenticated);
 ```
 
-`authenticate()` reads the monitor's hardware address (`getHardwareAddress`) and sends it together with the password (`setAuthenticationPassword`, `CSAFE_PM_SET_AUTHENPASSWORD`). After it succeeds, all the proprietary workout commands below also work over USB. If no password is set, USB keeps working for the public commands exactly as before.
+`authenticate()` reads the monitor's hardware address (`getHardwareAddress`) and sends it together with the password (`setAuthenticationPassword`, `CSAFE_PM_SET_AUTHENPASSWORD`). The monitor answers 1 when the password is accepted. After it succeeds, all the proprietary workout commands below also work over USB. A monitor locks again after it was asleep, so authenticate again after a reconnect. If no password is set, USB keeps working for the public commands exactly as before.
 
 ##### Configure fixe time
  

@@ -167,7 +167,7 @@ registerStandardProprietaryGetConfig<ICommandGetHardwareAddressParams, number[]>
 export interface ICommandSetAuthenticationPasswordParams extends ICommandParamsBase {
     hwAddress: number[];   //4 bytes, most significant byte first, as returned by getHardwareAddress
     password: number[];    //8 bytes, most significant byte first, provided by Concept2 to qualified developers
-    onDataReceived?: (result: number) => void;  //the result byte, 0 means Ok
+    onDataReceived?: (result: number) => void;  //the result byte, 1 means success, 0 failure
 }
 export interface IBuffer {
     //Authenticate the host to the PM so the full proprietary CSAFE command set becomes
