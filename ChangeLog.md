@@ -1,3 +1,6 @@
+- 1.7.2
+  * Breaking: removed `authenticate()`, `authenticationPassword` and `authenticated` from the monitor classes, and the automatic authentication on connect. Authenticate with the csafe buffer commands `getHardwareAddress` and `setAuthenticationPassword` (see the README), they work over USB and Bluetooth.
+  * Demos: the web usb debug and web bluetooth demo authenticate with these csafe buffer commands (password field and Authenticate button).
 - 1.7.1
   * Fix usb authentication: the monitor answers 1 for success and 0 for failure (C2 Host Authentication Definition). `authenticate()` treated 0 as success, so an accepted password was reported as rejected.
 - 1.7.0

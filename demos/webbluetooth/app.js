@@ -12,6 +12,46 @@ class CsafeTests {
         this.monitor = monitor;
         this.log = log;
         this.isBluetooth = isBluetooth;
+        /** true after the monitor accepted the password, reset when the connection changes */
+        this.authenticated = false;
+        //the monitor locks again after a reconnect
+        monitor.connectionStateChangedEvent.sub(this, () => { this.authenticated = false; });
+    }
+    /**
+     * Authenticate with the csafe buffer commands, the same way an app does it:
+     * read the hardware address, then send it together with the 8 byte password.
+     * The monitor answers 1 when the password is accepted (C2 Host Authentication Definition).
+     * Over bluetooth the request is 19 bytes, it fits in one 20 byte packet unless byte stuffing makes it longer.
+     */
+    authenticate(passwordHex) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const password = [];
+            for (let i = 0; i < passwordHex.length; i += 2)
+                password.push(parseInt(passwordHex.substr(i, 2), 16));
+            if (password.length != 8 || password.some(isNaN)) {
+                this.log("authenticate: the password must be 16 hex characters");
+                return;
+            }
+            try {
+                let hwAddress = null;
+                yield this.monitor.newCsafeBuffer()
+                    .getHardwareAddress({ onDataReceived: (value) => hwAddress = value })
+                    .send();
+                if (!hwAddress) {
+                    this.log("authenticate: could not read the hardware address");
+                    return;
+                }
+                let result = null;
+                yield this.monitor.newCsafeBuffer()
+                    .setAuthenticationPassword({ hwAddress: hwAddress.slice(0, 4), password: password, onDataReceived: (value) => result = value })
+                    .send();
+                this.authenticated = (result === 1);
+                this.log(`authenticate: ${this.authenticated ? "success" : "rejected by the monitor, result=" + result}`);
+            }
+            catch (e) {
+                this.log(`authenticate: ERROR ${e}`);
+            }
+        });
     }
     run(title, tests) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -20,7 +60,7 @@ class CsafeTests {
                 return;
             }
             this.log(`===== ${title} =====`);
-            if (!this.isBluetooth && this.monitor.authenticated === false)
+            if (!this.isBluetooth && !this.authenticated)
                 this.log("not authenticated: over usb most proprietary commands (0x7E/0x7F) are answered without data");
             for (const [name, build] of tests) {
                 let received = false;
@@ -278,6 +318,7 @@ class Demo {
         }
         //csafe command tests, shared with the web usb debug demo (see demos/shared/csafeTests.ts)
         this._tests = new CsafeTests(this.performanceMonitor, (text) => this.showCsafe(text), true);
+        $("#authenticate").click(() => this.authenticate());
         $("#testPublic").click(() => this._tests.publicCommands());
         $("#testMonitorInfo").click(() => this._tests.monitorInfo());
         $("#testWorkoutData").click(() => this._tests.workoutData());
@@ -294,6 +335,10 @@ class Demo {
         $("#trace").change(() => {
             this.performanceMonitor.logLevel = $("#trace").is(":checked") ? ergometer.LogLevel.trace : ergometer.LogLevel.error;
         });
+    }
+    authenticate() {
+        //uses the csafe buffer commands getHardwareAddress and setAuthenticationPassword (see demos/shared/csafeTests.ts)
+        this._tests.authenticate(String($("#authPassword").val() || "").trim());
     }
     /** csafe test results, newest on top */
     showCsafe(text) {

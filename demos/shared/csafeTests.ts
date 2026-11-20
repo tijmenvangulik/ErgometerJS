@@ -15,6 +15,45 @@ class CsafeTests {
     constructor(private monitor : ergometer.PerformanceMonitorBase,
                 private log : (text : string)=>void,
                 private isBluetooth : boolean) {
+        //the monitor locks again after a reconnect
+        monitor.connectionStateChangedEvent.sub(this,()=>{ this.authenticated=false; });
+    }
+
+    /** true after the monitor accepted the password, reset when the connection changes */
+    public authenticated=false;
+
+    /**
+     * Authenticate with the csafe buffer commands, the same way an app does it:
+     * read the hardware address, then send it together with the 8 byte password.
+     * The monitor answers 1 when the password is accepted (C2 Host Authentication Definition).
+     * Over bluetooth the request is 19 bytes, it fits in one 20 byte packet unless byte stuffing makes it longer.
+     */
+    public async authenticate(passwordHex : string) {
+        const password : number[]=[];
+        for (let i=0;i<passwordHex.length;i+=2) password.push(parseInt(passwordHex.substr(i,2),16));
+        if (password.length!=8 || password.some(isNaN)) {
+            this.log("authenticate: the password must be 16 hex characters");
+            return;
+        }
+        try {
+            let hwAddress : number[]=null;
+            await this.monitor.newCsafeBuffer()
+                .getHardwareAddress({onDataReceived:(value : number[])=>hwAddress=value})
+                .send();
+            if (!hwAddress) {
+                this.log("authenticate: could not read the hardware address");
+                return;
+            }
+            let result : number=null;
+            await this.monitor.newCsafeBuffer()
+                .setAuthenticationPassword({hwAddress:hwAddress.slice(0,4),password:password,onDataReceived:(value : number)=>result=value})
+                .send();
+            this.authenticated=(result===1);
+            this.log(`authenticate: ${this.authenticated?"success":"rejected by the monitor, result="+result}`);
+        }
+        catch (e) {
+            this.log(`authenticate: ERROR ${e}`);
+        }
     }
 
     public async run(title : string, tests : CsafeTest[]) {
@@ -23,7 +62,7 @@ class CsafeTests {
             return;
         }
         this.log(`===== ${title} =====`);
-        if (!this.isBluetooth && (<any>this.monitor).authenticated===false)
+        if (!this.isBluetooth && !this.authenticated)
             this.log("not authenticated: over usb most proprietary commands (0x7E/0x7F) are answered without data");
         for (const [name,build] of tests) {
             let received=false;

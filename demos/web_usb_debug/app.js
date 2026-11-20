@@ -3626,9 +3626,6 @@ var ergometer;
             this._trainingData = new TrainingData();
             this._lastTrainingTime = new Date().getTime();
             this._lastLowResUpdate = null;
-            //usb authentication (needed to unlock the full proprietary command set over usb)
-            this._authenticationPassword = null;
-            this._authenticated = false;
             this._autoUpdating = false;
             this._startPhaseTime = 0;
         }
@@ -3798,94 +3795,8 @@ var ergometer;
             result.then(() => {
                 this.changeConnectionState(ergometer.MonitorConnectionState.connected);
                 this.changeConnectionState(ergometer.MonitorConnectionState.readyForCommunication);
-                //when a password was set, authenticate automatically so the proprietary
-                //commands become available. Errors are reported but do not break the
-                //connection, the public commands keep working.
-                if (this._authenticationPassword)
-                    this.authenticate().catch((e) => this.handleError("usb authentication failed: " + e));
             });
             return result;
-        }
-        /**
-         * The 8 byte authentication password provided by Concept2 to qualified developers.
-         * You can pass it as a byte array (8 numbers) or as a 16 character hex string.
-         * When set before connecting, authentication runs automatically on connect.
-         */
-        get authenticationPassword() {
-            return this._authenticationPassword;
-        }
-        set authenticationPassword(value) {
-            this._authenticationPassword = this.normalizeAuthenticationPassword(value);
-        }
-        /** true when the host has successfully authenticated to the PM over usb */
-        get authenticated() {
-            return this._authenticated;
-        }
-        normalizeAuthenticationPassword(password) {
-            if (!password)
-                return null;
-            var bytes;
-            if (typeof password === "string") {
-                var arr = ergometer.utils.hexStringToTypedArray(password);
-                bytes = [];
-                for (let i = 0; i < arr.length; i++)
-                    bytes.push(arr[i]);
-            }
-            else
-                bytes = password.slice(0);
-            if (bytes.length !== 8)
-                throw "authentication password must be 8 bytes (16 hex characters)";
-            return bytes;
-        }
-        /**
-         * Authenticate the host to the PM so the full proprietary CSAFE command set
-         * (setting workouts, intervals, targets, ...) becomes available over usb.
-         * Reads the hardware address from the PM and sends it together with the password.
-         * Bluetooth does not need this.
-         *
-         * @param password optional 8 byte password or 16 character hex string. When omitted the
-         *                 password set through the authenticationPassword property is used.
-         * @returns a promise that resolves to true when authentication succeeded.
-         */
-        authenticate(password) {
-            var pw = (password != null) ? this.normalizeAuthenticationPassword(password) : this._authenticationPassword;
-            if (!pw)
-                return Promise.reject("no authentication password set");
-            if (this.connectionState != ergometer.MonitorConnectionState.readyForCommunication)
-                return Promise.reject("can not authenticate, not connected");
-            this._authenticationPassword = pw;
-            this._authenticated = false;
-            return new Promise((resolve, reject) => {
-                var hwAddress = null;
-                this.newCsafeBuffer()
-                    .getHardwareAddress({
-                    onDataReceived: (addr) => { hwAddress = addr; }
-                })
-                    .send()
-                    .then(() => {
-                    if (!hwAddress || hwAddress.length < 4) {
-                        reject("could not read the hardware address from the monitor");
-                        return null;
-                    }
-                    var result = -1;
-                    return this.newCsafeBuffer()
-                        .setAuthenticationPassword({
-                        hwAddress: hwAddress,
-                        password: pw,
-                        onDataReceived: (r) => { result = r; }
-                    })
-                        .send()
-                        .then(() => {
-                        //0 means Ok, see the previous frame status codes in the csafe spec
-                        this._authenticated = (result === 0);
-                        if (this._authenticated)
-                            resolve(true);
-                        else
-                            reject("authentication rejected by the monitor, result=" + result);
-                    });
-                })
-                    .catch(reject);
-            });
         }
         getPacketSize() {
             return ergometer.usb.USB_CSAVE_SIZE - 1;
@@ -5801,6 +5712,46 @@ class CsafeTests {
         this.monitor = monitor;
         this.log = log;
         this.isBluetooth = isBluetooth;
+        /** true after the monitor accepted the password, reset when the connection changes */
+        this.authenticated = false;
+        //the monitor locks again after a reconnect
+        monitor.connectionStateChangedEvent.sub(this, () => { this.authenticated = false; });
+    }
+    /**
+     * Authenticate with the csafe buffer commands, the same way an app does it:
+     * read the hardware address, then send it together with the 8 byte password.
+     * The monitor answers 1 when the password is accepted (C2 Host Authentication Definition).
+     * Over bluetooth the request is 19 bytes, it fits in one 20 byte packet unless byte stuffing makes it longer.
+     */
+    authenticate(passwordHex) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const password = [];
+            for (let i = 0; i < passwordHex.length; i += 2)
+                password.push(parseInt(passwordHex.substr(i, 2), 16));
+            if (password.length != 8 || password.some(isNaN)) {
+                this.log("authenticate: the password must be 16 hex characters");
+                return;
+            }
+            try {
+                let hwAddress = null;
+                yield this.monitor.newCsafeBuffer()
+                    .getHardwareAddress({ onDataReceived: (value) => hwAddress = value })
+                    .send();
+                if (!hwAddress) {
+                    this.log("authenticate: could not read the hardware address");
+                    return;
+                }
+                let result = null;
+                yield this.monitor.newCsafeBuffer()
+                    .setAuthenticationPassword({ hwAddress: hwAddress.slice(0, 4), password: password, onDataReceived: (value) => result = value })
+                    .send();
+                this.authenticated = (result === 1);
+                this.log(`authenticate: ${this.authenticated ? "success" : "rejected by the monitor, result=" + result}`);
+            }
+            catch (e) {
+                this.log(`authenticate: ERROR ${e}`);
+            }
+        });
     }
     run(title, tests) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -5809,7 +5760,7 @@ class CsafeTests {
                 return;
             }
             this.log(`===== ${title} =====`);
-            if (!this.isBluetooth && this.monitor.authenticated === false)
+            if (!this.isBluetooth && !this.authenticated)
                 this.log("not authenticated: over usb most proprietary commands (0x7E/0x7F) are answered without data");
             for (const [name, build] of tests) {
                 let received = false;
@@ -6090,10 +6041,8 @@ class Demo {
         });
     }
     authenticate() {
-        const password = String($("#authPassword").val() || "").trim();
-        this.performanceMonitor.authenticate(password)
-            .then((ok) => this.showData(`authenticate: ${ok ? "success" : "failed"}`))
-            .catch((e) => this.showData(`authenticate: ERROR ${e}`));
+        //uses the csafe buffer commands getHardwareAddress and setAuthenticationPassword (see demos/shared/csafeTests.ts)
+        this._tests.authenticate(String($("#authPassword").val() || "").trim());
     }
     onLog(info, logLevel) {
         this.showData(info);

@@ -2527,8 +2527,6 @@ declare namespace ergometer {
         private _strokeState;
         private _lastTrainingTime;
         private _lastLowResUpdate;
-        private _authenticationPassword;
-        private _authenticated;
         get strokeData(): StrokeData;
         get trainingData(): TrainingData;
         get strokeState(): StrokeState;
@@ -2552,27 +2550,6 @@ declare namespace ergometer {
         disconnect(): void;
         private disconnected;
         connectToDevice(device: UsbDevice): Promise<void>;
-        /**
-         * The 8 byte authentication password provided by Concept2 to qualified developers.
-         * You can pass it as a byte array (8 numbers) or as a 16 character hex string.
-         * When set before connecting, authentication runs automatically on connect.
-         */
-        get authenticationPassword(): number[];
-        set authenticationPassword(value: number[]);
-        /** true when the host has successfully authenticated to the PM over usb */
-        get authenticated(): boolean;
-        private normalizeAuthenticationPassword;
-        /**
-         * Authenticate the host to the PM so the full proprietary CSAFE command set
-         * (setting workouts, intervals, targets, ...) becomes available over usb.
-         * Reads the hardware address from the PM and sends it together with the password.
-         * Bluetooth does not need this.
-         *
-         * @param password optional 8 byte password or 16 character hex string. When omitted the
-         *                 password set through the authenticationPassword property is used.
-         * @returns a promise that resolves to true when authentication succeeded.
-         */
-        authenticate(password?: number[] | string): Promise<boolean>;
         protected getPacketSize(): number;
         protected highResolutionUpdate(): Promise<void>;
         private handlePowerCurve;

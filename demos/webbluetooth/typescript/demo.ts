@@ -73,6 +73,7 @@ class Demo {
 
         //csafe command tests, shared with the web usb debug demo (see demos/shared/csafeTests.ts)
         this._tests=new CsafeTests(this.performanceMonitor,(text)=>this.showCsafe(text),true);
+        $("#authenticate").click(()=>this.authenticate());
         $("#testPublic").click(()=>this._tests.publicCommands());
         $("#testMonitorInfo").click(()=>this._tests.monitorInfo());
         $("#testWorkoutData").click(()=>this._tests.workoutData());
@@ -92,6 +93,11 @@ class Demo {
     }
 
     private _tests : CsafeTests;
+
+    public authenticate() {
+        //uses the csafe buffer commands getHardwareAddress and setAuthenticationPassword (see demos/shared/csafeTests.ts)
+        this._tests.authenticate(String($("#authPassword").val()||"").trim());
+    }
 
     /** csafe test results, newest on top */
     public showCsafe(text : string) {

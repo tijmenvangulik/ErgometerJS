@@ -101,10 +101,8 @@ class Demo {
     private _tests : CsafeTests;
 
     public authenticate() {
-        const password=String($("#authPassword").val()||"").trim();
-        this.performanceMonitor.authenticate(password)
-            .then((ok)=>this.showData(`authenticate: ${ok?"success":"failed"}`))
-            .catch((e)=>this.showData(`authenticate: ERROR ${e}`));
+        //uses the csafe buffer commands getHardwareAddress and setAuthenticationPassword (see demos/shared/csafeTests.ts)
+        this._tests.authenticate(String($("#authPassword").val()||"").trim());
     }
 
     public onLog(info : string,logLevel : ergometer.LogLevel)

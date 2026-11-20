@@ -283,7 +283,7 @@ Public CSAFE commands (work over USB and Bluetooth):
 - workout data: `getWork`, `getDistance`, `getHorizontal`, `getCalories`, `getPace`, `getCadence`, `getPower`, `getHeartRate`
 - set: `setProgram`, `setTime`, `setDate`, `setTimeout`, `setWork`, `setDistance`, `setTotalCalories`, `setPower`
 
-Concept2 proprietary commands (Bluetooth, or USB after `authenticate()`):
+Concept2 proprietary commands (Bluetooth, or USB after authentication, see below):
 - monitor: `getFirmwareVersion`, `getHardwareVersion`, `getHardwareAddress`, `getDateTime`, `setDateTime`, `getBatteryLevelPercent`, `getErgMachineType`, `getOperationalState`, `getRowingState`, `getFlywheelSpeed`, `getLanguageType`, `setLanguageType`
 - display: `getScreenStateStatus`, `setScreenState`, `getDisplayType`, `getDisplayUnits`, `setDisplayString` (experimental: accepted by the PM5 but no text is shown yet), `setScreenErrorMode`, `setLedBacklight`, `getUIEvents`
 - workout configuration: `setWorkoutType`, `getWorkoutType`, `setWorkoutDuration`, `getWorkoutDuration`, `setRestDuration`, `setSplitDuration`, `setTargetPaceTime`, `getTargetPaceTime`, `setTargetAverageWatt`, `setTargetCaloriesPerHour`, `setIntervalType`, `setWorkoutIntervalCount`, `setConfigureWorkout`, `getWorkoutState`, `getWorkoutIntervalCount`, `getWorkoutIntervalType`, `getWorkOther`
@@ -353,21 +353,30 @@ await this.performanceMonitor.newCsafeBuffer()
 
 #### proprietary commands
 
-The following examples work over Bluetooth without any extra steps. Bluetooth always has access to the full proprietary command set.
+The following examples work over Bluetooth without any extra steps. Over Bluetooth the proprietary commands are available without authentication.
 
-Over USB (and RS485) the full proprietary command set is locked until the host authenticates. You need the 8 byte authentication password of the monitor. Each monitor has its own password, calculated from its hardware address (`getHardwareAddress`); Concept2 makes the way to calculate it available to qualified developers (contact Concept2 to request it). Keep that calculation confidential, for example on a server. Once you have the password, authenticate like this:
+Over USB (and RS485) the full proprietary command set is locked until the host authenticates. You need the 8 byte authentication password of the monitor. Each monitor has its own password, calculated from its hardware address (`getHardwareAddress`); Concept2 makes the way to calculate it available to qualified developers (contact Concept2 to request it). Keep that calculation confidential, for example on a server. Once you have the password, authenticate with two csafe buffer commands:
 
 ```ts
-// as a 16 character hex string, or as an array of 8 bytes
-performanceMonitor.authenticationPassword = "0011223344556677";
-await performanceMonitor.connectToDevice(device); // authenticates automatically on connect
+// 1. read the hardware address of the monitor
+let hwAddress: number[] = null;
+await performanceMonitor.newCsafeBuffer()
+    .getHardwareAddress({ onDataReceived: (value: number[]) => hwAddress = value })
+    .send();
 
-// or authenticate explicitly at any time after connecting:
-const ok = await performanceMonitor.authenticate("0011223344556677");
-console.log("authenticated:", ok, performanceMonitor.authenticated);
+// 2. send the hardware address together with the 8 byte password
+let result: number = null;
+await performanceMonitor.newCsafeBuffer()
+    .setAuthenticationPassword({
+        hwAddress: hwAddress.slice(0, 4),
+        password: [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77],
+        onDataReceived: (value: number) => result = value
+    })
+    .send();
+const authenticated = result === 1;
 ```
 
-`authenticate()` reads the monitor's hardware address (`getHardwareAddress`) and sends it together with the password (`setAuthenticationPassword`, `CSAFE_PM_SET_AUTHENPASSWORD`). The monitor answers 1 when the password is accepted. After it succeeds, all the proprietary workout commands below also work over USB. A monitor locks again after it was asleep, so authenticate again after a reconnect. If no password is set, USB keeps working for the public commands exactly as before.
+The monitor answers 1 when the password is accepted (`CSAFE_PM_SET_AUTHENPASSWORD`). After that, all the proprietary workout commands below also work over USB. A monitor locks again after it was asleep, so authenticate again after every new connection. The commands work over USB and Bluetooth; over Bluetooth the request is 19 bytes, which fits in one 20 byte packet unless byte stuffing makes it longer (then `send()` rejects with a "does not fit" error). Without authentication, USB keeps working for the public commands exactly as before.
 
 ##### Configure fixe time
  

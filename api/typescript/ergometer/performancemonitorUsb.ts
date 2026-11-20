@@ -99,9 +99,6 @@ namespace ergometer {
 
         private _lastLowResUpdate: number =null;
 
-        //usb authentication (needed to unlock the full proprietary command set over usb)
-        private _authenticationPassword : number[] = null;
-        private _authenticated = false;
 
         //sending and reading
         public get strokeData() : StrokeData{
@@ -286,95 +283,10 @@ namespace ergometer {
             result.then(()=>{
                 this.changeConnectionState(MonitorConnectionState.connected);
                 this.changeConnectionState(MonitorConnectionState.readyForCommunication);
-                //when a password was set, authenticate automatically so the proprietary
-                //commands become available. Errors are reported but do not break the
-                //connection, the public commands keep working.
-                if (this._authenticationPassword)
-                    this.authenticate().catch((e)=>this.handleError("usb authentication failed: "+e));
             })
             return result;
         }
 
-        /**
-         * The 8 byte authentication password provided by Concept2 to qualified developers.
-         * You can pass it as a byte array (8 numbers) or as a 16 character hex string.
-         * When set before connecting, authentication runs automatically on connect.
-         */
-        public get authenticationPassword() : number[] {
-            return this._authenticationPassword;
-        }
-        public set authenticationPassword(value : number[]) {
-            this._authenticationPassword = this.normalizeAuthenticationPassword(value);
-        }
-
-        /** true when the host has successfully authenticated to the PM over usb */
-        public get authenticated() : boolean {
-            return this._authenticated;
-        }
-
-        private normalizeAuthenticationPassword(password : number[] | string) : number[] {
-            if (!password) return null;
-            var bytes : number[];
-            if (typeof password === "string") {
-                var arr = utils.hexStringToTypedArray(password);
-                bytes = [];
-                for (let i=0;i<arr.length;i++) bytes.push(arr[i]);
-            }
-            else bytes = password.slice(0);
-            if (bytes.length!==8)
-                throw "authentication password must be 8 bytes (16 hex characters)";
-            return bytes;
-        }
-
-        /**
-         * Authenticate the host to the PM so the full proprietary CSAFE command set
-         * (setting workouts, intervals, targets, ...) becomes available over usb.
-         * Reads the hardware address from the PM and sends it together with the password.
-         * Bluetooth does not need this.
-         *
-         * @param password optional 8 byte password or 16 character hex string. When omitted the
-         *                 password set through the authenticationPassword property is used.
-         * @returns a promise that resolves to true when authentication succeeded.
-         */
-        public authenticate(password? : number[] | string) : Promise<boolean> {
-            var pw = (password!=null) ? this.normalizeAuthenticationPassword(password) : this._authenticationPassword;
-            if (!pw)
-                return Promise.reject("no authentication password set");
-            if (this.connectionState!=ergometer.MonitorConnectionState.readyForCommunication)
-                return Promise.reject("can not authenticate, not connected");
-            this._authenticationPassword = pw;
-            this._authenticated = false;
-            return new Promise<boolean>((resolve,reject)=>{
-                var hwAddress : number[] = null;
-                this.newCsafeBuffer()
-                    .getHardwareAddress({
-                        onDataReceived: (addr : number[])=>{ hwAddress = addr; }
-                    })
-                    .send()
-                    .then(()=>{
-                        if (!hwAddress || hwAddress.length<4) {
-                            reject("could not read the hardware address from the monitor");
-                            return null;
-                        }
-                        var result = -1;
-                        return this.newCsafeBuffer()
-                            .setAuthenticationPassword({
-                                hwAddress: hwAddress,
-                                password: pw,
-                                onDataReceived: (r : number)=>{ result = r; }
-                            })
-                            .send()
-                            .then(()=>{
-                                //1 means success and 0 failure (C2 Host Authentication Definition)
-                                this._authenticated = (result===1);
-                                if (this._authenticated) resolve(true);
-                                else reject("authentication rejected by the monitor, result="+result);
-                            });
-                    })
-                    .catch(reject);
-            });
-        }
-        
         protected getPacketSize() : number {
             return usb.USB_CSAVE_SIZE-1;
         }
