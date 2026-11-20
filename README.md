@@ -369,7 +369,7 @@ let result: number = null;
 await performanceMonitor.newCsafeBuffer()
     .setAuthenticationPassword({
         hwAddress: hwAddress.slice(0, 4),
-        password: [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77],
+        password: [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77],//(dummy password not a real one)
         onDataReceived: (value: number) => result = value
     })
     .send();
